@@ -40,7 +40,7 @@ export const signUpWithEmail = async (email, password, fullName, targetExam = 'K
         full_name: fullName.trim(),
         name: fullName.trim(),
         target_exam: targetExam,
-        role: ['merilinprabhugk@gmail.com', 'linasavita@gmail.com'].includes(email.trim().toLowerCase()) || email.includes('admin') || email.includes('dev') ? 'developer' : 'student',
+        role: email.trim().toLowerCase() === 'merilinprabhugk@gmail.com' ? 'developer' : 'student',
       },
     },
   });

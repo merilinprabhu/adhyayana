@@ -16,7 +16,6 @@ const STORAGE_SESSION_KEY = 'adhyayana_supabase_session_v8';
 // Whitelist of authorized Developer / Admin email addresses
 export const AUTHORIZED_ADMIN_EMAILS = [
   'merilinprabhugk@gmail.com',
-  'linasavita@gmail.com',
 ];
 
 export const AuthProvider = ({ children }) => {
@@ -53,11 +52,8 @@ export const AuthProvider = ({ children }) => {
     const email = (supabaseUser.email || '').trim().toLowerCase();
     const meta = supabaseUser.user_metadata || {};
     
-    // Strict Admin verification
-    const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email) ||
-                         (meta.role === 'developer' || meta.role === 'admin') ||
-                         email.includes('admin') || 
-                         email.includes('dev');
+    // Strict Admin verification - ONLY merilinprabhugk@gmail.com is Developer
+    const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email);
 
     const name = meta.full_name || meta.name || email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
