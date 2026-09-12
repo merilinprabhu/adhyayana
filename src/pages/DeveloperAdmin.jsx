@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS public.exams (
 -- 1B. Subjects Table (ವಿಷಯವಾರು ವಿಭಾಗಗಳು)
 CREATE TABLE IF NOT EXISTS public.subjects (
   id TEXT PRIMARY KEY,
-  exam_id TEXT REFERENCES public.exams(id) ON DELETE CASCADE,
+  exam_id TEXT,
   name TEXT NOT NULL,
   name_kn TEXT,
   description TEXT,
@@ -83,8 +83,8 @@ CREATE TABLE IF NOT EXISTS public.subjects (
 -- 2. Tests Table (ಅಣಕು ಪರೀಕ್ಷೆಗಳು)
 CREATE TABLE IF NOT EXISTS public.tests (
   id TEXT PRIMARY KEY,
-  exam_id TEXT REFERENCES public.exams(id) ON DELETE CASCADE,
-  subject_id TEXT REFERENCES public.subjects(id) ON DELETE SET NULL,
+  exam_id TEXT,
+  subject_id TEXT,
   title TEXT NOT NULL,
   title_kn TEXT,
   duration_minutes INT DEFAULT 30,
@@ -102,8 +102,8 @@ CREATE TABLE IF NOT EXISTS public.tests (
 -- 3. Notes Table (ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು)
 CREATE TABLE IF NOT EXISTS public.notes (
   id TEXT PRIMARY KEY,
-  exam_id TEXT REFERENCES public.exams(id) ON DELETE CASCADE,
-  subject_id TEXT REFERENCES public.subjects(id) ON DELETE SET NULL,
+  exam_id TEXT,
+  subject_id TEXT,
   title TEXT NOT NULL,
   title_kn TEXT,
   category TEXT DEFAULT 'General',
@@ -155,11 +155,19 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Drop any legacy blocking foreign key constraints
+ALTER TABLE public.subjects DROP CONSTRAINT IF EXISTS subjects_exam_id_fkey;
+ALTER TABLE public.tests DROP CONSTRAINT IF EXISTS tests_exam_id_fkey;
+ALTER TABLE public.tests DROP CONSTRAINT IF EXISTS tests_subject_id_fkey;
+ALTER TABLE public.notes DROP CONSTRAINT IF EXISTS notes_exam_id_fkey;
+ALTER TABLE public.notes DROP CONSTRAINT IF EXISTS notes_subject_id_fkey;
+
 -- Safe Column Alterations for Existing Tables
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS is_free BOOLEAN DEFAULT false;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS free_questions_count INT DEFAULT 2;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS subject_id TEXT;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS questions JSONB DEFAULT '[]'::jsonb;
 
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS is_free BOOLEAN DEFAULT false;

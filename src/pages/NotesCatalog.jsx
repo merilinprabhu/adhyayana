@@ -29,7 +29,9 @@ import {
   Award,
   Zap,
   RotateCcw,
-  Edit3
+  Edit3,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 
 // Icon Renderer Helper
@@ -93,7 +95,9 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
     deleteTest,
     clearAllData,
     fetchLiveGoogleSheetCSV,
-    parseGoogleSheetCSV
+    parseGoogleSheetCSV,
+    syncLocalToSupabase,
+    isCloudSyncing
   } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -476,6 +480,23 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
             </button>
 
             <button
+              onClick={async () => {
+                const res = await syncLocalToSupabase();
+                if (res.success) {
+                  alert(lang === 'kn' ? '🎉 ಯಶಸ್ವಿಯಾಗಿದೆ! ನಿಮ್ಮ ಎಲ್ಲಾ ವಿಷಯಗಳು, ನೋಟ್ಸ್ ಮತ್ತು ಟೆಸ್ಟ್‌ಗಳು ಕ್ಲೌಡ್‌ಗೆ ಸಿಂಕ್ ಆಗಿವೆ. ಈಗ ಮೊಬೈಲ್‌ನಲ್ಲೂ ಕಾಣಿಸುತ್ತವೆ!' : '🎉 Success! All subjects, notes, and tests pushed to Cloud database!');
+                } else {
+                  alert(res.message);
+                }
+              }}
+              disabled={isCloudSyncing}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all hover:scale-[1.02]"
+              title="Sync all local data to Supabase Cloud so it appears on phone & everywhere"
+            >
+              <Cloud className="w-4 h-4" />
+              <span>{isCloudSyncing ? (lang === 'kn' ? 'ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...' : 'Syncing...') : (lang === 'kn' ? '☁️ ಕ್ಲೌಡ್ ಸಿಂಕ್' : '☁️ Cloud Sync')}</span>
+            </button>
+
+            <button
               onClick={() => {
                 setTargetSubjectForTest(selectedSubjectId !== 'ALL' ? selectedSubjectId : (subjects[0]?.id || ''));
                 setIsNewTestModalOpen(true);
@@ -675,44 +696,44 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
       )}
 
       {/* 4. Search & Tab Filter */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
         
         {/* Search */}
-        <div className="relative w-full sm:w-96">
+        <div className="relative w-full sm:w-80 md:w-96">
           <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
           <input
             type="text"
             placeholder={lang === 'kn' ? 'ನೋಟ್ಸ್ ಅಥವಾ ಟೆಸ್ಟ್ ಹುಡುಕಿ...' : 'Search notes or mock tests...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full pl-10 pr-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
         {/* Content Type Switcher */}
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full sm:w-auto justify-center">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl sm:rounded-2xl w-full sm:w-auto justify-center">
           <button
             onClick={() => setActiveTab('notes')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'notes'
                 ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>{lang === 'kn' ? `ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ (${filteredNotes.length})` : `Digital Notes (${filteredNotes.length})`}</span>
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{lang === 'kn' ? `ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ (${filteredNotes.length})` : `Digital Notes (${filteredNotes.length})`}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('tests')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'tests'
                 ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            <PlayCircle className="w-3.5 h-3.5" />
-            <span>{lang === 'kn' ? `ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು (${filteredTests.length})` : `Mock Tests (${filteredTests.length})`}</span>
+            <PlayCircle className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{lang === 'kn' ? `ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು (${filteredTests.length})` : `Mock Tests (${filteredTests.length})`}</span>
           </button>
         </div>
 
@@ -795,8 +816,8 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded w-fit ${
                       note.isFree || note.price === 0
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                         : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
@@ -806,9 +827,9 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
 
                     <button
                       onClick={() => handleReadNote(note)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                      className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 active:scale-95"
                     >
-                      <BookOpen className="w-3.5 h-3.5" />
+                      <BookOpen className="w-4 h-4" />
                       <span>{lang === 'kn' ? 'ನೋಟ್ಸ್ ಓದಿ' : 'Read Note'}</span>
                     </button>
                   </div>
@@ -846,10 +867,10 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
               {filteredTests.map((test) => (
                 <div
                   key={test.id}
-                  className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all flex flex-col justify-between space-y-4 shadow-sm"
+                  className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all flex flex-col justify-between space-y-4 shadow-sm"
                 >
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2">
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                           {test.questions?.length || 0} Questions
@@ -899,7 +920,7 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
                       </div>
                     </div>
 
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
                       {lang === 'kn' ? test.titleKn || test.title : test.title}
                     </h3>
                     
@@ -909,16 +930,16 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <span className="text-[11px] text-slate-400">
                       {test.subjectName || 'General Module'}
                     </span>
 
                     <button
                       onClick={() => handleStartTest(test)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                      className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 active:scale-95"
                     >
-                      <PlayCircle className="w-3.5 h-3.5" />
+                      <PlayCircle className="w-4 h-4" />
                       <span>{lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Start Mock Test'}</span>
                     </button>
                   </div>

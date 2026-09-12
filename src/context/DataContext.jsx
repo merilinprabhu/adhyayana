@@ -383,92 +383,68 @@ export const DataProvider = ({ children }) => {
     localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, razorpayKeyId);
   }, [razorpayKeyId]);
 
-  // 1-Click Seed Supabase Database with all Initial Data
+  // 1-Click Push / Seed All Current Local & Template Data to Supabase Database
   const seedSupabaseDatabase = async () => {
     setIsCloudSyncing(true);
     const logs = [];
 
     try {
-      // 1. Seed Exams
-      for (const exam of INITIAL_EXAMS) {
-        const { error } = await supabase.from('exams').upsert({
-          id: exam.id,
-          title: exam.title,
-          short_name: exam.shortName,
-          category: exam.category,
-          description: exam.description,
-          description_kn: exam.descriptionKn,
-          price: exam.price,
-          original_price: exam.originalPrice,
-          is_free: exam.isFree || false,
-          banner: exam.banner,
-          syllabus: exam.syllabus || [],
-          badge: exam.badge,
-          rating: exam.rating || 5.0,
-          enrolled_count: exam.enrolledCount || 1,
-          tests_count: exam.testsCount || 0,
-          notes_count: exam.notesCount || 0
-        });
-        if (error) console.warn('Exam seed notice:', error);
-      }
-      logs.push(`✓ Seeded ${INITIAL_EXAMS.length} Exam Categories`);
-
-      // 1B. Seed Subjects
-      for (const subj of INITIAL_SUBJECTS) {
+      // 1. Seed Current & Initial Subjects
+      const allSubjsToPush = subjects.length > 0 ? subjects : INITIAL_SUBJECTS;
+      for (const subj of allSubjsToPush) {
         const { error } = await supabase.from('subjects').upsert({
           id: subj.id,
-          exam_id: subj.examId,
           name: subj.name,
-          name_kn: subj.nameKn,
+          name_kn: subj.nameKn || subj.name,
           description: subj.description || '',
           icon: subj.icon || 'BookOpen',
           display_order: subj.order || 1
         });
-        if (error) console.warn('Subject seed notice:', error);
+        if (error) console.warn('Subject upsert error:', error);
       }
-      logs.push(`✓ Seeded ${INITIAL_SUBJECTS.length} Subject Sections`);
+      logs.push(`✓ Synced ${allSubjsToPush.length} Subject Sections to Cloud`);
 
-      // 2. Seed Tests
-      for (const test of INITIAL_TESTS) {
+      // 2. Seed Current & Initial Tests
+      const allTestsToPush = tests.length > 0 ? tests : INITIAL_TESTS;
+      for (const test of allTestsToPush) {
         const { error } = await supabase.from('tests').upsert({
           id: test.id,
-          exam_id: test.examId,
           subject_id: test.subjectId || null,
           title: test.title,
-          title_kn: test.titleKn,
-          duration_minutes: test.durationMinutes,
-          total_marks: test.totalMarks,
-          negative_marking: test.negativeMarking,
+          title_kn: test.titleKn || test.title,
+          duration_minutes: Number(test.durationMinutes) || 30,
+          total_marks: Number(test.totalMarks) || 50,
+          negative_marking: Number(test.negativeMarking) || 0.25,
           source_type: test.sourceType || 'manual',
           is_free_preview: test.isFreePreview || false,
-          price: test.price || 0,
-          is_free: test.isFree || false,
-          free_questions_count: test.freeQuestionsCount || 2,
-          questions: test.questions || []
+          price: Number(test.price) || 0,
+          is_free: test.isFree !== undefined ? test.isFree : (Number(test.price) === 0),
+          free_questions_count: Number(test.freeQuestionsCount !== undefined ? test.freeQuestionsCount : 5),
+          questions: Array.isArray(test.questions) ? test.questions : []
         });
-        if (error) console.warn('Test seed notice:', error);
+        if (error) console.warn('Test upsert error:', error);
       }
-      logs.push(`✓ Seeded ${INITIAL_TESTS.length} Mock Tests with questions`);
+      logs.push(`✓ Synced ${allTestsToPush.length} Mock Tests to Cloud`);
 
-      // 3. Seed Notes
-      for (const note of INITIAL_NOTES) {
+      // 3. Seed Current & Initial Notes
+      const allNotesToPush = notes.length > 0 ? notes : INITIAL_NOTES;
+      for (const note of allNotesToPush) {
         const { error } = await supabase.from('notes').upsert({
           id: note.id,
-          exam_id: note.examId,
           subject_id: note.subjectId || null,
           title: note.title,
-          title_kn: note.titleKn,
-          category: note.category,
-          file_type: note.fileType,
+          title_kn: note.titleKn || note.title,
+          category: note.category || 'General',
+          file_type: note.fileType || 'rich_text',
           gdrive_url: note.gdriveUrl || '',
-          read_time_minutes: note.readTimeMinutes,
-          is_free: note.isFree || false,
-          price: note.price || 0,
+          read_time_minutes: Number(note.readTimeMinutes) || 10,
+          is_free: note.isFree !== undefined ? note.isFree : (Number(note.price) === 0),
+          price: Number(note.price) || 0,
           content: note.content || ''
         });
-        if (error) console.warn('Notes seed notice:', error);
+        if (error) console.warn('Notes upsert error:', error);
       }
-      logs.push(`✓ Seeded ${INITIAL_NOTES.length} Digital Notes & Materials`);
+      logs.push(`✓ Synced ${allNotesToPush.length} Digital Notes & Materials to Cloud`);
 
       // 4. Seed Payment Settings
       try {
@@ -483,21 +459,23 @@ export const DataProvider = ({ children }) => {
           },
           updated_at: new Date().toISOString()
         });
-        logs.push(`✓ Seeded Developer UPI & Payment Settings`);
+        logs.push(`✓ Synced Developer UPI & Payment Settings`);
       } catch (settingsErr) {
-        console.warn('App settings seed notice:', settingsErr);
+        console.warn('App settings sync notice:', settingsErr);
       }
 
       setCloudStatus('connected');
       await syncFromSupabase();
       return { success: true, message: logs.join('\n') };
     } catch (e) {
-      console.error('Seed error:', e);
-      return { success: false, message: e.message };
+      console.error('Seed/Sync error:', e);
+      return { success: false, message: e.message || 'Cloud sync failed' };
     } finally {
       setIsCloudSyncing(false);
     }
   };
+
+  const syncLocalToSupabase = seedSupabaseDatabase;
 
   // Exam Operations
   const addExam = async (newExam) => {
@@ -1033,6 +1011,7 @@ export const DataProvider = ({ children }) => {
         cloudStatus,
         syncFromSupabase,
         seedSupabaseDatabase,
+        syncLocalToSupabase,
         addExam,
         updateExam,
         deleteExam,
