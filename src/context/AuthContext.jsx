@@ -66,15 +66,15 @@ export const AuthProvider = ({ children }) => {
       name: name,
       email: email,
       photoURL: meta.avatar_url || meta.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
-      role: isAuthorized ? 'developer' : 'student',
+      role: (user && user.email === email && user.role) ? user.role : (isAuthorized ? 'developer' : 'student'),
       isAuthorizedAdmin: isAuthorized,
-      badge: isAuthorized ? 'Platform Administrator' : 'Verified Aspirant',
+      badge: (user && user.email === email && user.role === 'student') ? 'Verified Aspirant' : (isAuthorized ? 'Platform Administrator' : 'Verified Aspirant'),
       emailVerified: true,
       provider: supabaseUser.app_metadata?.provider || 'supabase_auth',
       verifiedAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       targetExam: meta.target_exam || 'KPSC KAS',
-      enrolledExams: [],
+      enrolledExams: user?.enrolledExams || [],
     };
 
     setUser(activeUser);
@@ -238,11 +238,17 @@ export const AuthProvider = ({ children }) => {
   const toggleRole = () => {
     if (!user || !user.isAuthorizedAdmin) return;
     const newRole = user.role === 'developer' ? 'student' : 'developer';
-    setUser((prev) => ({
-      ...prev,
-      role: newRole,
-      badge: newRole === 'developer' ? 'Platform Administrator' : 'Verified Aspirant',
-    }));
+    setUser((prev) => {
+      const updated = {
+        ...prev,
+        role: newRole,
+        badge: newRole === 'developer' ? 'Platform Administrator' : 'Verified Aspirant',
+      };
+      try {
+        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   const enrollExam = (examId) => {

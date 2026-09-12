@@ -3,412 +3,340 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { 
   BookOpen, 
-  CheckCircle2, 
-  ArrowRight, 
-  FileText, 
+  Target, 
+  Compass, 
   Award, 
-  TrendingUp, 
-  Shield, 
-  PlayCircle, 
+  ShieldCheck, 
+  Zap, 
+  Users, 
   Sparkles, 
-  Zap,
-  Users,
-  Clock,
-  ExternalLink,
+  ArrowRight, 
+  CheckCircle2, 
+  GraduationCap, 
+  FileSpreadsheet, 
+  CreditCard, 
+  Lock, 
+  HeartHandshake, 
+  Globe2, 
+  Lightbulb, 
+  TrendingUp, 
+  Layers,
   ChevronRight
 } from 'lucide-react';
 
-export const HomePage = ({ onNavigate, onSelectExam, onOpenAuth, onSelectTest, onSelectNote }) => {
-  const { isAuthenticated } = useAuth();
-  const { lang, exams, tests, notes } = useData();
+export const HomePage = ({ onNavigate, onOpenAuth }) => {
+  const { isAuthenticated, triggerGoogleOAuthLogin } = useAuth();
+  const { lang, subjects, exams } = useData();
 
-  const featuredExams = exams.slice(0, 3);
-  const featuredTests = tests.slice(0, 3);
-  const featuredNotes = notes.slice(0, 3);
+  const corePillars = [
+    {
+      icon: <Target className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />,
+      titleEn: "100% Syllabus-Centric Preparation",
+      titleKn: "100% ಸಿಲಬಸ್ ಆಧಾರಿತ ತಯಾರಿ",
+      descEn: "Every subject module, note, and test is precisely crafted aligning with the latest KPSC (KAS, FDA, SDA, PSI, PDO, VAO) & Karnataka exam blueprints.",
+      descKn: "ಕರ್ನಾಟಕದ ಪ್ರಮುಖ ಪರೀಕ್ಷೆಗಳಾದ KAS, FDA, SDA, PSI, PDO, VAO ಮತ್ತು TET ಗಳ ಇತ್ತೀಚಿನ ಪಠ್ಯಕ್ರಮಕ್ಕೆ ಸಂಪೂರ್ಣವಾಗಿ ಹೊಂದಿಕೆಯಾಗುವ ನಿಖರ ಅಧ್ಯಯನ ಸಾಮಗ್ರಿಗಳು."
+    },
+    {
+      icon: <FileSpreadsheet className="w-7 h-7 text-teal-600 dark:text-teal-400" />,
+      titleEn: "Dynamic Live Cloud Engine",
+      titleKn: "ಲೈವ್ ಕ್ಲೌಡ್ ಆಟೋ-ಸಿಂಕ್ ಎಂಜಿನ್",
+      descEn: "Google Sheets & Google Drive real-time integration ensures instant updates of new questions, current affairs, and revised notes without app re-installs.",
+      descKn: "ಗೂಗಲ್ ಶೀಟ್ ಮತ್ತು ಗೂಗಲ್ ಡ್ರೈವ್ ನೇರ ಸಂಪರ್ಕದಿಂದಾಗಿ ಪ್ರತಿದಿನ ಹೊಸ ಪ್ರಶ್ನೆಗಳು, ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು ಮತ್ತು ನೋಟ್ಸ್‌ಗಳು ಕ್ಷಣಾರ್ಧದಲ್ಲಿ ಆಟೋ-ಅಪ್‌ಡೇಟ್ ಆಗುತ್ತವೆ."
+    },
+    {
+      icon: <ShieldCheck className="w-7 h-7 text-blue-600 dark:text-blue-400" />,
+      titleEn: "1-User 1-Gmail Security & Copyright",
+      titleKn: "ಸುರಕ್ಷಿತ 1-Gmail ಲಾಗಿನ್ & ವಾಟರ್‌ಮಾರ್ಕ್",
+      descEn: "Advanced student email watermarking on digital PDFs and single-session Google OAuth protect student privacy and platform intellectual property.",
+      descKn: "ವಿದ್ಯಾರ್ಥಿಯ ಇಮೇಲ್ ವಾಟರ್‌ಮಾರ್ಕ್ ರಕ್ಷಣೆ ಮತ್ತು ಏಕ-ಸಾಧನ Google OAuth ಭದ್ರತೆಯೊಂದಿಗೆ ಸುರಕ್ಷಿತ ಮತ್ತು ವಿಶ್ವಾಸಾರ್ಹ ಡಿಜಿಟಲ್ ಪರಿಸರ."
+    },
+    {
+      icon: <CreditCard className="w-7 h-7 text-purple-600 dark:text-purple-400" />,
+      titleEn: "Direct Razorpay UPI & Free Coupons",
+      titleKn: "ಸುರಕ್ಷಿತ ರೇಜರ್‌ಪೇ UPI & ಉಚಿತ ಪ್ರವೇಶ",
+      descEn: "Transparent payment gateway supporting GPay, PhonePe, Paytm, Cards and automated instant access verification without manual delays.",
+      descKn: "GPay, PhonePe, UPI ಮತ್ತು ಕಾರ್ಡ್‌ಗಳ ಮೂಲಕ ತತ್ಕ್ಷಣದ ಸುರಕ್ಷಿತ ರೇಜರ್‌ಪೇ ಪಾವತಿ ಹಾಗೂ 100% ಉಚಿತ ಸ್ಕಾಲರ್‌ಶಿಪ್ ಕೂಪನ್‌ಗಳ ಸೌಲಭ್ಯ."
+    }
+  ];
+
+  const methodologySteps = [
+    {
+      step: "01",
+      titleEn: "Subject Selection",
+      titleKn: "ವಿಷಯವಾರು ಆಯ್ಕೆ",
+      descEn: "Navigate through organized subject modules like History, Polity, Geography, Kannada Grammar, Law & Pedagogy.",
+      descKn: "ಇತಿಹಾಸ, ಸಂವಿಧಾನ, ಭೂಗೋಳ, ಕನ್ನಡ ವ್ಯಾಕರಣ ಮತ್ತು ವಿಜ್ಞಾನದಂತಹ ವಿಷಯವಾರು ಮಾಡ್ಯೂಲ್‌ಗಳಿಂದ ನಿಮ್ಮ ಅಗತ್ಯಕ್ಕೆ ತಕ್ಕಂತೆ ಪ್ರಾರಂಭಿಸಿ."
+    },
+    {
+      step: "02",
+      titleEn: "High-Yield Digital Notes",
+      titleKn: "ಸಂಕ್ಷಿಪ್ತ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್",
+      descEn: "Read concise, revision-ready PDF summaries with built-in student watermark protection.",
+      descKn: "ಪರೀಕ್ಷೆಗೆ ಅತ್ಯಂತ ಉಪಯುಕ್ತವಾದ ಸಂಕ್ಷಿಪ್ತ, ಪರಿಷ್ಕೃತ ನೋಟ್ಸ್‌ಗಳನ್ನು ಮೊಬೈಲ್ ಅಥವಾ ಕಂಪ್ಯೂಟರ್‌ನಲ್ಲಿ ಸರಳವಾಗಿ ಓದಿ."
+    },
+    {
+      step: "03",
+      titleEn: "Topic-Wise Mock Tests",
+      titleKn: "ವಿಷಯವಾರು ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು",
+      descEn: "Solve simulated practice tests with real countdown timers and negative marking calculation.",
+      descKn: "ಟೈಮರ್ ಮತ್ತು ನೆಗೆಟಿವ್ ಅಂಕಗಳ ಲೆಕ್ಕಾಚಾರದೊಂದಿಗೆ ನೈಜ ಪರೀಕ್ಷಾ ಮಾದರಿಯ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳನ್ನು ಅಭ್ಯಾಸ ಮಾಡಿ."
+    },
+    {
+      step: "04",
+      titleEn: "Performance & Diagnosis",
+      titleKn: "ಫಲಿತಾಂಶ & ದುರ್ಬಲ ವಿಷಯ ವಿಶ್ಲೇಷಣೆ",
+      descEn: "Analyze instant scores, correct answers with explanations, and identify areas needing reinforcement.",
+      descKn: "ವಿವರಣಾತ್ಮಕ ಉತ್ತರಗಳು ಹಾಗೂ ದುರ್ಬಲ ವಿಷಯಗಳ ಸುಧಾರಣೆಗೆ ತಕ್ಷಣದ ವಿಶ್ಲೇಷಣೆಯನ್ನು ಪಡೆದುಕೊಳ್ಳಿ."
+    }
+  ];
 
   return (
-    <div className="space-y-16 pb-16">
+    <div className="space-y-16 sm:space-y-24 pb-20">
       
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-8 pb-12 sm:py-16 bg-gradient-to-b from-emerald-50/70 via-white to-slate-50 dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-950 border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Left Column */}
-            <div className="lg:col-span-7 space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-semibold border border-emerald-300 dark:border-emerald-800 shadow-sm">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 animate-spin" />
-                <span>
-                  {lang === 'kn' ? 'ಕರ್ನಾಟಕದ #1 ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ವೇದಿಕೆ' : 'Karnataka\'s Premier Dynamic Exam Ecosystem'}
-                </span>
-              </div>
+      {/* 1. Institutional Hero & Vision Banner */}
+      <section className="relative overflow-hidden pt-12 pb-16 sm:py-24 bg-gradient-to-b from-emerald-50/80 via-white to-slate-50 dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-950 border-b border-slate-200 dark:border-slate-800">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+          
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-bold border border-emerald-300 dark:border-emerald-800 shadow-sm animate-pulse">
+            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>
+              {lang === 'kn' ? 'ಜ್ಞಾನವೇ ಶಕ್ತಿ • ಕರ್ನಾಟಕದ ಶ್ರೇಷ್ಠ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ವೇದಿಕೆ' : 'Knowledge is Power • Premier Karnataka Exam Portal'}
+            </span>
+          </div>
 
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-[1.15]">
-                {lang === 'kn' ? (
-                  <>
-                    ನಿಮ್ಮ ಪರೀಕ್ಷಾ ಯಶಸ್ಸಿಗೆ <br />
-                    <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 bg-clip-text text-transparent">
-                      ಅಧ್ಯಯನ (ADHYAYANA)
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    Empowering Your Dreams with <br />
-                    <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 bg-clip-text text-transparent">
-                      ADHYAYANA Portal
-                    </span>
-                  </>
-                )}
-              </h1>
-
-              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-                {lang === 'kn'
-                  ? 'KPSC, FDA, SDA, Police PSI, TET & ಬ್ಯಾಂಕಿಂಗ್ ಪರೀಕ್ಷೆಗಳಿಗಾಗಿ ಗೂಗಲ್ ಶೀಟ್ ಆಟೋ-ಸಿಂಕ್ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು, ಗೂಗಲ್ ಡ್ರೈವ್ ನೋಟ್ಸ್ ಮತ್ತು ವಿಶ್ಲೇಷಣೆಗಳೊಂದಿಗೆ ಅತ್ಯಾಧುನಿಕ ಡಿಜಿಟಲ್ ತಯಾರಿ.'
-                  : 'High-yield interactive mock tests automatically synced with Google Sheets, dynamic watermarked Google Drive notes, and live AI-powered student performance tracking.'}
-              </p>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                <button
-                  onClick={() => onNavigate('exams')}
-                  className="px-6 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 flex items-center gap-2 hover:scale-[1.02] transition-all"
-                >
-                  <span>{lang === 'kn' ? 'ಪರೀಕ್ಷೆಗಳನ್ನು ಅನ್ವೇಷಿಸಿ' : 'Explore Exam Packs'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-
-                {isAuthenticated ? (
-                  <button
-                    onClick={() => onNavigate('dashboard')}
-                    className="px-6 py-3.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 hover:border-emerald-500 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 transition-all"
-                  >
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    <span>{lang === 'kn' ? 'ನನ್ನ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್' : 'Go to Dashboard'}</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={onOpenAuth}
-                    className="px-6 py-3.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 hover:border-emerald-500 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 transition-all hover:scale-[1.02]"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                    </svg>
-                    <span>{lang === 'kn' ? 'Google ಮೂಲಕ ಲಾಗಿನ್' : 'Sign in with Google'}</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Security feature pill */}
-              <div className="flex items-center gap-6 pt-4 text-xs text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Shield className="w-4 h-4 text-emerald-600" />
-                  1-User 1-Gmail Security
-                </span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Zap className="w-4 h-4 text-amber-500" />
-                  Realtime Test Analytics
-                </span>
-              </div>
-            </div>
-
-            {/* Right Card / Interactive Visual */}
-            <div className="lg:col-span-5">
-              <div className="relative rounded-3xl bg-gradient-to-tr from-slate-900 to-slate-800 p-6 text-white shadow-2xl border border-slate-700/60 overflow-hidden">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <div className="flex items-center justify-between pb-4 border-b border-slate-700/80">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                      Live Mock Test Engine
-                    </span>
-                  </div>
-                  <span className="text-[11px] bg-slate-800 px-2.5 py-1 rounded-full text-slate-300 font-mono">
-                    KPSC KAS 2026
+          <div className="space-y-4 max-w-4xl mx-auto">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-[1.18]">
+              {lang === 'kn' ? (
+                <>
+                  ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆಗಳ ಯಶಸ್ಸಿಗೆ ಸಮರ್ಪಿತ <br />
+                  <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 bg-clip-text text-transparent">
+                    ಅಧ್ಯಯನ (ADHYAYANA)
                   </span>
-                </div>
+                </>
+              ) : (
+                <>
+                  Empowering Aspirants Towards Government Service <br />
+                  <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 bg-clip-text text-transparent">
+                    ADHYAYANA ACADEMY
+                  </span>
+                </>
+              )}
+            </h1>
 
-                {/* Sample Question Preview Card */}
-                <div className="mt-4 space-y-4">
-                  <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                    <p className="text-xs text-emerald-400 font-mono font-bold mb-1">
-                      {lang === 'kn' ? 'ಪ್ರಶ್ನೆ 1 / 50' : 'QUESTION 1 of 50'}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-100">
-                      {lang === 'kn' 
-                        ? 'ಬನವಾಸಿಯ ಕದಂಬ ರಾಜವಂಶದ ಸಂಸ್ಥಾಪಕ ಯಾರು?' 
-                        : 'Who was the founder of the Kadamba Dynasty of Banavasi?'}
-                    </p>
-                    
-                    <div className="mt-3 space-y-2">
-                      <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs flex items-center justify-between">
-                        <span>A. Mayurasharma (ಮಯೂರಶರ್ಮ)</span>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700 text-slate-300 text-xs">
-                        <span>B. Pulakeshin I (ಮೊದಲನೆಯ ಪುಲಕೇಶಿ)</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-emerald-950/40 rounded-xl border border-emerald-800/50 text-xs">
-                    <div className="flex items-center gap-2 text-emerald-300">
-                      <Clock className="w-4 h-4" />
-                      <span>Countdown Timer: 29:45</span>
-                    </div>
-                    <span className="font-bold text-emerald-400">+2.00 Marks</span>
-                  </div>
-                </div>
-
-                <div className="mt-5 text-center">
-                  <button
-                    onClick={() => {
-                      if (featuredTests.length > 0) onSelectTest(featuredTests[0]);
-                    }}
-                    className="w-full py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-500/20"
-                  >
-                    {lang === 'kn' ? 'ಉಚಿತ ಟ್ರಯಲ್ ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Take Free Sample Test'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
+            <p className="text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed">
+              {lang === 'kn'
+                ? 'ಕರ್ನಾಟಕದ ಪ್ರತಿಯೊಬ್ಬ ವಿದ್ಯಾರ್ಥಿಗೂ ಗುಣಮಟ್ಟದ, ಸಿಲಬಸ್-ಆಧಾರಿತ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ನೈಜ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳನ್ನು ತಲುಪಿಸುವ ಡಿಜಿಟಲ್ ಶೈಕ್ಷಣಿಕ ಅಭಿಯಾನ.'
+                : 'A dedicated learning sanctuary built to democratize quality study materials, verified subject notes, and interactive test engines for Karnataka state competitive examinations.'}
+            </p>
           </div>
-        </div>
-      </section>
 
-      {/* Metrics Counter Bar */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-          <div className="text-center p-3">
-            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">12,500+</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Active Aspirants</p>
-          </div>
-          <div className="text-center p-3 border-l border-slate-200 dark:border-slate-800">
-            <p className="text-2xl sm:text-3xl font-extrabold text-teal-600 dark:text-teal-400">{tests.length * 15}+</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Verified Questions</p>
-          </div>
-          <div className="text-center p-3 border-l border-slate-200 dark:border-slate-800">
-            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{notes.length * 20}+</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Digital Study Notes</p>
-          </div>
-          <div className="text-center p-3 border-l border-slate-200 dark:border-slate-800">
-            <p className="text-2xl sm:text-3xl font-extrabold text-amber-500">98.4%</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Student Satisfaction</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Exam Categories */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-8 gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
-              <Award className="w-4 h-4" />
-              <span>{lang === 'kn' ? 'ಪ್ರಮುಖ ಪರೀಕ್ಷಾ ಪ್ಯಾಕೇಜ್‌ಗಳು' : 'Top Exam Series'}</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">
-              {lang === 'kn' ? 'ನಿಮ್ಮ ಗುರಿಗೆ ತಕ್ಕ ಕೋರ್ಸ್ ಆಯ್ಕೆಮಾಡಿ' : 'Select Your Target Examination'}
-            </h2>
-          </div>
-          <button
-            onClick={() => onNavigate('exams')}
-            className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-          >
-            <span>{lang === 'kn' ? 'ಎಲ್ಲವನ್ನೂ ವೀಕ್ಷಿಸಿ' : 'View All Courses'}</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {featuredExams.map((exam) => (
-            <div
-              key={exam.id}
-              className="group bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col justify-between"
+          {/* Quick Hub Navigation CTAs */}
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+            <button
+              onClick={() => onNavigate('notes')}
+              className="px-7 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl font-bold text-sm sm:text-base shadow-xl shadow-emerald-500/25 flex items-center gap-2 hover:scale-[1.03] transition-all"
             >
-              <div>
-                <div className="relative h-44 overflow-hidden">
-                  <img
-                    src={exam.banner}
-                    alt={exam.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
-                  
-                  <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow">
-                    {exam.badge || 'Featured'}
-                  </span>
+              <BookOpen className="w-5 h-5" />
+              <span>{lang === 'kn' ? 'ವಿಷಯವಾರು ನೋಟ್ಸ್‌ಗಳು (Digital Notes)' : 'Explore Digital Notes'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
 
-                  <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-900/80 text-emerald-300 backdrop-blur">
-                    {exam.category}
-                  </span>
-                </div>
-
-                <div className="p-5 space-y-3">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-emerald-600 transition-colors">
-                    {exam.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                    {lang === 'kn' ? exam.descriptionKn || exam.description : exam.description}
-                  </p>
-
-                  <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-1">
-                    <span className="flex items-center gap-1 font-medium">
-                      <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                      {exam.testsCount} Tests
-                    </span>
-                    <span className="flex items-center gap-1 font-medium">
-                      <BookOpen className="w-3.5 h-3.5 text-teal-600" />
-                      {exam.notesCount} Notes
-                    </span>
-                    <span className="flex items-center gap-1 font-medium text-amber-500">
-                      ★ {exam.rating}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-5 pt-0 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-3">
-                <div>
-                  <span className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
-                    {exam.isFree ? 'FREE' : `₹${exam.price}`}
-                  </span>
-                  {!exam.isFree && exam.originalPrice && (
-                    <span className="text-xs text-slate-400 line-through ml-2">₹{exam.originalPrice}</span>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => onSelectExam(exam)}
-                  className="px-4 py-2 bg-slate-900 hover:bg-emerald-600 text-white dark:bg-slate-800 dark:hover:bg-emerald-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                >
-                  <span>{lang === 'kn' ? 'ವಿವರ ವೀಕ್ಷಿಸಿ' : 'View Details'}</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Interactive Mock Test Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl text-white shadow-xl border border-slate-700">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                <Zap className="w-4 h-4" />
-                {lang === 'kn' ? 'ತತ್ಕ್ಷಣ ಪರೀಕ್ಷೆಗಳು' : 'Real-time Practice Tests'}
-              </span>
-              <h3 className="text-2xl font-bold mt-1">
-                {lang === 'kn' ? 'ಇಂದಿನ ಮಾಕ್ ಟೆಸ್ಟ್ ಸರಣಿಯನ್ನು ಪ್ರಾರಂಭಿಸಿ' : 'Ready to Test Your Preparation Level?'}
-              </h3>
-            </div>
             <button
               onClick={() => onNavigate('exams')}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl border border-slate-700"
+              className="px-7 py-4 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 hover:border-emerald-500 rounded-2xl font-bold text-sm sm:text-base shadow-sm flex items-center gap-2 hover:scale-[1.03] transition-all"
             >
-              {lang === 'kn' ? 'ಎಲ್ಲಾ ಟೆಸ್ಟ್‌ಗಳು' : 'All Mock Tests'}
+              <Award className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <span>{lang === 'kn' ? 'ಪರೀಕ್ಷಾ ಸರಣಿಗಳು & ಕೋರ್ಸ್ (Exams)' : 'Exam Courses & Test Series'}</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {featuredTests.map((test) => (
-              <div
-                key={test.id}
-                className="p-4 rounded-2xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition-all flex items-center justify-between"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      {test.questions.length} Questions
-                    </span>
-                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {test.durationMinutes} Mins
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-100">
-                    {lang === 'kn' ? test.titleKn || test.title : test.title}
-                  </h4>
-                </div>
-
-                <button
-                  onClick={() => onSelectTest(test)}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shrink-0"
-                >
-                  <PlayCircle className="w-4 h-4" />
-                  <span>{lang === 'kn' ? 'ಪ್ರಾರಂಭಿಸಿ' : 'Start Test'}</span>
-                </button>
-              </div>
-            ))}
+          {/* Trust Highlights */}
+          <div className="pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400 max-w-4xl mx-auto">
+            <div className="flex items-center justify-center gap-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>KPSC Syllabus Verified</span>
+            </div>
+            <div className="flex items-center justify-center gap-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <ShieldCheck className="w-4 h-4 text-blue-600" />
+              <span>Student Watermark PDF</span>
+            </div>
+            <div className="flex items-center justify-center gap-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <CreditCard className="w-4 h-4 text-purple-600" />
+              <span>Razorpay UPI Gateway</span>
+            </div>
+            <div className="flex items-center justify-center gap-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <Globe2 className="w-4 h-4 text-amber-500" />
+              <span>Kannada & English UI</span>
+            </div>
           </div>
+
         </div>
       </section>
 
-      {/* Digital Notes Preview Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
-              <FileText className="w-4 h-4" />
-              <span>{lang === 'kn' ? 'ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ & ಸಾಮಗ್ರಿಗಳು' : 'Digital Study Material'}</span>
+      {/* 2. Mission, Vision & Institutional Goals */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          {/* Mission Card */}
+          <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-white to-emerald-50/40 dark:from-slate-900 dark:to-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 shadow-sm space-y-4 relative overflow-hidden">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/30">
+              <Target className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">
-              {lang === 'kn' ? 'ಉನ್ನತ ದರ್ಜೆಯ ಸಂಕ್ಷಿಪ್ತ ನೋಟ್ಸ್' : 'High-Yield Revision Summaries'}
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {lang === 'kn' ? 'ನಮ್ಮ ಧ್ಯೇಯ (Our Mission)' : 'Our Mission Statement'}
             </h2>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              {lang === 'kn'
+                ? 'ಕರ್ನಾಟಕದ ಪ್ರತಿಯೊಂದು ಹಳ್ಳಿ ಹಾಗೂ ನಗರದ ಪ್ರತಿಭಾನ್ವಿತ ಆಕಾಂಕ್ಷಿಗಳಿಗೆ ಅತ್ಯಂತ ನಿಖರ, ಪರಿಷ್ಕೃತ ಮತ್ತು ಪರೀಕ್ಷಾ-ಉಪಯುಕ್ತ ಜ್ಞಾನವನ್ನು ಸುಲಭ ಹಾಗೂ ಕೈಗೆಟುಕುವ ರೀತಿಯಲ್ಲಿ ಒದಗಿಸುವುದು ನಮ್ಮ ಪ್ರಮುಖ ಧ್ಯೇಯವಾಗಿದೆ. ದುಬಾರಿ ಕೋಚಿಂಗ್ ಸೆಂಟರ್‌ಗಳ ಅನಿವಾರ್ಯತೆಯನ್ನು ನಿವಾರಿಸಿ ಸ್ವಯಂ-ಅಧ್ಯಯನಕ್ಕೆ ಡಿಜಿಟಲ್ ಶಕ್ತಿ ನೀಡುವುದು.'
+                : 'To democratize civil service and competitive exam preparation across Karnataka by providing meticulously structured, syllabus-focused study resources and real-time testing frameworks directly into the hands of every aspiring student, irrespective of geographical barriers.'}
+            </p>
           </div>
-          <button
-            onClick={() => onNavigate('notes')}
-            className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-          >
-            <span>{lang === 'kn' ? 'ಎಲ್ಲಾ ನೋಟ್ಸ್' : 'All Notes'}</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+
+          {/* Vision Card */}
+          <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-white to-teal-50/40 dark:from-slate-900 dark:to-teal-950/20 border border-teal-200/80 dark:border-teal-800/60 shadow-sm space-y-4 relative overflow-hidden">
+            <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-600/30">
+              <Compass className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {lang === 'kn' ? 'ನಮ್ಮ ದೃಷ್ಟಿಕೋನ (Our Vision 2026-2027)' : 'Our Vision & Core Ethos'}
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              {lang === 'kn'
+                ? 'ರಾಜ್ಯದ ಅತಿ ವಿಶ್ವಾಸಾರ್ಹ ಮತ್ತು ತಾಂತ್ರಿಕವಾಗಿ ಮುಂಚೂಣಿಯಲ್ಲಿರುವ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ಪೋರ್ಟಲ್ ಆಗಿ ಬೆಳೆಯುವುದು. ವಿದ್ಯಾರ್ಥಿಗಳ ಸಮಯವನ್ನು ಉಳಿಸುವ ಸಂಕ್ಷಿಪ್ತ ನೋಟ್ಸ್‌ಗಳು, ನಿಖರವಾದ ನೆಗೆಟಿವ್ ಮಾರ್ಕಿಂಗ್ ಟೆಸ್ಟ್‌ಗಳು ಹಾಗೂ ವೈಯಕ್ತಿಕ ಪ್ರಗತಿ ವಿಶ್ಲೇಷಣೆಯೊಂದಿಗೆ ಸರ್ಕಾರಿ ನೌಕರಿಯ ಕನಸನ್ನು ನನಸಾಗಿಸುವುದು.'
+                : 'To stand as the most credible, student-first digital examination ecosystem in Karnataka, fostering self-reliance, intellectual rigor, and transparent exam readiness through cutting-edge technology and authentic pedagogical support.'}
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 3. Core Strategic Pillars */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="text-center max-w-3xl mx-auto space-y-2">
+          <div className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+            <Award className="w-4 h-4" />
+            <span>{lang === 'kn' ? 'ಮೌಲ್ಯಗಳು & ವೈಶಿಷ್ಟ್ಯಗಳು' : 'Strategic Platform Pillars'}</span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100">
+            {lang === 'kn' ? 'ಅಧ್ಯಯನ ವೇದಿಕೆಯ ನಾಲ್ಕು ಪ್ರಮುಖ ಆಧಾರಸ್ತಂಭಗಳು' : 'Built for Rigor, Trust & Student Success'}
+          </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {featuredNotes.map((note) => (
+          {corePillars.map((pillar, idx) => (
             <div
-              key={note.id}
-              className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 shadow-sm transition-all flex flex-col justify-between"
+              key={idx}
+              className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 shadow-sm transition-all space-y-3"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                    {note.category}
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    📖 {note.readTimeMinutes} min read
-                  </span>
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {lang === 'kn' ? note.titleKn || note.title : note.title}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                  {note.content.substring(0, 140)}...
-                </p>
+              <div className="p-3 w-fit rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                {pillar.icon}
               </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  note.isFree ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {note.isFree ? 'FREE ACCESS' : 'PREMIUM NOTE'}
-                </span>
-
-                <button
-                  onClick={() => onSelectNote(note)}
-                  className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
-                >
-                  <span>{lang === 'kn' ? 'ಓದಿ' : 'Read Note'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {lang === 'kn' ? pillar.titleKn : pillar.titleEn}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                {lang === 'kn' ? pillar.descKn : pillar.descEn}
+              </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* 4. Pedagogical Learning Pathway (Methodology) */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-slate-900 text-white rounded-3xl p-8 sm:p-12 border border-slate-800 shadow-2xl space-y-8">
+          
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center gap-1.5">
+              <Lightbulb className="w-4 h-4" />
+              {lang === 'kn' ? 'ಕಲಿಕಾ ವಿಧಾನ' : 'Our 4-Step Learning Methodology'}
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-100">
+              {lang === 'kn' ? 'ಯಶಸ್ಸಿನ ಹಂತಗಳು ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತವೆ?' : 'The Structured Road to Exam Mastery'}
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {methodologySteps.map((step, idx) => (
+              <div
+                key={idx}
+                className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 space-y-3 relative overflow-hidden"
+              >
+                <div className="text-3xl font-black text-emerald-400/30">
+                  {step.step}
+                </div>
+                <h4 className="text-base font-bold text-slate-100">
+                  {lang === 'kn' ? step.titleKn : step.titleEn}
+                </h4>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {lang === 'kn' ? step.descKn : step.descEn}
+                </p>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </section>
+
+      {/* 5. Supported Karnataka State Examinations Portfolio */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="text-center max-w-2xl mx-auto space-y-2">
+          <div className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+            <GraduationCap className="w-4 h-4" />
+            <span>{lang === 'kn' ? 'ಪರೀಕ್ಷಾ ವ್ಯಾಪ್ತಿ' : 'Supported Examinations'}</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">
+            {lang === 'kn' ? 'ನಾವು ಒಳಗೊಳ್ಳುವ ಪ್ರಮುಖ ಪರೀಕ್ಷೆಗಳು' : 'Comprehensive Target Portfolios'}
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-center">
+          {[
+            { code: 'KAS', title: 'KPSC Gazetted Probationary', color: 'border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20' },
+            { code: 'FDA / SDA', title: 'Karnataka Secretariat & Depts', color: 'border-teal-500/50 bg-teal-50/50 dark:bg-teal-950/20' },
+            { code: 'PSI / PC', title: 'Police Sub-Inspector & Constable', color: 'border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20' },
+            { code: 'PDO / VAO', title: 'Rural Development & Revenue', color: 'border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20' },
+            { code: 'TET / GPSTR', title: 'Karnataka Teacher Eligibility', color: 'border-purple-500/50 bg-purple-50/50 dark:bg-purple-950/20' },
+            { code: 'GROUP-C', title: 'Non-Technical Recruitment', color: 'border-rose-500/50 bg-rose-50/50 dark:bg-rose-950/20' }
+          ].map((item, idx) => (
+            <div key={idx} className={`p-4 rounded-2xl border ${item.color} shadow-sm space-y-1`}>
+              <p className="text-lg font-black text-slate-900 dark:text-slate-100">{item.code}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{item.title}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 6. Call to Action Banner */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 p-8 sm:p-12 text-white text-center space-y-6 shadow-xl shadow-emerald-600/20">
+          <h2 className="text-2xl sm:text-4xl font-black max-w-2xl mx-auto leading-tight">
+            {lang === 'kn'
+              ? 'ನಿಮ್ಮ ಅಧ್ಯಯನವನ್ನು ಇಂದೇ ಆರಂಭಿಸಿ!'
+              : 'Begin Your Structured Preparation Today!'}
+          </h2>
+          <p className="text-sm sm:text-base text-emerald-100 max-w-xl mx-auto">
+            {lang === 'kn'
+              ? 'ವಿಷಯವಾರು ನೋಟ್ಸ್‌ಗಳನ್ನು ಓದಿ ಮತ್ತು ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳ ಮೂಲಕ ನಿಮ್ಮ ಜ್ಞಾನವನ್ನು ಪರೀಕ್ಷಿಸಿ.'
+              : 'Access syllabus-targeted digital notes and simulated mock tests tailored for Karnataka competitive examinations.'}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            <button
+              onClick={() => onNavigate('notes')}
+              className="px-6 py-3.5 bg-slate-950 hover:bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 hover:scale-[1.02] transition-all"
+            >
+              <BookOpen className="w-4 h-4 text-emerald-400" />
+              <span>{lang === 'kn' ? 'ವಿಷಯವಾರು ನೋಟ್ಸ್‌ಗಳು' : 'Open Digital Notes'}</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onNavigate('exams')}
+              className="px-6 py-3.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 hover:scale-[1.02] transition-all"
+            >
+              <Award className="w-4 h-4 text-emerald-600" />
+              <span>{lang === 'kn' ? 'ಪರೀಕ್ಷಾ ಸರಣಿಗಳು' : 'Explore Exam Packs'}</span>
+            </button>
+          </div>
         </div>
       </section>
 

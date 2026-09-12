@@ -26,8 +26,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuth }) => {
 
   const navLinks = [
     { id: 'home', label: lang === 'kn' ? 'ಮುಖಪುಟ' : 'Home' },
-    { id: 'exams', label: lang === 'kn' ? 'ಪರೀಕ್ಷೆಗಳು & ಕೋರ್ಸ್' : 'Exams & Courses' },
-    { id: 'notes', label: lang === 'kn' ? 'ಡಿಜಿಟಲ್ ನೋಟ್ಸ್' : 'Digital Notes' },
+    { id: 'notes', label: lang === 'kn' ? 'ವಿಷಯಗಳು, ನೋಟ್ಸ್ & ಟೆಸ್ಟ್' : 'Subjects, Notes & Tests' },
     { id: 'dashboard', label: lang === 'kn' ? 'ನನ್ನ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್' : 'My Dashboard', requiresAuth: true },
   ];
 

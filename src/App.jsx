@@ -124,8 +124,10 @@ const MainApp = () => {
         {currentView === 'notes' && (
           <NotesCatalog
             onSelectNote={handleSelectNote}
+            onSelectTest={handleSelectTest}
             onOpenAuth={handleOpenAuth}
             onOpenCheckout={handleOpenCheckout}
+            onNavigate={(v) => setCurrentView(v)}
           />
         )}
 

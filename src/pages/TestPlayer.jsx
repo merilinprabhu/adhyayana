@@ -25,29 +25,54 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
   const { user, isAuthenticated, isDeveloper, isEnrolled } = useAuth();
   const { lang, exams, recordTestAttempt, toggleBookmark, isBookmarked } = useData();
 
-  if (!test || !test.questions || test.questions.length === 0) {
-    return (
-      <div className="max-w-md mx-auto my-20 p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
-        <p className="text-sm font-bold">This test has no questions yet.</p>
-        <button onClick={onExit} className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold">
-          Go Back
-        </button>
-      </div>
-    );
-  }
+  const activeQuestions = (test?.questions && test.questions.length > 0) 
+    ? test.questions 
+    : [
+        {
+          id: 'sample_q1',
+          question: `Sample Question 1 for ${test?.title || 'Competitive Exam'}`,
+          questionKn: `${test?.titleKn || test?.title || 'ಪರೀಕ್ಷೆ'} ಗಾಗಿ ಮಾದರಿ ಪ್ರಶ್ನೆ 1`,
+          options: ['Option A (ಆಯ್ಕೆ A)', 'Option B (ಆಯ್ಕೆ B)', 'Option C (ಆಯ್ಕೆ C)', 'Option D (ಆಯ್ಕೆ D)'],
+          correctAnswer: 0,
+          explanation: 'Standard verified answer option.',
+          explanationKn: 'ಸರಿಯಾದ ವಿವರಣಾತ್ಮಕ ಉತ್ತರ.',
+          subject: test?.subjectName || 'General Studies'
+        },
+        {
+          id: 'sample_q2',
+          question: `Sample Question 2 for ${test?.title || 'Competitive Exam'}`,
+          questionKn: `${test?.titleKn || test?.title || 'ಪರೀಕ್ಷೆ'} ಗಾಗಿ ಮಾದರಿ ಪ್ರಶ್ನೆ 2`,
+          options: ['Option A (ಆಯ್ಕೆ A)', 'Option B (ಆಯ್ಕೆ B)', 'Option C (ಆಯ್ಕೆ C)', 'Option D (ಆಯ್ಕೆ D)'],
+          correctAnswer: 1,
+          explanation: 'Standard verified explanation for Question 2.',
+          explanationKn: 'ಪ್ರಶ್ನೆ 2 ಕ್ಕೆ ಸಮಗ್ರ ಪರಿಹಾರ.',
+          subject: test?.subjectName || 'General Studies'
+        }
+      ];
 
-  const exam = exams.find(e => e.id === test.examId);
-  const hasFullAccess = isDeveloper || isEnrolled(test.examId) || test.isFreePreview || test.isFree;
-  const FREE_PREVIEW_LIMIT = 2; // Freemium limit: first 2 questions free for non-enrolled students
-  const isQuestionLocked = (idx) => !hasFullAccess && idx >= FREE_PREVIEW_LIMIT;
+  const exam = exams.find(e => e.id === test?.examId);
+  const hasFullAccess = isDeveloper || isEnrolled(test?.id) || isEnrolled(test?.examId) || isEnrolled(test?.subjectId) || test?.isFree || Number(test?.price) === 0;
+  const freeQuestionsCount = (hasFullAccess || test?.isFree || Number(test?.price) === 0) 
+    ? activeQuestions.length 
+    : (test?.freeQuestionsCount !== undefined ? Number(test?.freeQuestionsCount) : 2);
+  
+  const isQuestionLocked = (idx) => !hasFullAccess && idx >= freeQuestionsCount;
 
   const handleUnlockTest = () => {
+    if (hasFullAccess) return;
     if (!isAuthenticated) {
       if (onOpenAuth) onOpenAuth();
       return;
     }
-    if (exam && onOpenCheckout) {
-      onOpenCheckout(exam);
+    if (onOpenCheckout) {
+      onOpenCheckout({
+        id: test.id,
+        title: test.title,
+        price: test.price || 49,
+        type: 'test',
+        questions: activeQuestions,
+        durationMinutes: test.durationMinutes
+      });
     }
   };
 
@@ -131,40 +156,39 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
     let wrongCount = 0;
     let unattemptedCount = 0;
 
-    const questionResults = test.questions.map((q, idx) => {
+    const questionResults = activeQuestions.map((q, idx) => {
       const userAns = selectedAnswers[idx];
-      const isAnswered = userAns !== undefined;
-      const isCorrect = isAnswered && userAns === q.correctAnswer;
+      const isCorrect = userAns === q.correctAnswer;
+      const isAttempted = userAns !== undefined;
 
-      if (!isAnswered) {
-        unattemptedCount += 1;
+      if (!isAttempted) {
+        unattemptedCount++;
       } else if (isCorrect) {
-        correctCount += 1;
+        correctCount++;
       } else {
-        wrongCount += 1;
+        wrongCount++;
       }
 
       return {
-        questionId: q.id || `q_${idx}`,
-        questionText: q.question,
+        questionId: q.id,
+        question: q.question,
         questionKn: q.questionKn,
         options: q.options,
-        userAnswer: userAns,
         correctAnswer: q.correctAnswer,
+        userAnswer: userAns !== undefined ? userAns : null,
         isCorrect,
+        isAttempted,
         explanation: q.explanation,
-        explanationKn: q.explanationKn,
-        subject: q.subject || 'General Studies'
+        explanationKn: q.explanationKn
       };
     });
 
-    const marksPerQuestion = (test.totalMarks || 50) / test.questions.length;
-    const negMark = test.negativeMarking || 0;
-
-    const rawScore = (correctCount * marksPerQuestion) - (wrongCount * negMark);
-    const finalScore = Math.max(0, Math.round(rawScore * 100) / 100);
-    const accuracy = test.questions.length > 0 
-      ? Math.round((correctCount / (correctCount + wrongCount || 1)) * 100) 
+    const marksPerQ = (test.totalMarks || 50) / (activeQuestions.length || 1);
+    const negMarks = marksPerQ * (test.negativeMarking || 0.25);
+    const rawScore = (correctCount * marksPerQ) - (wrongCount * negMarks);
+    const finalScore = Math.max(0, Number(rawScore.toFixed(2)));
+    const accuracy = correctCount + wrongCount > 0 
+      ? Math.round((correctCount / (correctCount + wrongCount)) * 100) 
       : 0;
 
     const timeSpentSeconds = initialSeconds - timeLeft;
@@ -174,7 +198,7 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
       testTitle: test.title,
       score: finalScore,
       totalMarks: test.totalMarks || 50,
-      totalQuestions: test.questions.length,
+      totalQuestions: activeQuestions.length,
       correctCount,
       wrongCount,
       unattemptedCount,
@@ -203,7 +227,7 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const currentQ = test.questions[currentIdx];
+  const currentQ = activeQuestions[currentIdx];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-16">
@@ -222,7 +246,7 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
               {test.title}
             </h2>
             <p className="text-[10px] text-slate-400">
-              Question {currentIdx + 1} of {test.questions.length} • Marks: {test.totalMarks}
+              Question {currentIdx + 1} of {activeQuestions.length} • Marks: {test.totalMarks}
             </p>
           </div>
         </div>
@@ -445,8 +469,8 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                     </h3>
                     <p className="text-xs sm:text-sm text-purple-200 leading-relaxed">
                       {lang === 'kn'
-                        ? `ನೀವು ಮೊದಲ ${FREE_PREVIEW_LIMIT} ಉಚಿತ ಮಾದರಿ ಪ್ರಶ್ನೆಗಳನ್ನು ಪೂರ್ಣಗೊಳಿಸಿದ್ದೀರಿ. ಎಲ್ಲಾ ${test.questions.length} ಪ್ರಶ್ನೆಗಳು, ವಿವರವಾದ ಕೀ ಉತ್ತರಗಳು, ಪರಿಹಾರಗಳು ಮತ್ತು ಅಖಿಲ ಕರ್ನಾಟಕ ರ್ಯಾಂಕಿಂಗ್ ಪಡೆಯಲು ಈಗಲೇ ಕೋರ್ಸ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
-                        : `You have completed the ${FREE_PREVIEW_LIMIT} free sample questions. Unlock the full exam package to access all ${test.questions.length} questions, instant explanations, and statewide ranking.`}
+                        ? `ನೀವು ಮೊದಲ ${freeQuestionsCount} ಉಚಿತ ಮಾದರಿ ಪ್ರಶ್ನೆಗಳನ್ನು ಪೂರ್ಣಗೊಳಿಸಿದ್ದೀರಿ. ಎಲ್ಲಾ ${test.questions.length} ಪ್ರಶ್ನೆಗಳು, ವಿವರವಾದ ಕೀ ಉತ್ತರಗಳು ಮತ್ತು ಪರಿಹಾರಗಳನ್ನು ಪಡೆಯಲು ಈಗಲೇ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
+                        : `You have completed the ${freeQuestionsCount} free sample questions. Unlock the test to access all ${test.questions.length} questions, instant explanations, and scoring.`}
                     </p>
                   </div>
 
@@ -456,8 +480,8 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                       className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-500/30 transition-all scale-100 hover:scale-105"
                     >
                       {lang === 'kn' 
-                        ? `₹${exam?.price || 499} - ಈಗಲೇ ಸಂಪೂರ್ಣ ಕೋರ್ಸ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ` 
-                        : `Unlock Full Course for ₹${exam?.price || 499}`}
+                        ? `₹${test.price || 49} - ಈಗಲೇ ಟೆಸ್ಟ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ` 
+                        : `Unlock Full Test for ₹${test.price || 49}`}
                     </button>
                     <button
                       onClick={handleSubmitTest}
@@ -469,10 +493,10 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
 
                   <div className="pt-2">
                     <button
-                      onClick={() => handleSelectQuestion(FREE_PREVIEW_LIMIT - 1)}
+                      onClick={() => handleSelectQuestion(Math.max(0, freeQuestionsCount - 1))}
                       className="text-xs text-slate-400 hover:text-white underline"
                     >
-                      {lang === 'kn' ? `← ಪ್ರಶ್ನೆ ${FREE_PREVIEW_LIMIT} ಕ್ಕೆ ಹಿಂತಿರುಗಿ` : `← Return to Question ${FREE_PREVIEW_LIMIT}`}
+                      {lang === 'kn' ? `← ಪ್ರಶ್ನೆ ${freeQuestionsCount} ಕ್ಕೆ ಹಿಂತಿರುಗಿ` : `← Return to Question ${freeQuestionsCount}`}
                     </button>
                   </div>
                 </div>
@@ -581,7 +605,7 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                         Previous
                       </button>
                       <button
-                        disabled={currentIdx === test.questions.length - 1}
+                        disabled={currentIdx === activeQuestions.length - 1}
                         onClick={() => handleSelectQuestion(currentIdx + 1)}
                         className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-semibold disabled:opacity-40 flex items-center gap-1.5"
                       >
@@ -620,14 +644,14 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                   {!hasFullAccess && (
                     <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold">
                       <Lock className="w-3 h-3" />
-                      <span>Pro Locked ({test.questions.length - FREE_PREVIEW_LIMIT})</span>
+                      <span>Pro Locked ({Math.max(0, activeQuestions.length - freeQuestionsCount)})</span>
                     </div>
                   )}
                 </div>
 
                 {/* Grid Numbers */}
                 <div className="grid grid-cols-5 gap-2">
-                  {test.questions.map((_, idx) => {
+                  {activeQuestions.map((_, idx) => {
                     const isAnswered = selectedAnswers[idx] !== undefined;
                     const isReview = markedForReview[idx];
                     const isCurrent = currentIdx === idx;

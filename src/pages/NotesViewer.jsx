@@ -25,16 +25,21 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
 
   if (!note) return null;
 
-  const exam = exams.find(e => e.id === note.examId);
-  const hasAccess = isDeveloper || isEnrolled(note.examId) || note.isFree;
+  const hasAccess = isDeveloper || isEnrolled(note.id) || isEnrolled(note.subjectId) || isEnrolled(note.examId) || note.isFree || Number(note.price) === 0;
 
   const handleUnlock = () => {
     if (!isAuthenticated) {
       if (onOpenAuth) onOpenAuth();
       return;
     }
-    if (exam && onOpenCheckout) {
-      onOpenCheckout(exam);
+    if (onOpenCheckout) {
+      onOpenCheckout({
+        id: note.id,
+        title: note.title,
+        price: note.price || 29,
+        type: 'note',
+        readTimeMinutes: note.readTimeMinutes
+      });
     }
   };
 
@@ -163,8 +168,8 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
                   </h3>
                   <p className="text-xs sm:text-sm text-purple-200 max-w-md mx-auto">
                     {lang === 'kn'
-                      ? `ಈ ಸಂಪೂರ್ಣ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಮತ್ತು ಪರೀಕ್ಷಾ ತಯಾರಿ ಪ್ಯಾಕೇಜ್ ಪಡೆಯಲು "${exam?.title || 'Course'}" ಕೋರ್ಸ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
-                      : `Get full access to all digital notes, PDF downloads, and complete mock tests by unlocking the complete course.`}
+                      ? `ಈ ಸಂಪೂರ್ಣ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಮತ್ತು ಅಧ್ಯಯನ ಸಾಮಗ್ರಿ ಪಡೆಯಲು ಈಗಲೇ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
+                      : `Get instant full access to this complete digital study note.`}
                   </p>
                 </div>
                 <button
@@ -172,8 +177,8 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
                   className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-500/20 transition-all scale-100 hover:scale-105"
                 >
                   {lang === 'kn' 
-                    ? `₹${exam?.price || 499} - ಸಂಪೂರ್ಣ ಕೋರ್ಸ್ & ನೋಟ್ಸ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ`
-                    : `Unlock Full Course & Notes for ₹${exam?.price || 499}`}
+                    ? `₹${note.price || 29} - ನೋಟ್ಸ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ`
+                    : `Unlock Study Note for ₹${note.price || 29}`}
                 </button>
               </div>
             </div>

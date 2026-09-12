@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { INITIAL_EXAMS, INITIAL_TESTS, INITIAL_NOTES } from '../data/initialData';
+import { INITIAL_EXAMS, INITIAL_TESTS, INITIAL_NOTES, INITIAL_SUBJECTS } from '../data/initialData';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -7,12 +7,18 @@ const DataContext = createContext(null);
 
 const STORAGE_KEYS = {
   EXAMS: 'adhyayana_exams_v2',
+  SUBJECTS: 'adhyayana_subjects_v2',
   TESTS: 'adhyayana_tests_v2',
   NOTES: 'adhyayana_notes_v2',
   ATTEMPTS: 'adhyayana_attempts_v2',
   BOOKMARKS: 'adhyayana_bookmarks_v2',
   PURCHASES: 'adhyayana_purchases_v2',
   LANGUAGE: 'adhyayana_lang_v2',
+  RAZORPAY_KEY: 'adhyayana_rzp_key_v2',
+  DEV_UPI_ID: 'adhyayana_dev_upi_id_v2',
+  DEV_PHONE: 'adhyayana_dev_phone_v2',
+  DEV_NAME: 'adhyayana_dev_name_v2',
+  DEV_QR_IMAGE: 'adhyayana_dev_qr_image_v2',
 };
 
 export const DataProvider = ({ children }) => {
@@ -21,6 +27,28 @@ export const DataProvider = ({ children }) => {
   // Language state: 'kn' (Kannada) or 'en' (English)
   const [lang, setLang] = useState(() => {
     return localStorage.getItem(STORAGE_KEYS.LANGUAGE) || 'kn';
+  });
+
+  // Razorpay Key ID
+  const [razorpayKeyId, setRazorpayKeyId] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.RAZORPAY_KEY) || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_51AdhyayanaLive';
+  });
+
+  // Developer Direct Payment (UPI / PhonePe / GPay / Paytm / QR)
+  const [developerUpiId, setDeveloperUpiId] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.DEV_UPI_ID) || 'merilinprabhugk@okaxis';
+  });
+
+  const [developerPhone, setDeveloperPhone] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.DEV_PHONE) || '9480123456';
+  });
+
+  const [developerName, setDeveloperName] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.DEV_NAME) || 'Merilin Prabhu (ಅಧ್ಯಯನ)';
+  });
+
+  const [developerUpiQrImage, setDeveloperUpiQrImage] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.DEV_QR_IMAGE) || '';
   });
 
   // Cloud sync status
@@ -34,6 +62,16 @@ export const DataProvider = ({ children }) => {
       return saved ? JSON.parse(saved) : INITIAL_EXAMS;
     } catch {
       return INITIAL_EXAMS;
+    }
+  });
+
+  // Subjects
+  const [subjects, setSubjects] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
+      return saved ? JSON.parse(saved) : INITIAL_SUBJECTS;
+    } catch {
+      return INITIAL_SUBJECTS;
     }
   });
 
@@ -91,26 +129,179 @@ export const DataProvider = ({ children }) => {
   const syncFromSupabase = useCallback(async () => {
     setIsCloudSyncing(true);
     try {
-      // Fetch Exams
+      // 1. Fetch Exams
       const { data: dbExams, error: examErr } = await supabase.from('exams').select('*');
       if (!examErr && dbExams && dbExams.length > 0) {
-        setExams(dbExams);
+        const formattedExams = dbExams.map(ex => ({
+          id: ex.id,
+          title: ex.title,
+          shortName: ex.short_name || ex.shortName || '',
+          category: ex.category || 'State Civil Services',
+          description: ex.description || '',
+          descriptionKn: ex.description_kn || ex.descriptionKn || '',
+          price: Number(ex.price) || 0,
+          originalPrice: Number(ex.original_price || ex.originalPrice) || 0,
+          isFree: ex.is_free !== undefined ? ex.is_free : ex.isFree,
+          banner: ex.banner,
+          syllabus: Array.isArray(ex.syllabus) ? ex.syllabus : [],
+          badge: ex.badge || '',
+          rating: Number(ex.rating) || 5.0,
+          enrolledCount: ex.enrolled_count || ex.enrolledCount || 1,
+          testsCount: ex.tests_count || ex.testsCount || 0,
+          notesCount: ex.notes_count || ex.notesCount || 0,
+          createdAt: ex.created_at || ex.createdAt
+        }));
+
+        setExams(prev => {
+          const map = new Map(formattedExams.map(item => [item.id, item]));
+          prev.forEach(localItem => {
+            if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+          });
+          return Array.from(map.values());
+        });
         setCloudStatus('connected');
       }
 
-      // Fetch Tests
+      // 2. Fetch Subjects
+      const { data: dbSubjects, error: subjErr } = await supabase.from('subjects').select('*').order('display_order', { ascending: true });
+      if (!subjErr && dbSubjects && dbSubjects.length > 0) {
+        const formattedSubjs = dbSubjects.map(s => ({
+          id: s.id,
+          examId: s.exam_id || s.examId,
+          name: s.name,
+          nameKn: s.name_kn || s.nameKn || s.name,
+          description: s.description || '',
+          icon: s.icon || 'BookOpen',
+          order: s.display_order || s.order || 1,
+          createdAt: s.created_at || s.createdAt
+        }));
+
+        setSubjects(prev => {
+          const map = new Map(formattedSubjs.map(item => [item.id, item]));
+          prev.forEach(localItem => {
+            if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+          });
+          return Array.from(map.values());
+        });
+      }
+
+      // 3. Fetch Tests
       const { data: dbTests, error: testErr } = await supabase.from('tests').select('*');
       if (!testErr && dbTests && dbTests.length > 0) {
-        setTests(dbTests);
+        const formattedTests = dbTests.map(t => ({
+          id: t.id,
+          examId: t.exam_id || t.examId,
+          subjectId: t.subject_id || t.subjectId,
+          title: t.title,
+          titleKn: t.title_kn || t.titleKn || t.title,
+          durationMinutes: t.duration_minutes !== undefined ? Number(t.duration_minutes) : (t.durationMinutes || 30),
+          totalMarks: t.total_marks !== undefined ? Number(t.total_marks) : (t.totalMarks || 50),
+          negativeMarking: t.negative_marking !== undefined ? Number(t.negative_marking) : (t.negativeMarking || 0.25),
+          sourceType: t.source_type || t.sourceType || 'manual',
+          isFreePreview: t.is_free_preview !== undefined ? t.is_free_preview : t.isFreePreview,
+          isFree: t.is_free !== undefined ? t.is_free : (t.isFree || t.price === 0),
+          price: t.price !== undefined ? Number(t.price) : (t.price || 0),
+          freeQuestionsCount: t.free_questions_count !== undefined ? Number(t.free_questions_count) : (t.freeQuestionsCount !== undefined ? t.freeQuestionsCount : 2),
+          questions: Array.isArray(t.questions) ? t.questions : (typeof t.questions === 'string' ? JSON.parse(t.questions) : []),
+          createdAt: t.created_at || t.createdAt
+        }));
+
+        setTests(prev => {
+          const map = new Map(formattedTests.map(item => [item.id, item]));
+          prev.forEach(localItem => {
+            if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+          });
+          return Array.from(map.values());
+        });
       }
 
-      // Fetch Notes
+      // 4. Fetch Notes
       const { data: dbNotes, error: notesErr } = await supabase.from('notes').select('*');
       if (!notesErr && dbNotes && dbNotes.length > 0) {
-        setNotes(dbNotes);
+        const formattedNotes = dbNotes.map(n => ({
+          id: n.id,
+          examId: n.exam_id || n.examId,
+          subjectId: n.subject_id || n.subjectId,
+          title: n.title,
+          titleKn: n.title_kn || n.titleKn || n.title,
+          category: n.category || '',
+          fileType: n.file_type || n.fileType || 'rich_text',
+          gdriveUrl: n.gdrive_url || n.gdriveUrl || '',
+          readTimeMinutes: n.read_time_minutes !== undefined ? Number(n.read_time_minutes) : (n.readTimeMinutes || 10),
+          isFree: n.is_free !== undefined ? n.is_free : (n.isFree || n.price === 0),
+          price: n.price !== undefined ? Number(n.price) : (n.price || 0),
+          content: n.content || '',
+          createdAt: n.created_at || n.createdAt
+        }));
+
+        setNotes(prev => {
+          const map = new Map(formattedNotes.map(item => [item.id, item]));
+          prev.forEach(localItem => {
+            if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+          });
+          return Array.from(map.values());
+        });
       }
 
-      // Fetch User Attempts if logged in
+      // 5. Fetch Purchases & Orders
+      const { data: dbPurchases, error: purErr } = await supabase.from('purchases').select('*');
+      if (!purErr && dbPurchases && dbPurchases.length > 0) {
+        const formattedPurchases = dbPurchases.map(p => ({
+          id: p.id,
+          userEmail: p.user_email || p.userEmail,
+          examId: p.exam_id || p.examId,
+          examTitle: p.exam_title || p.examTitle,
+          amountPaid: Number(p.amount_paid) || 0,
+          paymentId: p.payment_id || p.paymentId,
+          paymentMethod: p.payment_method || p.paymentMethod || 'RAZORPAY',
+          utrNumber: p.utr_number || p.utrNumber || '',
+          itemType: p.item_type || p.itemType || 'exam',
+          purchasedAt: p.purchased_at || p.purchasedAt
+        }));
+
+        setPurchases(prev => {
+          const map = new Map(formattedPurchases.map(item => [item.id, item]));
+          prev.forEach(localItem => {
+            if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+          });
+          return Array.from(map.values());
+        });
+      }
+
+      // 6. Fetch App Settings (UPI ID, Phone, Name, Razorpay)
+      try {
+        const { data: dbSettings } = await supabase.from('app_settings').select('*');
+        if (dbSettings && dbSettings.length > 0) {
+          dbSettings.forEach(s => {
+            if (s.key === 'payment_settings' && s.value) {
+              if (s.value.upiId) {
+                setDeveloperUpiId(s.value.upiId);
+                localStorage.setItem(STORAGE_KEYS.DEV_UPI_ID, s.value.upiId);
+              }
+              if (s.value.phone) {
+                setDeveloperPhone(s.value.phone);
+                localStorage.setItem(STORAGE_KEYS.DEV_PHONE, s.value.phone);
+              }
+              if (s.value.name) {
+                setDeveloperName(s.value.name);
+                localStorage.setItem(STORAGE_KEYS.DEV_NAME, s.value.name);
+              }
+              if (s.value.qrImage) {
+                setDeveloperUpiQrImage(s.value.qrImage);
+                localStorage.setItem(STORAGE_KEYS.DEV_QR_IMAGE, s.value.qrImage);
+              }
+              if (s.value.rzpKey) {
+                setRazorpayKeyId(s.value.rzpKey);
+                localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, s.value.rzpKey);
+              }
+            }
+          });
+        }
+      } catch (settingsErr) {
+        console.warn('App settings sync notice:', settingsErr);
+      }
+
+      // 7. Fetch User Attempts if logged in
       if (user?.email) {
         const { data: dbAttempts } = await supabase
           .from('user_attempts')
@@ -119,8 +310,25 @@ export const DataProvider = ({ children }) => {
           .order('timestamp', { ascending: false });
 
         if (dbAttempts && dbAttempts.length > 0) {
+          const formattedAttempts = dbAttempts.map(a => ({
+            id: a.id,
+            userId: a.user_id || a.userId,
+            userEmail: a.user_email || a.userEmail,
+            testId: a.test_id || a.testId,
+            testTitle: a.test_title || a.testTitle,
+            score: Number(a.score) || 0,
+            totalMarks: Number(a.total_marks) || 0,
+            totalQuestions: Number(a.total_questions) || 0,
+            correctCount: Number(a.correct_count) || 0,
+            wrongCount: Number(a.wrong_count) || 0,
+            accuracy: Number(a.accuracy) || 0,
+            timeSpentSeconds: Number(a.time_spent_seconds) || 0,
+            questionResults: a.question_results || [],
+            timestamp: a.timestamp
+          }));
+
           setAttempts(prev => {
-            const combined = [...dbAttempts, ...prev];
+            const combined = [...formattedAttempts, ...prev];
             const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
             return unique;
           });
@@ -142,6 +350,10 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.EXAMS, JSON.stringify(exams));
   }, [exams]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(subjects));
+  }, [subjects]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TESTS, JSON.stringify(tests));
@@ -166,6 +378,10 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
   }, [lang]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, razorpayKeyId);
+  }, [razorpayKeyId]);
 
   // 1-Click Seed Supabase Database with all Initial Data
   const seedSupabaseDatabase = async () => {
@@ -197,11 +413,27 @@ export const DataProvider = ({ children }) => {
       }
       logs.push(`✓ Seeded ${INITIAL_EXAMS.length} Exam Categories`);
 
+      // 1B. Seed Subjects
+      for (const subj of INITIAL_SUBJECTS) {
+        const { error } = await supabase.from('subjects').upsert({
+          id: subj.id,
+          exam_id: subj.examId,
+          name: subj.name,
+          name_kn: subj.nameKn,
+          description: subj.description || '',
+          icon: subj.icon || 'BookOpen',
+          display_order: subj.order || 1
+        });
+        if (error) console.warn('Subject seed notice:', error);
+      }
+      logs.push(`✓ Seeded ${INITIAL_SUBJECTS.length} Subject Sections`);
+
       // 2. Seed Tests
       for (const test of INITIAL_TESTS) {
         const { error } = await supabase.from('tests').upsert({
           id: test.id,
           exam_id: test.examId,
+          subject_id: test.subjectId || null,
           title: test.title,
           title_kn: test.titleKn,
           duration_minutes: test.durationMinutes,
@@ -209,6 +441,9 @@ export const DataProvider = ({ children }) => {
           negative_marking: test.negativeMarking,
           source_type: test.sourceType || 'manual',
           is_free_preview: test.isFreePreview || false,
+          price: test.price || 0,
+          is_free: test.isFree || false,
+          free_questions_count: test.freeQuestionsCount || 2,
           questions: test.questions || []
         });
         if (error) console.warn('Test seed notice:', error);
@@ -220,6 +455,7 @@ export const DataProvider = ({ children }) => {
         const { error } = await supabase.from('notes').upsert({
           id: note.id,
           exam_id: note.examId,
+          subject_id: note.subjectId || null,
           title: note.title,
           title_kn: note.titleKn,
           category: note.category,
@@ -227,11 +463,30 @@ export const DataProvider = ({ children }) => {
           gdrive_url: note.gdriveUrl || '',
           read_time_minutes: note.readTimeMinutes,
           is_free: note.isFree || false,
+          price: note.price || 0,
           content: note.content || ''
         });
         if (error) console.warn('Notes seed notice:', error);
       }
       logs.push(`✓ Seeded ${INITIAL_NOTES.length} Digital Notes & Materials`);
+
+      // 4. Seed Payment Settings
+      try {
+        await supabase.from('app_settings').upsert({
+          key: 'payment_settings',
+          value: {
+            upiId: developerUpiId,
+            phone: developerPhone,
+            name: developerName,
+            qrImage: developerUpiQrImage,
+            rzpKey: razorpayKeyId
+          },
+          updated_at: new Date().toISOString()
+        });
+        logs.push(`✓ Seeded Developer UPI & Payment Settings`);
+      } catch (settingsErr) {
+        console.warn('App settings seed notice:', settingsErr);
+      }
 
       setCloudStatus('connected');
       await syncFromSupabase();
@@ -298,30 +553,99 @@ export const DataProvider = ({ children }) => {
     } catch (e) {}
   };
 
-  // Test Operations
-  const addTest = async (newTest) => {
-    const testWithId = {
-      ...newTest,
-      id: newTest.id || 'test-' + Date.now(),
+  // Subject Operations
+  const addSubject = async (newSubject) => {
+    const subjectWithId = {
+      ...newSubject,
+      id: newSubject.id || 'sub-' + Date.now(),
+      order: newSubject.order || (subjects.length + 1),
       createdAt: new Date().toISOString(),
     };
 
-    setTests(prev => [testWithId, ...prev]);
-    updateExamTestCount(newTest.examId, 1);
+    setSubjects(prev => [...prev, subjectWithId]);
 
     try {
-      await supabase.from('tests').insert([{
+      await supabase.from('subjects').insert([{
+        id: subjectWithId.id,
+        exam_id: subjectWithId.examId || null,
+        name: subjectWithId.name,
+        name_kn: subjectWithId.nameKn || subjectWithId.name,
+        description: subjectWithId.description || '',
+        icon: subjectWithId.icon || 'BookOpen',
+        display_order: subjectWithId.order || 1
+      }]);
+    } catch (e) {
+      console.warn('Supabase subject insert fallback:', e);
+    }
+
+    return subjectWithId;
+  };
+
+  const updateSubject = async (id, updatedFields) => {
+    setSubjects(prev => prev.map(s => s.id === id ? { ...s, ...updatedFields } : s));
+    try {
+      await supabase.from('subjects').update(updatedFields).eq('id', id);
+    } catch (e) {}
+  };
+
+  const deleteSubject = async (id) => {
+    setSubjects(prev => prev.filter(s => s.id !== id));
+    // Also remove notes and tests attached to this subject
+    setNotes(prev => prev.filter(n => n.subjectId !== id));
+    setTests(prev => prev.filter(t => t.subjectId !== id));
+    try {
+      await supabase.from('subjects').delete().eq('id', id);
+      await supabase.from('notes').delete().eq('subject_id', id);
+      await supabase.from('tests').delete().eq('subject_id', id);
+    } catch (e) {}
+  };
+
+  const clearAllData = () => {
+    setSubjects([]);
+    setTests([]);
+    setNotes([]);
+    setExams([]);
+    localStorage.removeItem(STORAGE_KEYS.SUBJECTS);
+    localStorage.removeItem(STORAGE_KEYS.TESTS);
+    localStorage.removeItem(STORAGE_KEYS.NOTES);
+    localStorage.removeItem(STORAGE_KEYS.EXAMS);
+  };
+
+  const updateRazorpayKeyId = (newKey) => {
+    setRazorpayKeyId(newKey.trim());
+  };
+
+  // Test Operations (Pure Subject Linked)
+  const addTest = async (newTest) => {
+    const isFree = newTest.isFree === true || Number(newTest.price) === 0;
+    const testWithId = {
+      ...newTest,
+      id: newTest.id || 'test-' + Date.now(),
+      price: isFree ? 0 : Number(newTest.price || 49),
+      isFree: isFree,
+      freeQuestionsCount: isFree ? (newTest.questions?.length || 50) : Number(newTest.freeQuestionsCount !== undefined ? newTest.freeQuestionsCount : 2),
+      createdAt: new Date().toISOString(),
+    };
+
+    setTests(prev => [testWithId, ...prev.filter(t => t.id !== testWithId.id)]);
+
+    try {
+      await supabase.from('tests').upsert({
         id: testWithId.id,
-        exam_id: testWithId.examId,
+        exam_id: testWithId.examId || null,
+        subject_id: testWithId.subjectId || null,
         title: testWithId.title,
-        title_kn: testWithId.titleKn,
+        title_kn: testWithId.titleKn || testWithId.title,
         duration_minutes: testWithId.durationMinutes,
         total_marks: testWithId.totalMarks,
         negative_marking: testWithId.negativeMarking,
-        source_type: testWithId.sourceType,
+        source_type: testWithId.sourceType || 'manual',
         questions: testWithId.questions,
-        is_free_preview: testWithId.isFreePreview
-      }]);
+        price: testWithId.price,
+        is_free: testWithId.isFree,
+        free_questions_count: testWithId.freeQuestionsCount,
+        is_free_preview: !isFree && testWithId.freeQuestionsCount > 0
+      });
     } catch (e) {
       console.warn('Supabase test insert fallback:', e);
     }
@@ -337,59 +661,43 @@ export const DataProvider = ({ children }) => {
   };
 
   const deleteTest = async (id) => {
-    const test = tests.find(t => t.id === id);
-    if (test) {
-      updateExamTestCount(test.examId, -1);
-    }
     setTests(prev => prev.filter(t => t.id !== id));
-
     try {
       await supabase.from('tests').delete().eq('id', id);
     } catch (e) {}
   };
 
-  const updateExamTestCount = (examId, delta) => {
-    setExams(prev => prev.map(e => {
-      if (e.id === examId) {
-        return { ...e, testsCount: Math.max(0, (e.testsCount || 0) + delta) };
-      }
-      return e;
-    }));
-  };
-
-  // Note Operations
+  // Note Operations (Pure Subject Linked)
   const addNote = async (newNote) => {
+    const isFree = newNote.isFree === true || Number(newNote.price) === 0;
     const noteWithId = {
       ...newNote,
       id: newNote.id || 'note-' + Date.now(),
+      price: isFree ? 0 : Number(newNote.price || 29),
+      isFree: isFree,
       createdAt: new Date().toISOString(),
     };
 
-    setNotes(prev => [noteWithId, ...prev]);
-    setExams(prev => prev.map(e => {
-      if (e.id === newNote.examId) {
-        return { ...e, notesCount: (e.notesCount || 0) + 1 };
-      }
-      return e;
-    }));
+    setNotes(prev => [noteWithId, ...prev.filter(n => n.id !== noteWithId.id)]);
 
     try {
-      await supabase.from('notes').insert([{
+      await supabase.from('notes').upsert({
         id: noteWithId.id,
-        exam_id: noteWithId.examId,
+        exam_id: noteWithId.examId || null,
+        subject_id: noteWithId.subjectId || null,
         title: noteWithId.title,
-        title_kn: noteWithId.titleKn,
-        category: noteWithId.category,
-        file_type: noteWithId.fileType,
-        gdrive_url: noteWithId.gdriveUrl,
-        read_time_minutes: noteWithId.readTimeMinutes,
+        title_kn: noteWithId.titleKn || noteWithId.title,
+        category: noteWithId.category || 'General',
+        file_type: noteWithId.fileType || 'rich_text',
+        gdrive_url: noteWithId.gdriveUrl || '',
+        read_time_minutes: noteWithId.readTimeMinutes || 10,
         is_free: noteWithId.isFree,
-        content: noteWithId.content
-      }]);
+        price: noteWithId.price,
+        content: noteWithId.content || ''
+      });
     } catch (e) {
-      console.warn('Supabase note insert fallback:', e);
+      console.warn('Supabase note save fallback:', e);
     }
-
     return noteWithId;
   };
 
@@ -506,7 +814,7 @@ export const DataProvider = ({ children }) => {
 
     // Push to Supabase user_attempts
     try {
-      await supabase.from('user_attempts').insert([{
+      await supabase.from('user_attempts').upsert({
         id: fullAttempt.id,
         user_id: fullAttempt.userId,
         user_email: fullAttempt.userEmail,
@@ -521,7 +829,7 @@ export const DataProvider = ({ children }) => {
         time_spent_seconds: fullAttempt.timeSpentSeconds,
         question_results: fullAttempt.questionResults,
         timestamp: fullAttempt.timestamp
-      }]);
+      });
     } catch (e) {
       console.warn('Supabase attempt insert fallback:', e);
     }
@@ -529,30 +837,158 @@ export const DataProvider = ({ children }) => {
     return fullAttempt;
   };
 
-  // Record Exam Purchase
+  // Update Developer Payment Settings
+  const updateDeveloperPaymentSettings = async ({ upiId, phone, name, qrImage, rzpKey }) => {
+    if (upiId !== undefined) {
+      setDeveloperUpiId(upiId);
+      localStorage.setItem(STORAGE_KEYS.DEV_UPI_ID, upiId);
+    }
+    if (phone !== undefined) {
+      setDeveloperPhone(phone);
+      localStorage.setItem(STORAGE_KEYS.DEV_PHONE, phone);
+    }
+    if (name !== undefined) {
+      setDeveloperName(name);
+      localStorage.setItem(STORAGE_KEYS.DEV_NAME, name);
+    }
+    if (qrImage !== undefined) {
+      setDeveloperUpiQrImage(qrImage);
+      localStorage.setItem(STORAGE_KEYS.DEV_QR_IMAGE, qrImage);
+    }
+    if (rzpKey !== undefined) {
+      setRazorpayKeyId(rzpKey);
+      localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, rzpKey);
+    }
+
+    try {
+      await supabase.from('app_settings').upsert({
+        key: 'payment_settings',
+        value: {
+          upiId: upiId !== undefined ? upiId : developerUpiId,
+          phone: phone !== undefined ? phone : developerPhone,
+          name: name !== undefined ? name : developerName,
+          qrImage: qrImage !== undefined ? qrImage : developerUpiQrImage,
+          rzpKey: rzpKey !== undefined ? rzpKey : razorpayKeyId
+        },
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn('Supabase payment settings save fallback:', e);
+    }
+  };
+
+  // Record Exam / Test / Note Purchase
   const recordPurchase = async (purchaseData) => {
     const purchase = {
       ...purchaseData,
-      id: 'ord_' + Date.now(),
-      userEmail: user?.email || 'guest@adhyayana.com',
-      purchasedAt: new Date().toISOString(),
+      id: purchaseData.id || 'ord_' + Date.now(),
+      userEmail: purchaseData.userEmail || user?.email || 'student@adhyayana.com',
+      paymentMethod: purchaseData.paymentMethod || (purchaseData.paymentId?.startsWith('pay_') ? 'RAZORPAY' : 'UPI_QR'),
+      utrNumber: purchaseData.utrNumber || '',
+      itemType: purchaseData.itemType || 'exam',
+      purchasedAt: purchaseData.purchasedAt || new Date().toISOString(),
     };
 
     setPurchases(prev => [purchase, ...prev]);
 
     try {
-      await supabase.from('purchases').insert([{
+      await supabase.from('purchases').upsert({
         id: purchase.id,
         user_email: purchase.userEmail,
         exam_id: purchase.examId,
         exam_title: purchase.examTitle,
         amount_paid: purchase.amountPaid,
         payment_id: purchase.paymentId,
+        payment_method: purchase.paymentMethod,
+        utr_number: purchase.utrNumber,
+        item_type: purchase.itemType,
         purchased_at: purchase.purchasedAt
-      }]);
-    } catch (e) {}
+      });
+    } catch (e) {
+      console.warn('Supabase purchase insert fallback:', e);
+    }
 
     return purchase;
+  };
+
+  // Grant Student Access (by Developer)
+  const grantStudentAccess = async (studentEmail, itemId, itemTitle, itemType = 'general') => {
+    const cleanEmail = (studentEmail || '').trim().toLowerCase();
+    if (!cleanEmail || !itemId) return;
+
+    const newPurchase = {
+      id: 'grant_' + Date.now(),
+      userEmail: cleanEmail,
+      examId: itemId,
+      examTitle: itemTitle || 'Admin Special Access',
+      itemType: itemType,
+      amountPaid: 0,
+      paymentMethod: 'ADMIN_GRANTED',
+      paymentId: 'ADMIN_FREE_GRANT',
+      purchasedAt: new Date().toISOString()
+    };
+
+    setPurchases(prev => {
+      const exists = prev.some(p => p.userEmail === cleanEmail && (p.examId === itemId || p.examId === 'ALL_COURSES'));
+      if (exists) return prev;
+      return [newPurchase, ...prev];
+    });
+
+    try {
+      await supabase.from('purchases').upsert([{
+        id: newPurchase.id,
+        user_email: cleanEmail,
+        exam_id: itemId,
+        exam_title: newPurchase.examTitle,
+        amount_paid: 0,
+        payment_id: 'ADMIN_GRANTED',
+        purchased_at: newPurchase.purchasedAt
+      }]);
+    } catch (e) {
+      console.warn('Grant access supabase sync error:', e);
+    }
+  };
+
+  // Revoke / Cancel Student Access (by Developer)
+  const revokeStudentAccess = async (studentEmail, itemId) => {
+    const cleanEmail = (studentEmail || '').trim().toLowerCase();
+    if (!cleanEmail || !itemId) return;
+
+    setPurchases(prev => prev.filter(p => !(p.userEmail === cleanEmail && (p.examId === itemId || p.id === itemId))));
+
+    try {
+      await supabase.from('purchases')
+        .delete()
+        .eq('user_email', cleanEmail)
+        .eq('exam_id', itemId);
+    } catch (e) {
+      console.warn('Revoke access supabase sync error:', e);
+    }
+  };
+
+  // Remove Entire User Record & History
+  const removeUserRecord = async (studentEmail) => {
+    const cleanEmail = (studentEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return;
+
+    setPurchases(prev => prev.filter(p => p.userEmail !== cleanEmail));
+    setAttempts(prev => prev.filter(a => a.userEmail !== cleanEmail));
+    setBookmarks(prev => prev.filter(b => b.userEmail !== cleanEmail));
+
+    try {
+      await supabase.from('purchases').delete().eq('user_email', cleanEmail);
+      await supabase.from('user_attempts').delete().eq('user_email', cleanEmail);
+    } catch (e) {}
+  };
+
+  // Helper: Check if user has active purchase or admin grant
+  const checkHasAccess = (itemId, subjectId, examId) => {
+    if (!user) return false;
+    if (user.role === 'developer') return true;
+    return purchases.some(p => 
+      p.userEmail === user.email && 
+      (p.examId === itemId || p.examId === subjectId || p.examId === examId || p.examId === 'ALL_COURSES')
+    );
   };
 
   // User-specific attempts
@@ -578,6 +1014,7 @@ export const DataProvider = ({ children }) => {
         lang,
         setLang,
         exams,
+        subjects,
         tests,
         notes,
         attempts: userAttempts,
@@ -585,6 +1022,13 @@ export const DataProvider = ({ children }) => {
         bookmarks: bookmarks.filter(b => b.userEmail === user?.email),
         purchases: purchases.filter(p => p.userEmail === user?.email),
         allPurchases: purchases,
+        razorpayKeyId,
+        updateRazorpayKeyId,
+        developerUpiId,
+        developerPhone,
+        developerName,
+        developerUpiQrImage,
+        updateDeveloperPaymentSettings,
         isCloudSyncing,
         cloudStatus,
         syncFromSupabase,
@@ -592,6 +1036,10 @@ export const DataProvider = ({ children }) => {
         addExam,
         updateExam,
         deleteExam,
+        addSubject,
+        updateSubject,
+        deleteSubject,
+        clearAllData,
         addTest,
         updateTest,
         deleteTest,
@@ -602,6 +1050,10 @@ export const DataProvider = ({ children }) => {
         parseGoogleSheetCSV,
         recordTestAttempt,
         recordPurchase,
+        grantStudentAccess,
+        revokeStudentAccess,
+        removeUserRecord,
+        checkHasAccess,
         toggleBookmark,
         isBookmarked,
       }}
