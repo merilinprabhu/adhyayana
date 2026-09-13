@@ -260,6 +260,11 @@ export const DataProvider = ({ children }) => {
           paymentMethod: p.payment_method || p.paymentMethod || 'RAZORPAY',
           utrNumber: p.utr_number || p.utrNumber || '',
           itemType: p.item_type || p.itemType || 'exam',
+          status: p.status || 'ACTIVE',
+          validUntil: p.valid_until || p.validUntil || 'LIFETIME',
+          notes: p.notes || '',
+          rejectReason: p.reject_reason || p.rejectReason || '',
+          approvedAt: p.approved_at || p.approvedAt || null,
           purchasedAt: p.purchased_at || p.purchasedAt
         }));
 
@@ -929,17 +934,26 @@ export const DataProvider = ({ children }) => {
 
   // Record Exam / Test / Note Purchase
   const recordPurchase = async (purchaseData) => {
+    const isFree = Number(purchaseData.amountPaid) === 0 || purchaseData.paymentMethod === 'FREE_COUPON' || purchaseData.paymentMethod === 'DEVELOPER_SIMULATOR' || user?.role === 'developer';
+    const initialStatus = purchaseData.status || (isFree ? 'ACTIVE' : 'PENDING_APPROVAL');
+    const defaultValidity = purchaseData.validUntil || (isFree ? 'LIFETIME' : new Date(Date.now() + 365 * 86400000).toISOString());
+
     const purchase = {
       ...purchaseData,
       id: purchaseData.id || 'ord_' + Date.now(),
-      userEmail: purchaseData.userEmail || user?.email || 'student@adhyayana.com',
+      userEmail: (purchaseData.userEmail || user?.email || 'student@adhyayana.com').trim().toLowerCase(),
       paymentMethod: purchaseData.paymentMethod || (purchaseData.paymentId?.startsWith('pay_') ? 'RAZORPAY' : 'UPI_QR'),
       utrNumber: purchaseData.utrNumber || '',
       itemType: purchaseData.itemType || 'exam',
+      status: initialStatus,
+      validUntil: defaultValidity,
+      notes: purchaseData.notes || '',
+      rejectReason: purchaseData.rejectReason || '',
+      approvedAt: initialStatus === 'ACTIVE' ? new Date().toISOString() : null,
       purchasedAt: purchaseData.purchasedAt || new Date().toISOString(),
     };
 
-    setPurchases(prev => [purchase, ...prev]);
+    setPurchases(prev => [purchase, ...prev.filter(p => p.id !== purchase.id)]);
 
     try {
       await supabase.from('purchases').upsert({
@@ -952,6 +966,11 @@ export const DataProvider = ({ children }) => {
         payment_method: purchase.paymentMethod,
         utr_number: purchase.utrNumber,
         item_type: purchase.itemType,
+        status: purchase.status,
+        valid_until: purchase.validUntil,
+        notes: purchase.notes,
+        reject_reason: purchase.rejectReason,
+        approved_at: purchase.approvedAt,
         purchased_at: purchase.purchasedAt
       });
     } catch (e) {
@@ -961,10 +980,145 @@ export const DataProvider = ({ children }) => {
     return purchase;
   };
 
+  // 1-Click Approve Purchase & Unlock Content
+  const approvePurchase = async (purchaseId, validityDays = 365) => {
+    let validUntilVal = 'LIFETIME';
+    if (validityDays !== 'LIFETIME' && !isNaN(Number(validityDays))) {
+      validUntilVal = new Date(Date.now() + Number(validityDays) * 86400000).toISOString();
+    }
+
+    const updatedTime = new Date().toISOString();
+
+    setPurchases(prev =>
+      prev.map(p => {
+        if (p.id === purchaseId) {
+          return {
+            ...p,
+            status: 'ACTIVE',
+            validUntil: validUntilVal,
+            approvedAt: updatedTime,
+            rejectReason: ''
+          };
+        }
+        return p;
+      })
+    );
+
+    try {
+      await supabase.from('purchases').update({
+        status: 'ACTIVE',
+        valid_until: validUntilVal,
+        approved_at: updatedTime,
+        reject_reason: ''
+      }).eq('id', purchaseId);
+    } catch (e) {
+      console.warn('Supabase approve purchase error:', e);
+    }
+  };
+
+  // 1-Click Reject Fake/Invalid UTR Payment
+  const rejectPurchase = async (purchaseId, reason = 'Invalid / Fake UTR reference') => {
+    setPurchases(prev =>
+      prev.map(p => {
+        if (p.id === purchaseId) {
+          return {
+            ...p,
+            status: 'REJECTED',
+            rejectReason: reason
+          };
+        }
+        return p;
+      })
+    );
+
+    try {
+      await supabase.from('purchases').update({
+        status: 'REJECTED',
+        reject_reason: reason
+      }).eq('id', purchaseId);
+    } catch (e) {
+      console.warn('Supabase reject purchase error:', e);
+    }
+  };
+
+  // Toggle Access Status: Active <-> Deactivated
+  const toggleAccessStatus = async (purchaseId) => {
+    let newStatus = 'ACTIVE';
+    setPurchases(prev =>
+      prev.map(p => {
+        if (p.id === purchaseId) {
+          newStatus = p.status === 'ACTIVE' ? 'DEACTIVATED' : 'ACTIVE';
+          return { ...p, status: newStatus };
+        }
+        return p;
+      })
+    );
+
+    try {
+      await supabase.from('purchases').update({
+        status: newStatus
+      }).eq('id', purchaseId);
+    } catch (e) {
+      console.warn('Supabase toggle access error:', e);
+    }
+  };
+
+  // Extend Validity Period (e.g. +30 days, +90 days, +365 days, Lifetime)
+  const extendValidity = async (purchaseId, additionalDays = 30) => {
+    let newValidUntil = 'LIFETIME';
+    if (additionalDays !== 'LIFETIME') {
+      const daysToAdd = Number(additionalDays) || 30;
+      setPurchases(prev =>
+        prev.map(p => {
+          if (p.id === purchaseId) {
+            let baseTime = Date.now();
+            if (p.validUntil && p.validUntil !== 'LIFETIME') {
+              const currentExp = new Date(p.validUntil).getTime();
+              if (!isNaN(currentExp) && currentExp > Date.now()) {
+                baseTime = currentExp;
+              }
+            }
+            newValidUntil = new Date(baseTime + daysToAdd * 86400000).toISOString();
+            return {
+              ...p,
+              validUntil: newValidUntil,
+              status: 'ACTIVE'
+            };
+          }
+          return p;
+        })
+      );
+    } else {
+      newValidUntil = 'LIFETIME';
+      setPurchases(prev =>
+        prev.map(p => {
+          if (p.id === purchaseId) {
+            return { ...p, validUntil: 'LIFETIME', status: 'ACTIVE' };
+          }
+          return p;
+        })
+      );
+    }
+
+    try {
+      await supabase.from('purchases').update({
+        valid_until: newValidUntil,
+        status: 'ACTIVE'
+      }).eq('id', purchaseId);
+    } catch (e) {
+      console.warn('Supabase extend validity error:', e);
+    }
+  };
+
   // Grant Student Access (by Developer)
-  const grantStudentAccess = async (studentEmail, itemId, itemTitle, itemType = 'general') => {
+  const grantStudentAccess = async (studentEmail, itemId, itemTitle, itemType = 'exam', validityDuration = '365', remarks = '') => {
     const cleanEmail = (studentEmail || '').trim().toLowerCase();
     if (!cleanEmail || !itemId) return;
+
+    let validUntilVal = 'LIFETIME';
+    if (validityDuration !== 'LIFETIME' && !isNaN(Number(validityDuration))) {
+      validUntilVal = new Date(Date.now() + Number(validityDuration) * 86400000).toISOString();
+    }
 
     const newPurchase = {
       id: 'grant_' + Date.now(),
@@ -974,14 +1128,17 @@ export const DataProvider = ({ children }) => {
       itemType: itemType,
       amountPaid: 0,
       paymentMethod: 'ADMIN_GRANTED',
-      paymentId: 'ADMIN_FREE_GRANT',
+      paymentId: 'ADMIN_FREE_GRANT_' + Date.now(),
+      status: 'ACTIVE',
+      validUntil: validUntilVal,
+      notes: remarks || 'Direct Developer Grant',
+      approvedAt: new Date().toISOString(),
       purchasedAt: new Date().toISOString()
     };
 
     setPurchases(prev => {
-      const exists = prev.some(p => p.userEmail === cleanEmail && (p.examId === itemId || p.examId === 'ALL_COURSES'));
-      if (exists) return prev;
-      return [newPurchase, ...prev];
+      const filtered = prev.filter(p => !(p.userEmail === cleanEmail && (p.examId === itemId || p.examId === 'ALL_COURSES')));
+      return [newPurchase, ...filtered];
     });
 
     try {
@@ -991,7 +1148,11 @@ export const DataProvider = ({ children }) => {
         exam_id: itemId,
         exam_title: newPurchase.examTitle,
         amount_paid: 0,
-        payment_id: 'ADMIN_GRANTED',
+        payment_id: newPurchase.paymentId,
+        payment_method: 'ADMIN_GRANTED',
+        status: 'ACTIVE',
+        valid_until: validUntilVal,
+        notes: newPurchase.notes,
         purchased_at: newPurchase.purchasedAt
       }]);
     } catch (e) {
@@ -1000,17 +1161,17 @@ export const DataProvider = ({ children }) => {
   };
 
   // Revoke / Cancel Student Access (by Developer)
-  const revokeStudentAccess = async (studentEmail, itemId) => {
+  const revokeStudentAccess = async (studentEmail, itemIdOrPurchaseId) => {
     const cleanEmail = (studentEmail || '').trim().toLowerCase();
-    if (!cleanEmail || !itemId) return;
+    if (!cleanEmail || !itemIdOrPurchaseId) return;
 
-    setPurchases(prev => prev.filter(p => !(p.userEmail === cleanEmail && (p.examId === itemId || p.id === itemId))));
+    setPurchases(prev => prev.filter(p => !(p.userEmail === cleanEmail && (p.examId === itemIdOrPurchaseId || p.id === itemIdOrPurchaseId))));
 
     try {
       await supabase.from('purchases')
         .delete()
         .eq('user_email', cleanEmail)
-        .eq('exam_id', itemId);
+        .or(`id.eq.${itemIdOrPurchaseId},exam_id.eq.${itemIdOrPurchaseId}`);
     } catch (e) {
       console.warn('Revoke access supabase sync error:', e);
     }
@@ -1031,14 +1192,37 @@ export const DataProvider = ({ children }) => {
     } catch (e) {}
   };
 
-  // Helper: Check if user has active purchase or admin grant
+  // Helper: Check if user has active purchase or admin grant with valid duration
   const checkHasAccess = (itemId, subjectId, examId) => {
     if (!user) return false;
     if (user.role === 'developer') return true;
-    return purchases.some(p => 
-      p.userEmail === user.email && 
-      (p.examId === itemId || p.examId === subjectId || p.examId === examId || p.examId === 'ALL_COURSES')
-    );
+
+    const userEmail = (user.email || '').trim().toLowerCase();
+    
+    return purchases.some(p => {
+      if ((p.userEmail || '').trim().toLowerCase() !== userEmail) return false;
+      
+      // Active status check
+      if (p.status === 'PENDING_APPROVAL' || p.status === 'REJECTED' || p.status === 'DEACTIVATED') {
+        return false;
+      }
+      
+      // Validity check
+      if (p.validUntil && p.validUntil !== 'LIFETIME') {
+        const expTime = new Date(p.validUntil).getTime();
+        if (!isNaN(expTime) && expTime < Date.now()) {
+          return false;
+        }
+      }
+
+      return (
+        p.examId === itemId ||
+        p.examId === subjectId ||
+        p.examId === examId ||
+        p.examId === 'ALL_COURSES' ||
+        p.id === itemId
+      );
+    });
   };
 
   // User-specific attempts
@@ -1102,6 +1286,10 @@ export const DataProvider = ({ children }) => {
         parseGoogleSheetCSV,
         recordTestAttempt,
         recordPurchase,
+        approvePurchase,
+        rejectPurchase,
+        toggleAccessStatus,
+        extendValidity,
         grantStudentAccess,
         revokeStudentAccess,
         removeUserRecord,
@@ -1122,3 +1310,4 @@ export const useData = () => {
   }
   return context;
 };
+

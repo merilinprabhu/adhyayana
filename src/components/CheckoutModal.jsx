@@ -139,6 +139,7 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
 
     setIsProcessing(true);
     const txnId = cleanUtr ? `UPI_UTR_${cleanUtr}` : `UPI_DIRECT_${Date.now()}`;
+    const initialStatus = isDeveloper ? 'ACTIVE' : 'PENDING_APPROVAL';
     
     await recordPurchase({
       examId: item.id,
@@ -146,23 +147,28 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
       amountPaid: discountedPrice,
       paymentMethod: 'UPI_QR',
       paymentId: txnId,
-      utrNumber: cleanUtr
+      utrNumber: cleanUtr,
+      status: initialStatus
     });
 
-    enrollExam(item.id);
+    if (isDeveloper) {
+      enrollExam(item.id);
+    }
+    
     setLastPaymentId(txnId);
     setLastPaymentMethod('Direct UPI (PhonePe / GPay / Paytm)');
     setIsProcessing(false);
     setIsCompleted(true);
 
-    confetti({
-      particleCount: 120,
-      spread: 80,
-      origin: { y: 0.6 }
-    });
-
-    if (onPurchaseSuccess) {
-      onPurchaseSuccess(item);
+    if (isDeveloper) {
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+      if (onPurchaseSuccess) {
+        onPurchaseSuccess(item);
+      }
     }
   };
 
@@ -268,48 +274,104 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
         </div>
 
         {isCompleted ? (
-          /* SUCCESS SCREEN */
-          <div className="p-6 sm:p-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-50 dark:ring-emerald-900/30 animate-bounce">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <div>
-              <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                {lang === 'kn' ? '🎉 ಯಶಸ್ವಿ ಪ್ರವೇಶ ದೊರೆತಿದೆ!' : '🎉 Enrollment Successful!'}
-              </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
-                {lang === 'kn' 
-                  ? 'ಈ ಅಧ್ಯಯನ ಸಾಮಗ್ರಿ / ಟೆಸ್ಟ್‌ಗಳನ್ನು ನಿಮ್ಮ ಖಾತೆಗೆ ಯಶಸ್ವಿಯಾಗಿ ಅನ್‌ಲಾಕ್ ಮಾಡಲಾಗಿದೆ.'
-                  : 'You now have full unrestricted lifetime access to this module.'}
-              </p>
-            </div>
+          /* SUCCESS OR PENDING APPROVAL SCREEN */
+          discountedPrice > 0 && !isDeveloper ? (
+            <div className="p-6 sm:p-8 text-center space-y-4">
+              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-amber-50 dark:ring-amber-900/30">
+                <Clock className="w-10 h-10 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {lang === 'kn' ? '⏳ ಪಾವತಿ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ' : '⏳ Payment Under Verification'}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                  {lang === 'kn'
+                    ? 'ನಿಮ್ಮ UTR ಸಂಖ್ಯೆ ದಾಖಲಾಗಿದೆ. ಡೆವಲಪರ್ ಪರಿಶೀಲಿಸಿ ಕೆಲವೇ ನಿಮಿಷಗಳಲ್ಲಿ ನಿಮ್ಮ ಖಾತೆಗೆ ಪ್ರವೇಶಾವಕಾಶ ನೀಡುತ್ತಾರೆ.'
+                    : 'Your UTR number has been submitted. The admin will verify and activate your access shortly.'}
+                </p>
+              </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl text-left border border-slate-200 dark:border-slate-700 text-xs space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Item / Content:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{item.title}</span>
+              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl text-left border border-slate-200 dark:border-slate-700 text-xs space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Content / Item:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{item.title}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Submitted UTR:</span>
+                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{utrNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Amount:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">₹{discountedPrice}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Status:</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                    Pending Admin Approval (ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ)
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Student Account:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{user?.email}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Amount Paid:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{discountedPrice}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Payment Reference:</span>
-                <span className="font-mono font-semibold text-purple-600 dark:text-purple-400">{lastPaymentId || 'VERIFIED'}</span>
-              </div>
-            </div>
 
-            <button
-              onClick={onClose}
-              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-600/30 transition-all"
-            >
-              {lang === 'kn' ? 'ಮುಂದುವರಿಯಿರಿ & ಕಲಿಯಲು ಪ್ರಾರಂಭಿಸಿ' : 'Continue & Open Content'}
-            </button>
-          </div>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>{lang === 'kn' ? 'WhatsApp ನಲ್ಲಿ ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಕಳುಹಿಸಿ (ತಕ್ಷಣ ಅನ್‌ಲಾಕ್)' : 'Send Screenshot on WhatsApp (Fast Unlock)'}</span>
+              </a>
+
+              <button
+                onClick={onClose}
+                className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-all"
+              >
+                {lang === 'kn' ? 'ಸರಿ, ಮುಕ್ತಾಯಗೊಳಿಸಿ' : 'Close'}
+              </button>
+            </div>
+          ) : (
+            <div className="p-6 sm:p-8 text-center space-y-4">
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-50 dark:ring-emerald-900/30 animate-bounce">
+                <CheckCircle2 className="w-10 h-10" />
+              </div>
+              <div>
+                <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {lang === 'kn' ? '🎉 ಯಶಸ್ವಿ ಪ್ರವೇಶ ದೊರೆತಿದೆ!' : '🎉 Access Granted!'}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                  {lang === 'kn' 
+                    ? 'ಈ ಅಧ್ಯಯನ ಸಾಮಗ್ರಿ / ಟೆಸ್ಟ್‌ಗಳನ್ನು ನಿಮ್ಮ ಖಾತೆಗೆ ಯಶಸ್ವಿಯಾಗಿ ಅನ್‌ಲಾಕ್ ಮಾಡಲಾಗಿದೆ.'
+                    : 'You now have full unrestricted access to this module.'}
+                </p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl text-left border border-slate-200 dark:border-slate-700 text-xs space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Item / Content:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{item.title}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Student Account:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{user?.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Amount Paid:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{discountedPrice}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Payment Reference:</span>
+                  <span className="font-mono font-semibold text-purple-600 dark:text-purple-400">{lastPaymentId || 'VERIFIED'}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={onClose}
+                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-600/30 transition-all"
+              >
+                {lang === 'kn' ? 'ಮುಂದುವರಿಯಿರಿ & ಕಲಿಯಲು ಪ್ರಾರಂಭಿಸಿ' : 'Continue & Open Content'}
+              </button>
+            </div>
+          )
         ) : (
           <div className="p-4 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             

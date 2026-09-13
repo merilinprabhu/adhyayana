@@ -42,7 +42,16 @@ import {
   Phone,
   Smartphone,
   CheckCircle2,
-  ShieldAlert
+  ShieldAlert,
+  Calendar,
+  MessageSquare,
+  Award,
+  ArrowUpRight,
+  ToggleLeft,
+  ToggleRight,
+  XCircle,
+  Activity,
+  Percent
 } from 'lucide-react';
 
 const SUPABASE_SCHEMA_SQL = `-- ADHYAYANA (ಅಧ್ಯಯನ) Complete Production Database Schema for Supabase
@@ -211,6 +220,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     grantStudentAccess,
     revokeStudentAccess,
     removeUserRecord,
+    approvePurchase,
+    rejectPurchase,
+    toggleAccessStatus,
+    extendValidity,
     developerUpiId,
     developerPhone,
     developerName,
@@ -247,9 +260,12 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
   // Student Access Grant Form State
   const [accessForm, setAccessForm] = useState({
     studentEmail: '',
-    examId: 'ALL_COURSES'
+    examId: 'ALL_COURSES',
+    validityDuration: '365', // '30', '90', '180', '365', 'LIFETIME'
+    remarks: ''
   });
   const [studentSearch, setStudentSearch] = useState('');
+  const [accessFilter, setAccessFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'ACTIVE' | 'DEACTIVATED' | 'REJECTED'
 
   // New Exam Form State
   const [examForm, setExamForm] = useState({
@@ -352,7 +368,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     let itemType = 'all';
 
     if (accessForm.examId === 'ALL_COURSES') {
-      selectedTitle = 'All Courses & Modules (Full Lifetime Pass)';
+      selectedTitle = 'All Courses & Modules (Full Pass)';
       itemType = 'all';
     } else {
       const selectedEx = exams.find(ex => ex.id === accessForm.examId);
@@ -370,15 +386,74 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       }
     }
 
-    await grantStudentAccess(accessForm.studentEmail, accessForm.examId, selectedTitle, itemType);
-    showToast(lang === 'kn' ? `ಅನುಮತಿ ನೀಡಲಾಗಿದೆ: ${accessForm.studentEmail} (${selectedTitle})` : `Access Granted to ${accessForm.studentEmail} for ${selectedTitle}`);
-    setAccessForm(prev => ({ ...prev, studentEmail: '' }));
+    await grantStudentAccess(
+      accessForm.studentEmail,
+      accessForm.examId,
+      selectedTitle,
+      itemType,
+      accessForm.validityDuration || '365',
+      accessForm.remarks || ''
+    );
+
+    showToast(
+      lang === 'kn'
+        ? `✓ ಅನುಮತಿ ನೀಡಲಾಗಿದೆ: ${accessForm.studentEmail} (${selectedTitle})`
+        : `✓ Access Granted to ${accessForm.studentEmail} for ${selectedTitle}`
+    );
+    setAccessForm(prev => ({ ...prev, studentEmail: '', remarks: '' }));
+  };
+
+  // Handle 1-Click Approve Payment
+  const handleApprovePurchase = async (purchaseId, studentEmail, itemTitle, validityDays = '365') => {
+    await approvePurchase(purchaseId, validityDays);
+    showToast(
+      lang === 'kn'
+        ? `🎉 ಪಾವತಿ ಅನುಮೋದಿಸಲಾಗಿದೆ! ${studentEmail} (${itemTitle}) ಪ್ರವೇಶ ಅನ್‌ಲಾಕ್ ಆಗಿದೆ.`
+        : `🎉 Payment Approved! Access unlocked for ${studentEmail} (${itemTitle})`
+    );
+  };
+
+  // Handle 1-Click Reject Fake UTR
+  const handleRejectPurchase = async (purchaseId, studentEmail) => {
+    const reason = window.prompt(
+      lang === 'kn' ? 'ತಿರಸ್ಕಾರದ ಕಾರಣ ನಮೂದಿಸಿ (Reason for rejection):' : 'Enter reason for rejection:',
+      'ಅಮಾನ್ಯ ಅಥವಾ ನಕಲಿ UTR ಸಂಖ್ಯೆ (Invalid / Fake UTR reference)'
+    );
+    if (reason !== null) {
+      await rejectPurchase(purchaseId, reason);
+      showToast(
+        lang === 'kn'
+          ? `✕ ಪಾವತಿ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ: ${studentEmail}`
+          : `✕ Payment Rejected for ${studentEmail}`
+      );
+    }
+  };
+
+  // Handle Toggle Active / Deactivated
+  const handleToggleAccess = async (purchaseId, currentStatus, studentEmail) => {
+    await toggleAccessStatus(purchaseId);
+    const nextStatus = currentStatus === 'ACTIVE' ? 'DEACTIVATED' : 'ACTIVE';
+    showToast(
+      lang === 'kn'
+        ? `ಸ್ಥಿತಿ ಬದಲಾಯಿಸಲಾಗಿದೆ: ${nextStatus === 'ACTIVE' ? 'ಸಕ್ರಿಯ (Active)' : 'ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ (Deactivated)'} - ${studentEmail}`
+        : `Status updated to ${nextStatus} for ${studentEmail}`
+    );
+  };
+
+  // Handle Extend Validity
+  const handleExtendAccessValidity = async (purchaseId, days, studentEmail) => {
+    await extendValidity(purchaseId, days);
+    showToast(
+      lang === 'kn'
+        ? `ವ್ಯಾಲಿಡಿಟಿ ವಿಸ್ತರಿಸಲಾಗಿದೆ (+${days === 'LIFETIME' ? 'ಶಾಶ್ವತ' : days + ' ದಿನಗಳು'}) - ${studentEmail}`
+        : `Validity extended (+${days === 'LIFETIME' ? 'Lifetime' : days + ' days'}) for ${studentEmail}`
+    );
   };
 
   // Handle Revoke Student Access
-  const handleRevokeStudentAccess = async (studentEmail, examId, examTitle) => {
+  const handleRevokeStudentAccess = async (studentEmail, examIdOrPurchaseId, examTitle) => {
     if (window.confirm(lang === 'kn' ? `ನೀವು ಖಚಿತವಾಗಿ ${studentEmail} ರ "${examTitle}" ಪ್ರವೇಶವನ್ನು ರದ್ದುಗೊಳಿಸಲು (Revoke) ಬಯಸುತ್ತೀರಾ?` : `Revoke access for ${studentEmail} to ${examTitle}?`)) {
-      await revokeStudentAccess(studentEmail, examId);
+      await revokeStudentAccess(studentEmail, examIdOrPurchaseId);
       showToast(lang === 'kn' ? `ಪ್ರವೇಶ ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ: ${studentEmail}` : `Access Revoked for ${studentEmail}`);
     }
   };
@@ -2069,134 +2144,369 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
         </div>
       )}
 
-      {/* TAB 6: USER MANAGEMENT & ACCESS CONTROL */}
+      {/* TAB 6: USER MANAGEMENT, PAYMENT VERIFICATION & ACCESS CONTROL */}
       {activeTab === 'access' && (() => {
         // Calculate distinct user list from attempts, purchases, and auth
         const userMap = new Map();
+        
+        // Add current logged-in user if available
         if (user?.email) {
-          userMap.set(user.email, {
-            email: user.email,
+          userMap.set(user.email.toLowerCase(), {
+            email: user.email.toLowerCase(),
             name: user.name || user.email.split('@')[0],
-            role: user.role,
-            attemptsCount: 0,
-            purchasesCount: 0,
-            lastActive: 'Just Now'
+            role: user.role || 'student',
+            targetExam: user.targetExam || 'KPSC KAS',
+            attempts: [],
+            purchases: [],
+            lastActive: user.lastLogin || new Date().toISOString()
           });
         }
+
+        // Aggregate from Test Attempts
         allAttempts.forEach(att => {
-          const email = att.userEmail;
+          const email = (att.userEmail || '').trim().toLowerCase();
           if (!email) return;
           const existing = userMap.get(email) || {
             email,
             name: att.userName || email.split('@')[0],
             role: 'student',
-            attemptsCount: 0,
-            purchasesCount: 0,
-            lastActive: att.timestamp
+            targetExam: 'KPSC KAS',
+            attempts: [],
+            purchases: [],
+            lastActive: att.timestamp || new Date().toISOString()
           };
-          existing.attemptsCount += 1;
+          existing.attempts.push(att);
           if (att.timestamp && (!existing.lastActive || new Date(att.timestamp) > new Date(existing.lastActive))) {
             existing.lastActive = att.timestamp;
           }
           userMap.set(email, existing);
         });
+
+        // Aggregate from Purchases & Entitlements
         allPurchases.forEach(pur => {
-          const email = pur.userEmail;
+          const email = (pur.userEmail || '').trim().toLowerCase();
           if (!email) return;
           const existing = userMap.get(email) || {
             email,
             name: email.split('@')[0],
             role: 'student',
-            attemptsCount: 0,
-            purchasesCount: 0,
-            lastActive: pur.purchasedAt
+            targetExam: 'KPSC KAS',
+            attempts: [],
+            purchases: [],
+            lastActive: pur.purchasedAt || new Date().toISOString()
           };
-          existing.purchasesCount += 1;
+          existing.purchases.push(pur);
           if (pur.purchasedAt && (!existing.lastActive || new Date(pur.purchasedAt) > new Date(existing.lastActive))) {
             existing.lastActive = pur.purchasedAt;
           }
           userMap.set(email, existing);
         });
-        const uniqueUsers = Array.from(userMap.values());
+
+        // Build enriched user directory array
+        const uniqueUsers = Array.from(userMap.values()).map(u => {
+          const totalAttempts = u.attempts.length;
+          const avgAccuracy = totalAttempts > 0 
+            ? Math.round(u.attempts.reduce((sum, a) => sum + (Number(a.accuracy) || 0), 0) / totalAttempts) 
+            : 0;
+          const totalScore = u.attempts.reduce((sum, a) => sum + (Number(a.score) || 0), 0);
+          
+          // Determine interested exams & subjects
+          const interestedSet = new Set();
+          if (u.targetExam) interestedSet.add(u.targetExam);
+          u.attempts.forEach(a => {
+            if (a.testTitle) interestedSet.add(a.testTitle.split('-')[0].trim());
+          });
+          u.purchases.forEach(p => {
+            if (p.examTitle) interestedSet.add(p.examTitle);
+          });
+
+          const activePurchases = u.purchases.filter(p => p.status === 'ACTIVE' || (!p.status && p.paymentId));
+          const pendingPurchases = u.purchases.filter(p => p.status === 'PENDING_APPROVAL');
+
+          return {
+            ...u,
+            attemptsCount: totalAttempts,
+            avgAccuracy,
+            totalScore,
+            interestedAreas: Array.from(interestedSet).slice(0, 3),
+            activePurchasesCount: activePurchases.length,
+            pendingPurchasesCount: pendingPurchases.length,
+          };
+        });
+
+        // Pending Payment Approvals Queue
+        const pendingApprovals = allPurchases.filter(p => p.status === 'PENDING_APPROVAL');
+        const activeEntitlements = allPurchases.filter(p => p.status === 'ACTIVE' || (!p.status && p.paymentId));
+        const totalRevenue = allPurchases
+          .filter(p => p.status === 'ACTIVE' || (p.amountPaid > 0 && p.status !== 'REJECTED'))
+          .reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0);
+
+        // Filtered Purchases list for the Validity Manager
+        const filteredPurchases = allPurchases.filter(p => {
+          const matchesSearch = !studentSearch || 
+            (p.userEmail || '').toLowerCase().includes(studentSearch.toLowerCase()) || 
+            (p.examTitle || '').toLowerCase().includes(studentSearch.toLowerCase()) ||
+            (p.utrNumber || '').includes(studentSearch);
+          
+          if (!matchesSearch) return false;
+          if (accessFilter === 'ALL') return true;
+          if (accessFilter === 'PENDING') return p.status === 'PENDING_APPROVAL';
+          if (accessFilter === 'ACTIVE') return p.status === 'ACTIVE' || (!p.status && p.paymentId);
+          if (accessFilter === 'DEACTIVATED') return p.status === 'DEACTIVATED';
+          if (accessFilter === 'REJECTED') return p.status === 'REJECTED';
+          return true;
+        });
 
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
             
-            {/* Summary Statistics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+            {/* 1. TOP METRIC STATS CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Total Users */}
+              <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">ಒಟ್ಟು ನೋಂದಾಯಿತ ಬಳಕೆದಾರರು (Total Users)</p>
+                  <p className="text-xs text-slate-500 font-semibold">{lang === 'kn' ? 'ಒಟ್ಟು ನೋಂದಾಯಿತ ವಿದ್ಯಾರ್ಥಿಗಳು' : 'Total Students'}</p>
                   <p className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">{uniqueUsers.length}</p>
+                  <p className="text-[11px] text-purple-600 dark:text-purple-400 mt-0.5 font-medium flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    <span>{uniqueUsers.filter(u => u.attemptsCount > 0).length} {lang === 'kn' ? 'ಸಕ್ರಿಯ ಅಭ್ಯರ್ಥಿಗಳು' : 'active test takers'}</span>
+                  </p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center">
-                  <Users className="w-5 h-5" />
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shadow-inner">
+                  <Users className="w-6 h-6" />
                 </div>
               </div>
-              <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+
+              {/* Pending Approvals */}
+              <div className={`p-5 rounded-3xl border shadow-sm flex items-center justify-between transition-all ${
+                pendingApprovals.length > 0 
+                  ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/80 ring-2 ring-amber-400/30 animate-pulse' 
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+              }`}>
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">ಸಕ್ರಿಯ ಕೋರ್ಸ್ ಪ್ರವೇಶಗಳು (Active Entitlements)</p>
-                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{allPurchases.length}</p>
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    {lang === 'kn' ? '🚨 ಬಾಕಿ ಇರುವ ಪಾವತಿ ಪರಿಶೀಲನೆ' : '🚨 Pending Payment Approvals'}
+                  </p>
+                  <p className="text-2xl font-black text-amber-700 dark:text-amber-400 mt-1">
+                    {pendingApprovals.length}
+                  </p>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                    {pendingApprovals.length > 0 ? (lang === 'kn' ? 'ಅನುಮೋದನೆಗಾಗಿ ಕಾಯುತ್ತಿದೆ' : 'Action required') : (lang === 'kn' ? 'ಯಾವುದೂ ಬಾಕಿ ಇಲ್ಲ' : 'All clear')}
+                  </p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center">
-                  <UserCheck className="w-5 h-5" />
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shadow-inner">
+                  <Clock className="w-6 h-6" />
                 </div>
               </div>
-              <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+
+              {/* Active Subscriptions */}
+              <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">ಒಟ್ಟು ಪರೀಕ್ಷಾ ಸಲ್ಲಿಕೆಗಳು (Total Submissions)</p>
-                  <p className="text-2xl font-black text-blue-600 mt-1">{allAttempts.length}</p>
+                  <p className="text-xs text-slate-500 font-semibold">{lang === 'kn' ? 'ಸಕ್ರಿಯ ಕೋರ್ಸ್ ಪ್ರವೇಶಗಳು' : 'Active Subscriptions'}</p>
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{activeEntitlements.length}</p>
+                  <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>{allPurchases.length} {lang === 'kn' ? 'ಒಟ್ಟು ದಾಖಲೆಗಳು' : 'total enrollments'}</span>
+                  </p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5" />
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shadow-inner">
+                  <UserCheck className="w-6 h-6" />
                 </div>
               </div>
+
+              {/* Total Revenue */}
+              <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-semibold">{lang === 'kn' ? 'ಒಟ್ಟು ಪಾವತಿಯಾದ ಆದಾಯ' : 'Total Revenue Collected'}</p>
+                  <p className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">₹{totalRevenue.toLocaleString()}</p>
+                  <p className="text-[11px] text-blue-600 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Direct UPI & Online Paid</span>
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center shadow-inner">
+                  <CreditCard className="w-6 h-6" />
+                </div>
+              </div>
+
             </div>
 
-            {/* Grant Access Form & Control Banner */}
+            {/* 2. 🚨 PENDING PAYMENT APPROVALS QUEUE */}
+            {pendingApprovals.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-50 via-orange-50/60 to-amber-50 dark:from-amber-950/50 dark:via-slate-900 dark:to-amber-950/40 rounded-3xl border-2 border-amber-300 dark:border-amber-700/80 p-6 shadow-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/30 animate-bounce">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                        <span>{lang === 'kn' ? 'ಬಾಕಿ ಇರುವ ಪಾವತಿ ಪರಿಶೀಲನೆ & ಅನುಮೋದನೆ' : 'Pending Payment Approvals Queue'}</span>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100">
+                          {pendingApprovals.length} {lang === 'kn' ? 'ವಿನಂತಿಗಳು' : 'Pending'}
+                        </span>
+                      </h3>
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        {lang === 'kn'
+                          ? 'ವಿದ್ಯಾರ್ಥಿಗಳು PhonePe/GPay ಮೂಲಕ ಪಾವತಿಸಿ UTR ನಮೂದಿಸಿದ್ದಾರೆ. UTR ಪರಿಶೀಲಿಸಿ 1-ಕ್ಲಿಕ್ ಮೂಲಕ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.'
+                          : 'Students submitted 12-digit UTRs. Review and click "Approve" to unlock course access.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Queue Items */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingApprovals.map((pur) => {
+                    const studentWaUrl = `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
+                      `ನಮಸ್ಕಾರ, ನಿಮ್ಮ ${pur.examTitle} (₹${pur.amountPaid}) ಪಾವತಿಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗಿದೆ.`
+                    )}`;
+
+                    return (
+                      <div
+                        key={pur.id}
+                        className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-800/80 shadow-md space-y-3.5 hover:shadow-lg transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-mono">
+                              {pur.itemType || 'EXAM'}
+                            </span>
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-1">
+                              {pur.examTitle}
+                            </h4>
+                            <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 font-mono">
+                              {pur.userEmail}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                              ₹{pur.amountPaid}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {pur.purchasedAt ? new Date(pur.purchasedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* UTR Box with Copy */}
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">12-Digit UPI UTR:</span>
+                            <span className="font-mono font-black text-sm text-slate-900 dark:text-slate-100 tracking-wider">
+                              {pur.utrNumber || pur.paymentId || 'N/A'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (pur.utrNumber) {
+                                navigator.clipboard.writeText(pur.utrNumber);
+                                showToast(`Copied UTR: ${pur.utrNumber}`);
+                              }
+                            }}
+                            className="p-2 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-purple-600 text-xs flex items-center gap-1 font-bold shadow-sm"
+                            title="Copy UTR"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy</span>
+                          </button>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
+                            onClick={() => handleApprovePurchase(pur.id, pur.userEmail, pur.examTitle, '365')}
+                            className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{lang === 'kn' ? '✓ ಅನುಮೋದಿಸಿ (1 Year Pass)' : '✓ Approve & Unlock'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleRejectPurchase(pur.id, pur.userEmail)}
+                            className="py-2.5 px-3 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            <span>{lang === 'kn' ? '✕ ತಿರಸ್ಕರಿಸಿ (Reject)' : '✕ Reject Fake'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 3. GRANT ACCESS FORM & CONTROLS */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
-              {/* Grant Free Access Form */}
-              <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              {/* Grant Free / Custom Access Form */}
+              <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center">
-                    <UserCheck className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-2xl bg-purple-100 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center shadow-inner">
+                    <UserCheck className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗೆ ಉಚಿತ ಪ್ರವೇಶಾನುಮತಿ ನೀಡಿ (1-Click Grant Free Access)' : 'Grant Free Student Access'}
+                      {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗೆ ನೇರ ಪ್ರವೇಶಾನುಮತಿ ನೀಡಿ (Manual Grant Access)' : 'Manual Grant Student Access'}
                     </h3>
                     <p className="text-[11px] text-slate-400">
-                      {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಯ ಇಮೇಲ್‌ಗೆ ಯಾವುದೇ ಪರೀಕ್ಷೆ, ನೋಟ್ಸ್ ಅಥವಾ ಸಂಪೂರ್ಣ ಕೋರ್ಸ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ' : 'Unlock specific test, notes or all packages for any student email'}
+                      {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಯ ಇಮೇಲ್‌ಗೆ ಯಾವುದೇ ಪರೀಕ್ಷೆ, ನೋಟ್ಸ್ ಅಥವಾ ಸಂಪೂರ್ಣ ಕೋರ್ಸ್ ವ್ಯಾಲಿಡಿಟಿಯೊಂದಿಗೆ ಅನ್‌ಲಾಕ್ ಮಾಡಿ' : 'Unlock specific test, notes or all packages with customized validity'}
                     </p>
                   </div>
                 </div>
 
-                <form onSubmit={handleGrantStudentAccess} className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                      {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿ ಇಮೇಲ್ ವಿಳಾಸ (Student Email)' : 'Student Email Address'} *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="e.g. student@gmail.com"
-                      value={accessForm.studentEmail}
-                      onChange={(e) => setAccessForm({ ...accessForm, studentEmail: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-purple-500"
-                    />
+                <form onSubmit={handleGrantStudentAccess} className="space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                        {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿ ಇಮೇಲ್ (Student Email)' : 'Student Email Address'} *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        list="registered-students-list"
+                        placeholder="e.g. student@gmail.com"
+                        value={accessForm.studentEmail}
+                        onChange={(e) => setAccessForm({ ...accessForm, studentEmail: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                      />
+                      <datalist id="registered-students-list">
+                        {uniqueUsers.map(u => (
+                          <option key={u.email} value={u.email}>{u.name || u.email}</option>
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                        {lang === 'kn' ? 'ವ್ಯಾಲಿಡಿಟಿ ಅವಧಿ (Validity Period)' : 'Validity Duration'} *
+                      </label>
+                      <select
+                        value={accessForm.validityDuration || '365'}
+                        onChange={(e) => setAccessForm({ ...accessForm, validityDuration: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-bold text-slate-800 dark:text-slate-200"
+                      >
+                        <option value="30">📅 30 Days (1 ತಿಂಗಳು)</option>
+                        <option value="90">📅 90 Days (3 ತಿಂಗಳು)</option>
+                        <option value="180">📅 180 Days (6 ತಿಂಗಳು)</option>
+                        <option value="365">📅 365 Days (1 ವರ್ಷ)</option>
+                        <option value="LIFETIME">♾️ Lifetime (ಶಾಶ್ವತ ಪ್ರವೇಶ)</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                      {lang === 'kn' ? 'ಅನುಮತಿ ನೀಡಬೇಕಾದ ವಿಷಯ / ಪರೀಕ್ಷೆ / ನೋಟ್ಸ್ ಆಯ್ಕೆಮಾಡಿ' : 'Select Item / Package'} *
+                      {lang === 'kn' ? 'ಅನುಮತಿ ನೀಡಬೇಕಾದ ಕೋರ್ಸ್ / ಟೆಸ್ಟ್ / ನೋಟ್ಸ್ ಆಯ್ಕೆಮಾಡಿ' : 'Select Item / Package'} *
                     </label>
                     <select
                       value={accessForm.examId}
                       onChange={(e) => setAccessForm({ ...accessForm, examId: e.target.value })}
                       className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-purple-500"
                     >
-                      <option value="ALL_COURSES">🌟 {lang === 'kn' ? 'ಎಲ್ಲಾ ಕೋರ್ಸ್‌ಗಳು & ಟೆಸ್ಟ್‌ಗಳು (Full Lifetime Pass)' : 'All Courses & Tests (Full Lifetime Pass)'}</option>
+                      <option value="ALL_COURSES">🌟 {lang === 'kn' ? 'ಎಲ್ಲಾ ಕೋರ್ಸ್‌ಗಳು & ಟೆಸ್ಟ್‌ಗಳು (Full All-Access Pass)' : 'All Courses & Tests (Full All-Access Pass)'}</option>
                       
                       <optgroup label={lang === 'kn' ? '── ಪರೀಕ್ಷಾ ಕೋರ್ಸ್‌ಗಳು (Exam Packages) ──' : '── Exam Packages ──'}>
                         {exams.map((ex) => (
@@ -2207,7 +2517,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                       </optgroup>
 
                       {tests.length > 0 && (
-                        <optgroup label={lang === 'kn' ? '── ಪ್ರತ್ಯೇಕ ಅಣಕು ಪರೀಕ್ಷೆಗಳು (Individual Tests) ──' : '── Individual Mock Tests ──'}>
+                        <optgroup label={lang === 'kn' ? '── ಪ್ರತ್ಯೇಕ ಅಣಕು ಪರೀಕ್ಷೆಗಳು (Mock Tests) ──' : '── Individual Mock Tests ──'}>
                           {tests.map((t) => (
                             <option key={t.id} value={t.id}>
                               📝 {t.title} ({t.isFree ? 'FREE' : `₹${t.price || 49}`})
@@ -2228,33 +2538,46 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                     </select>
                   </div>
 
+                  <div>
+                    <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                      {lang === 'kn' ? 'ಷರಾ / ಟಿಪ್ಪಣಿ (Admin Remarks / Reason)' : 'Remarks / Reason (Optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Offline Payment / Scholarship Winner / Special Aspirant"
+                      value={accessForm.remarks || ''}
+                      onChange={(e) => setAccessForm({ ...accessForm, remarks: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
                   <button
                     type="submit"
                     className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
                   >
                     <UserCheck className="w-4 h-4" />
-                    <span>{lang === 'kn' ? '100% ಉಚಿತ ಪ್ರವೇಶ ಸಕ್ರಿಯಗೊಳಿಸಿ (Grant Free Access)' : 'Grant Free Lifetime Access'}</span>
+                    <span>{lang === 'kn' ? '✓ ಪ್ರವೇಶಾವಕಾಶ ಸಕ್ರಿಯಗೊಳಿಸಿ (Grant Access Now)' : 'Grant Student Access Now'}</span>
                   </button>
                 </form>
               </div>
 
-              {/* Policy & Quick Filter Card */}
-              <div className="lg:col-span-6 space-y-4">
-                <div className="p-6 bg-gradient-to-br from-purple-900 to-slate-900 text-white rounded-3xl border border-purple-500/30 space-y-3 shadow-md">
+              {/* Authority & Search Hub */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="p-6 bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 text-white rounded-3xl border border-purple-500/30 space-y-3 shadow-md">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-purple-200 uppercase tracking-wider flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      Developer Authority Hub
+                      Administrator Authority
                     </span>
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   </div>
                   <h4 className="text-base font-black text-white">
-                    {lang === 'kn' ? 'ಬಳಕೆದಾರರ ಪೂರ್ಣ ನಿಯಂತ್ರಣ (Admin Authority)' : 'Complete User & Access Control'}
+                    {lang === 'kn' ? 'ಸಂಪೂರ್ಣ ಪ್ರವೇಶ & ವ್ಯಾಲಿಡಿಟಿ ನಿಯಂತ್ರಣ' : 'Complete Access & Validity Control'}
                   </h4>
-                  <p className="text-xs text-purple-200 leading-relaxed">
+                  <p className="text-xs text-purple-200/90 leading-relaxed">
                     {lang === 'kn'
-                      ? 'ಡೆವಲಪರ್ ಆಗಿ ನೀವು ವಿದ್ಯಾರ್ಥಿಗೆ ಉಚಿತ ಪ್ರವೇಶ ನೀಡಬಹುದು, ಯಾವುದೇ ಸಮಯದಲ್ಲಿ ಪ್ರವೇಶ ರದ್ದುಗೊಳಿಸಬಹುದು (Terminate Access), ಅಥವಾ ಬಳಕೆದಾರರ ಖಾತೆಯನ್ನು ಅಳಿಸಬಹುದು.'
-                      : 'You have full authority to grant free access, revoke active entitlements anytime, or remove user test history.'}
+                      ? 'ಡೆವಲಪರ್ ಆಗಿ ನೀವು ವಿದ್ಯಾರ್ಥಿಯ ಪಾವತಿ ಪರಿಶೀಲಿಸಬಹುದು, ಯಾವುದೇ ಕೋರ್ಸ್ ಸಕ್ರಿಯ/ನಿಷ್ಕ್ರಿಯ (Toggle Active/Deactivate) ಮಾಡಬಹುದು, ವ್ಯಾಲಿಡಿಟಿ ದಿನಗಳನ್ನು ವಿಸ್ತರಿಸಬಹುದು ಅಥವಾ ಖಾತೆಯನ್ನು ಅಳಿಸಬಹುದು.'
+                      : 'You have full authority to approve payments, toggle active/deactivated status, extend validity days, or remove user records.'}
                   </p>
                 </div>
 
@@ -2263,151 +2586,385 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                   <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
                   <input
                     type="text"
-                    placeholder={lang === 'kn' ? 'ಇಮೇಲ್ ಅಥವಾ ಕೋರ್ಸ್ ಮೂಲಕ ಹುಡುಕಿ...' : 'Filter by student email or course title...'}
+                    placeholder={lang === 'kn' ? 'ಇಮೇಲ್, UTR ಅಥವಾ ಕೋರ್ಸ್ ಮೂಲಕ ಹುಡುಕಿ...' : 'Filter by student email, UTR, or course title...'}
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
                   />
                 </div>
               </div>
 
             </div>
 
-            {/* 1. Registered Users Directory */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-0">
-              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-purple-600" />
-                  <span>{lang === 'kn' ? 'ನೋಂದಾಯಿತ ಬಳಕೆದಾರರ ಪಟ್ಟಿ (Registered Users Directory)' : 'Registered Users Directory'} ({uniqueUsers.length})</span>
-                </h3>
+            {/* 4. REGISTERED STUDENTS FULL PROFILES & ANALYTICS DIRECTORY */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {lang === 'kn' ? 'ನೋಂದಾಯಿತ ವಿದ್ಯಾರ್ಥಿಗಳ ಸಂಪೂರ್ಣ ವಿವರಗಳು & ಆಸಕ್ತಿಗಳು' : 'Registered Students Directory & Performance Analytics'}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      {lang === 'kn' ? 'ಅಭ್ಯರ್ಥಿಗಳ ಟಾರ್ಗೆಟ್ ಪರೀಕ್ಷೆ, ಟೆಸ್ಟ್ ಫಲಿತಾಂಶಗಳು, ನಿಖರತೆ & ಆಸಕ್ತ ವಿಷಯಗಳು' : 'Target exams, test attempts, average accuracy & interested courses'}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-purple-600 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 self-start sm:self-auto">
+                  {uniqueUsers.length} {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗಳು' : 'Students'}
+                </span>
               </div>
 
               <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                 {uniqueUsers.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 italic">
-                    ಯಾವುದೇ ಬಳಕೆದಾರರು ಕಂಡುಬಂದಿಲ್ಲ.
+                    {lang === 'kn' ? 'ಯಾವುದೇ ವಿದ್ಯಾರ್ಥಿಗಳು ಕಂಡುಬಂದಿಲ್ಲ.' : 'No registered users found.'}
                   </div>
                 ) : (
                   uniqueUsers
-                    .filter(u => !studentSearch || u.email.toLowerCase().includes(studentSearch.toLowerCase()))
-                    .map((usr) => (
-                      <div key={usr.email} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 to-blue-500 text-white flex items-center justify-center font-bold text-sm">
-                            {usr.email.charAt(0).toUpperCase()}
+                    .filter(u => 
+                      !studentSearch || 
+                      u.email.toLowerCase().includes(studentSearch.toLowerCase()) || 
+                      u.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                      u.interestedAreas.some(area => area.toLowerCase().includes(studentSearch.toLowerCase()))
+                    )
+                    .map((usr) => {
+                      const userWaUrl = `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
+                        `ನಮಸ್ಕಾರ ${usr.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.`
+                      )}`;
+
+                      return (
+                        <div key={usr.email} className="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors space-y-3">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                            
+                            {/* User Avatar & Basic Info */}
+                            <div className="flex items-center gap-3.5">
+                              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-500 text-white flex items-center justify-center font-black text-base shadow-md shadow-purple-600/20">
+                                {usr.email.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">{usr.email}</span>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    usr.role === 'developer'
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                                      : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                                  }`}>
+                                    {usr.role === 'developer' ? '👑 Platform Developer' : '🎓 Aspirant Student'}
+                                  </span>
+                                  {usr.pendingPurchasesCount > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse">
+                                      ⏳ {usr.pendingPurchasesCount} Payment Pending
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                  Target Exam: <strong className="text-purple-600 dark:text-purple-400">{usr.targetExam || 'KPSC KAS'}</strong> • Last Active: <span className="font-mono text-slate-700 dark:text-slate-300">{usr.lastActive ? new Date(usr.lastActive).toLocaleDateString() : 'Recent'}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* User Action Controls */}
+                            <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
+                              <button
+                                onClick={() => {
+                                  setAccessForm(prev => ({ ...prev, studentEmail: usr.email }));
+                                  showToast(`Selected ${usr.email} for granting access`);
+                                }}
+                                className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 rounded-xl font-bold text-xs flex items-center gap-1 border border-purple-200 dark:border-purple-800 transition-all"
+                              >
+                                <UserCheck className="w-3.5 h-3.5" />
+                                <span>{lang === 'kn' ? 'ಪ್ರವೇಶ ನೀಡಿ' : 'Grant Access'}</span>
+                              </button>
+
+                              <a
+                                href={userWaUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold text-xs flex items-center gap-1 border border-emerald-200 dark:border-emerald-800 transition-all"
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                                <span>WhatsApp</span>
+                              </a>
+
+                              {usr.role !== 'developer' && (
+                                <button
+                                  onClick={() => handleRemoveUser(usr.email)}
+                                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 rounded-xl font-bold text-xs flex items-center gap-1 border border-red-200 dark:border-red-900 transition-all"
+                                  title="Delete User Record"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>{lang === 'kn' ? 'ಅಳಿಸಿ' : 'Delete'}</span>
+                                </button>
+                              )}
+                            </div>
+
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-900 dark:text-slate-100">{usr.email}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                usr.role === 'developer'
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+
+                          {/* Analytics Strip for User */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 block font-semibold">Mock Tests Attempted:</span>
+                              <span className="text-xs font-black text-slate-800 dark:text-slate-200">{usr.attemptsCount} Tests</span>
+                            </div>
+                            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 block font-semibold">Average Accuracy:</span>
+                              <span className={`text-xs font-black ${
+                                usr.avgAccuracy >= 75 ? 'text-emerald-600' : usr.avgAccuracy >= 50 ? 'text-amber-600' : 'text-slate-600 dark:text-slate-300'
                               }`}>
-                                {usr.role === 'developer' ? '👑 Developer' : '🎓 Student'}
+                                {usr.avgAccuracy}% Accuracy
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-400">
-                              Attempts: <strong className="text-slate-700 dark:text-slate-300">{usr.attemptsCount}</strong> • Purchases: <strong className="text-slate-700 dark:text-slate-300">{usr.purchasesCount}</strong> • Last Active: {usr.lastActive ? new Date(usr.lastActive).toLocaleDateString() : 'Recent'}
-                            </p>
+                            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 block font-semibold">Total Score:</span>
+                              <span className="text-xs font-black text-blue-600">{usr.totalScore.toFixed(1)} Marks</span>
+                            </div>
+                            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 block font-semibold">Active Packages:</span>
+                              <span className="text-xs font-black text-purple-600">{usr.activePurchasesCount} Enrolled</span>
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              setAccessForm(prev => ({ ...prev, studentEmail: usr.email }));
-                              showToast(`Selected ${usr.email} for granting access`);
-                            }}
-                            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 rounded-xl font-bold text-xs flex items-center gap-1"
-                          >
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span>{lang === 'kn' ? 'ಅನುಮತಿ ನೀಡಿ' : 'Grant Access'}</span>
-                          </button>
-
-                          {usr.role !== 'developer' && (
-                            <button
-                              onClick={() => handleRemoveUser(usr.email)}
-                              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 rounded-xl font-bold text-xs flex items-center gap-1"
-                              title="Delete User Record"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>{lang === 'kn' ? 'ಬಳಕೆದಾರ ಅಳಿಸಿ' : 'Remove User'}</span>
-                            </button>
+                          {/* Interested Topics / Modules */}
+                          {usr.interestedAreas.length > 0 && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold">{lang === 'kn' ? 'ಆಸಕ್ತಿಗಳು (Interests):' : 'Interested Modules:'}</span>
+                              {usr.interestedAreas.map((area, idx) => (
+                                <span key={idx} className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  📌 {area}
+                                </span>
+                              ))}
+                            </div>
                           )}
+
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                 )}
               </div>
             </div>
 
-            {/* 2. Active Entitlements & Access Termination */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>{lang === 'kn' ? 'ಸಕ್ರಿಯ ಕೋರ್ಸ್ & ಟೆಸ್ಟ್ ಪ್ರವೇಶ ಪಟ್ಟಿ (Active Entitlements)' : 'Active Course Entitlements'} ({allPurchases.length})</span>
-                </h3>
+            {/* 5. ACTIVE ENTITLEMENTS, VALIDITY & ACCESS MANAGER */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-0">
+              
+              {/* Table Header with Filters */}
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>{lang === 'kn' ? 'ಸಕ್ರಿಯ ಕೋರ್ಸ್ & ವ್ಯಾಲಿಡಿಟಿ ನಿರ್ವಹಣೆ (Entitlements & Validity Manager)' : 'Entitlements & Validity Manager'}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
+                      {filteredPurchases.length}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {lang === 'kn' ? 'ಪ್ರತಿಯೊಬ್ಬ ವಿದ್ಯಾರ್ಥಿಯ ಕೋರ್ಸ್ ಪ್ರವೇಶ, ವ್ಯಾಲಿಡಿಟಿ ಅವಧಿ ವಿಸ್ತರಣೆ ಮತ್ತು ಸ್ಥಿತಿ ಬದಲಾವಣೆ (Active / Deactivated)' : 'Manage validity countdowns, toggle access on/off, or extend duration'}
+                  </p>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl self-start sm:self-auto overflow-x-auto max-w-full">
+                  {['ALL', 'ACTIVE', 'PENDING', 'DEACTIVATED', 'REJECTED'].map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setAccessFilter(f)}
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
+                        accessFilter === f 
+                          ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-sm' 
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
               </div>
 
+              {/* Subscriptions List */}
               <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {allPurchases.length === 0 ? (
+                {filteredPurchases.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 italic">
-                    {lang === 'kn' ? 'ಯಾವುದೇ ಸಕ್ರಿಯ ಪ್ರವೇಶ ದಾಖಲೆಗಳಿಲ್ಲ. ಮೇಲಿನ ಫಾರ್ಮ್ ಮೂಲಕ ಉಚಿತ ಅನುಮತಿ ನೀಡಿ.' : 'No active student enrollments found.'}
+                    {lang === 'kn' ? 'ಯಾವುದೇ ಪ್ರವೇಶ ದಾಖಲೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ.' : 'No entitlement records found.'}
                   </div>
                 ) : (
-                  allPurchases
-                    .filter(p => 
-                      !studentSearch || 
-                      p.userEmail.toLowerCase().includes(studentSearch.toLowerCase()) || 
-                      (p.examTitle || '').toLowerCase().includes(studentSearch.toLowerCase())
-                    )
-                    .map((item) => (
-                      <div key={item.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <div className="space-y-1">
+                  filteredPurchases.map((item) => {
+                    const isPending = item.status === 'PENDING_APPROVAL';
+                    const isDeactivated = item.status === 'DEACTIVATED';
+                    const isRejected = item.status === 'REJECTED';
+                    const isActive = item.status === 'ACTIVE' || (!item.status && item.paymentId);
+
+                    // Calculate validity countdown
+                    let validityBadge = null;
+                    if (item.validUntil === 'LIFETIME' || !item.validUntil) {
+                      validityBadge = (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 flex items-center gap-1">
+                          ♾️ Lifetime Access
+                        </span>
+                      );
+                    } else {
+                      const expDate = new Date(item.validUntil);
+                      const diffDays = Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                      if (diffDays > 0) {
+                        validityBadge = (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
+                            diffDays <= 7 ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          }`}>
+                            <Calendar className="w-3 h-3" />
+                            {diffDays} {lang === 'kn' ? 'ದಿನಗಳು ಬಾಕಿ' : 'days left'} (Exp: {expDate.toLocaleDateString()})
+                          </span>
+                        );
+                      } else {
+                        validityBadge = (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 flex items-center gap-1">
+                            ⚠️ Expired ({expDate.toLocaleDateString()})
+                          </span>
+                        );
+                      }
+                    }
+
+                    return (
+                      <div key={item.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <div className="space-y-1.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                            <span className="font-bold text-slate-900 dark:text-slate-100 text-sm font-mono">
                               {item.userEmail}
                             </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                              Active Access
-                            </span>
-                            {item.paymentId === 'ADMIN_GRANTED' ? (
+                            
+                            {/* Status Pill */}
+                            {isActive && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                🟢 ACTIVE (ಸಕ್ರಿಯ)
+                              </span>
+                            )}
+                            {isPending && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 animate-pulse">
+                                🟡 PENDING APPROVAL
+                              </span>
+                            )}
+                            {isDeactivated && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
+                                🔴 DEACTIVATED (ನಿಷ್ಕ್ರಿಯ)
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
+                                ❌ REJECTED
+                              </span>
+                            )}
+
+                            {/* Validity Badge */}
+                            {validityBadge}
+
+                            {/* Payment Method Badge */}
+                            {item.paymentMethod === 'ADMIN_GRANTED' || item.paymentId?.startsWith('ADMIN_') ? (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
-                                🎁 Admin Free Grant
+                                🎁 Admin Grant
                               </span>
                             ) : item.paymentMethod === 'UPI_QR' || item.paymentId?.startsWith('UPI_') ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                                📱 Direct UPI QR Paid
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-mono">
+                                📱 Direct UPI (₹{item.amountPaid})
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
-                                💳 Razorpay Paid
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                                💳 Online Paid (₹{item.amountPaid})
                               </span>
                             )}
                           </div>
-                          <p className="text-slate-600 dark:text-slate-300 text-xs">
-                            Unlocks: <strong className="text-slate-900 dark:text-slate-100">{item.examTitle || item.examId}</strong>
+
+                          <p className="text-slate-700 dark:text-slate-300 text-xs font-semibold">
+                            Module: <strong className="text-slate-900 dark:text-slate-100">{item.examTitle || item.examId}</strong>
                           </p>
+                          
                           <p className="text-[10px] text-slate-400 font-mono">
-                            Enrolled: {item.purchasedAt ? new Date(item.purchasedAt).toLocaleString() : 'Recent'} • Ref ID: {item.utrNumber || item.paymentId || item.id}
+                            Enrolled: {item.purchasedAt ? new Date(item.purchasedAt).toLocaleString() : 'Recent'} • Ref/UTR: <strong className="text-purple-600 font-mono">{item.utrNumber || item.paymentId || item.id}</strong> {item.notes && `• Note: ${item.notes}`}
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          {/* Revoke / Terminate Access Button */}
+                        {/* Interactive Controls */}
+                        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+                          
+                          {/* Approve if pending */}
+                          {isPending && (
+                            <button
+                              onClick={() => handleApprovePurchase(item.id, item.userEmail, item.examTitle, '365')}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1 shadow-sm"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>{lang === 'kn' ? 'ಅನುಮೋದಿಸಿ' : 'Approve'}</span>
+                            </button>
+                          )}
+
+                          {/* Toggle Active / Deactivate */}
+                          {!isPending && !isRejected && (
+                            <button
+                              onClick={() => handleToggleAccess(item.id, isDeactivated ? 'DEACTIVATED' : 'ACTIVE', item.userEmail)}
+                              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 border transition-all ${
+                                isDeactivated
+                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                                  : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
+                              }`}
+                              title={isDeactivated ? 'Activate Student Access' : 'Temporarily Deactivate Student Access'}
+                            >
+                              {isDeactivated ? <ToggleRight className="w-4 h-4 text-emerald-600" /> : <ToggleLeft className="w-4 h-4 text-slate-500" />}
+                              <span>{isDeactivated ? (lang === 'kn' ? 'ಸಕ್ರಿಯಗೊಳಿಸಿ (Activate)' : 'Activate') : (lang === 'kn' ? 'ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಿ (Deactivate)' : 'Deactivate')}</span>
+                            </button>
+                          )}
+
+                          {/* Quick Extend Validity Dropdown / Menu */}
+                          {!isPending && (
+                            <div className="relative group">
+                              <button
+                                className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 rounded-xl font-bold text-xs flex items-center gap-1 border border-purple-200 dark:border-purple-800"
+                                title="Extend Validity"
+                              >
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>+ Extend</span>
+                              </button>
+                              
+                              <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-1.5 z-20 min-w-[140px] text-xs">
+                                <button
+                                  onClick={() => handleExtendAccessValidity(item.id, 30, item.userEmail)}
+                                  className="px-3 py-1.5 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-800 dark:text-slate-200"
+                                >
+                                  +30 Days (1 Month)
+                                </button>
+                                <button
+                                  onClick={() => handleExtendAccessValidity(item.id, 90, item.userEmail)}
+                                  className="px-3 py-1.5 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-800 dark:text-slate-200"
+                                >
+                                  +90 Days (3 Months)
+                                </button>
+                                <button
+                                  onClick={() => handleExtendAccessValidity(item.id, 365, item.userEmail)}
+                                  className="px-3 py-1.5 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-800 dark:text-slate-200"
+                                >
+                                  +365 Days (1 Year)
+                                </button>
+                                <button
+                                  onClick={() => handleExtendAccessValidity(item.id, 'LIFETIME', item.userEmail)}
+                                  className="px-3 py-1.5 text-left rounded-xl hover:bg-purple-50 dark:hover:bg-purple-950 font-bold text-purple-600"
+                                >
+                                  ♾️ Lifetime Access
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Terminate Access Button */}
                           <button
-                            onClick={() => handleRevokeStudentAccess(item.userEmail, item.examId, item.examTitle || item.examId)}
-                            className="px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-red-200 dark:border-red-900/50"
-                            title="Revoke and Terminate Access"
+                            onClick={() => handleRevokeStudentAccess(item.userEmail, item.id, item.examTitle || item.examId)}
+                            className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 rounded-xl font-bold text-xs flex items-center gap-1 border border-red-200 dark:border-red-900/50"
+                            title="Completely Revoke Access"
                           >
                             <UserX className="w-3.5 h-3.5" />
-                            <span>{lang === 'kn' ? 'ಪ್ರವೇಶ ರದ್ದುಗೊಳಿಸಿ (Terminate Access)' : 'Terminate Access'}</span>
                           </button>
+
                         </div>
                       </div>
-                    ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -2419,3 +2976,4 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     </div>
   );
 };
+
