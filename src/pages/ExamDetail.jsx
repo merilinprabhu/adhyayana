@@ -21,12 +21,16 @@ import {
 } from 'lucide-react';
 
 export const ExamDetail = ({ exam, onBack, onSelectTest, onSelectNote, onOpenCheckout, onOpenAuth }) => {
-  const { user, isAuthenticated, isEnrolled } = useAuth();
-  const { lang, subjects, tests, notes } = useData();
+  const { user, isAuthenticated, isEnrolled, isDeveloper } = useAuth();
+  const { lang, subjects, tests, notes, checkHasAccess } = useData();
 
   if (!exam) return null;
 
-  const userHasAccess = isEnrolled(exam.id) || exam.isFree || Number(exam.price) === 0;
+  const userHasAccess = isDeveloper || 
+    isEnrolled(exam.id) || 
+    (checkHasAccess && checkHasAccess(exam.id, null, null, exam.title)) || 
+    exam.isFree || 
+    Number(exam.price) === 0;
   
   // Find subjects that belong to this exam, or fallback to all subjects if none explicitly tagged
   const specificSubjects = subjects.filter(s => s.examId === exam.id);

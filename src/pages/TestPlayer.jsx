@@ -23,7 +23,7 @@ import confetti from 'canvas-confetti';
 
 export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
   const { user, isAuthenticated, isDeveloper, isEnrolled } = useAuth();
-  const { lang, exams, recordTestAttempt, toggleBookmark, isBookmarked } = useData();
+  const { lang, exams, recordTestAttempt, toggleBookmark, isBookmarked, checkHasAccess } = useData();
 
   const activeQuestions = (test?.questions && test.questions.length > 0) 
     ? test.questions 
@@ -51,8 +51,17 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
       ];
 
   const exam = exams.find(e => e.id === test?.examId);
-  const hasFullAccess = isDeveloper || isEnrolled(test?.id) || isEnrolled(test?.examId) || isEnrolled(test?.subjectId) || test?.isFree || Number(test?.price) === 0;
-  const freeQuestionsCount = (hasFullAccess || test?.isFree || Number(test?.price) === 0) 
+  const hasFullAccess = isDeveloper || 
+    isEnrolled(test?.id) || 
+    isEnrolled(test?.examId) || 
+    isEnrolled(test?.subjectId) || 
+    (checkHasAccess && checkHasAccess(test?.id, test?.subjectId, test?.examId, test?.title)) ||
+    (test?.examTitle && checkHasAccess && checkHasAccess(null, null, null, test.examTitle)) ||
+    (test?.subjectName && checkHasAccess && checkHasAccess(null, null, null, test.subjectName)) ||
+    test?.isFree || 
+    Number(test?.price) === 0;
+
+  const freeQuestionsCount = hasFullAccess
     ? activeQuestions.length 
     : (test?.freeQuestionsCount !== undefined ? Number(test?.freeQuestionsCount) : 2);
   

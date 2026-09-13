@@ -1330,14 +1330,15 @@ export const DataProvider = ({ children }) => {
   };
 
   // Helper: Check if user has active purchase or admin grant with valid duration
-  const checkHasAccess = (itemId, subjectId, examId) => {
+  const checkHasAccess = (itemId, subjectId, examId, itemTitle) => {
     if (!user) return false;
     if (user.role === 'developer') return true;
 
     const userEmail = (user.email || '').trim().toLowerCase();
     
     return purchases.some(p => {
-      if ((p.userEmail || '').trim().toLowerCase() !== userEmail) return false;
+      const purEmail = (p.userEmail || p.user_email || '').trim().toLowerCase();
+      if (purEmail !== userEmail) return false;
       
       // Active status check
       if (p.status === 'PENDING_APPROVAL' || p.status === 'REJECTED' || p.status === 'DEACTIVATED' || p.status === 'SUSPENDED') {
@@ -1352,13 +1353,23 @@ export const DataProvider = ({ children }) => {
         }
       }
 
-      return (
-        p.examId === itemId ||
-        p.examId === subjectId ||
-        p.examId === examId ||
-        p.examId === 'ALL_COURSES' ||
-        p.id === itemId
-      );
+      const cleanPurExamId = (p.examId || p.exam_id || '').trim();
+      const cleanPurTitle = (p.examTitle || p.exam_title || '').trim().toLowerCase();
+      const cleanItemTitle = (itemTitle || '').trim().toLowerCase();
+
+      if (cleanPurExamId === 'ALL_COURSES' || cleanPurExamId === 'all') return true;
+      if (itemId && (cleanPurExamId === itemId || p.id === itemId)) return true;
+      if (subjectId && cleanPurExamId === subjectId) return true;
+      if (examId && cleanPurExamId === examId) return true;
+
+      // Title matching (handles Kannada grammar/subjects/exams)
+      if (cleanItemTitle && cleanPurTitle) {
+        if (cleanPurTitle === cleanItemTitle || cleanPurTitle.includes(cleanItemTitle) || cleanItemTitle.includes(cleanPurTitle)) {
+          return true;
+        }
+      }
+
+      return false;
     });
   };
 

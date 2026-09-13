@@ -283,7 +283,29 @@ export const AuthProvider = ({ children }) => {
   const isEnrolled = (examId) => {
     if (!user) return false;
     if (user.role === 'developer') return true;
-    return (user.enrolledExams || []).includes(examId);
+    if ((user.enrolledExams || []).includes(examId)) return true;
+
+    // Check cached purchases
+    try {
+      const savedPurchases = localStorage.getItem('adhyayana_purchases_v2');
+      if (savedPurchases) {
+        const purList = JSON.parse(savedPurchases);
+        const userEmail = (user.email || '').trim().toLowerCase();
+        return purList.some(p => {
+          const pEmail = (p.userEmail || p.user_email || '').trim().toLowerCase();
+          if (pEmail !== userEmail) return false;
+          if (p.status === 'PENDING_APPROVAL' || p.status === 'REJECTED' || p.status === 'DEACTIVATED' || p.status === 'SUSPENDED') return false;
+          if (p.validUntil && p.validUntil !== 'LIFETIME') {
+            const expTime = new Date(p.validUntil).getTime();
+            if (!isNaN(expTime) && expTime < Date.now()) return false;
+          }
+          const pExamId = (p.examId || p.exam_id || '').trim();
+          return pExamId === 'ALL_COURSES' || pExamId === examId || p.id === examId;
+        });
+      }
+    } catch (e) {}
+
+    return false;
   };
 
   return (

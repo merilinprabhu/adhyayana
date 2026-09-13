@@ -18,14 +18,21 @@ import {
 
 export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
   const { user, isDeveloper, isEnrolled, isAuthenticated } = useAuth();
-  const { lang, exams } = useData();
+  const { lang, exams, checkHasAccess } = useData();
 
   const [fontSize, setFontSize] = useState(16); // px
   const [isSaved, setIsSaved] = useState(false);
 
   if (!note) return null;
 
-  const hasAccess = isDeveloper || isEnrolled(note.id) || isEnrolled(note.subjectId) || isEnrolled(note.examId) || note.isFree || Number(note.price) === 0;
+  const hasAccess = isDeveloper || 
+    isEnrolled(note.id) || 
+    isEnrolled(note.subjectId) || 
+    isEnrolled(note.examId) || 
+    (checkHasAccess && checkHasAccess(note.id, note.subjectId, note.examId, note.title)) ||
+    (note.examTitle && checkHasAccess && checkHasAccess(null, null, null, note.examTitle)) ||
+    note.isFree || 
+    Number(note.price) === 0;
 
   const handleUnlock = () => {
     if (!isAuthenticated) {

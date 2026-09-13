@@ -4,8 +4,8 @@ import { useData } from '../context/DataContext';
 import { Search, Filter, BookOpen, FileText, CheckCircle2, ChevronRight, Star, Shield } from 'lucide-react';
 
 export const ExamCatalog = ({ onSelectExam, onOpenAuth }) => {
-  const { isAuthenticated, isEnrolled } = useAuth();
-  const { lang, exams } = useData();
+  const { isAuthenticated, isEnrolled, isDeveloper } = useAuth();
+  const { lang, exams, checkHasAccess } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -23,15 +23,14 @@ export const ExamCatalog = ({ onSelectExam, onOpenAuth }) => {
 
     const matchesPrice = 
       priceFilter === 'all' ||
-      (priceFilter === 'free' && exam.isFree) ||
-      (priceFilter === 'paid' && !exam.isFree);
+      (priceFilter === 'free' && (exam.isFree || Number(exam.price) === 0)) ||
+      (priceFilter === 'paid' && !exam.isFree && Number(exam.price) > 0);
 
     return matchesSearch && matchesCategory && matchesPrice;
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
+    <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header Banner */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
         <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
@@ -40,7 +39,7 @@ export const ExamCatalog = ({ onSelectExam, onOpenAuth }) => {
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
           {lang === 'kn'
             ? 'ಕರ್ನಾಟಕದ ಪ್ರಮುಖ ಪರೀಕ್ಷೆಗಳಿಗೆ ವಿಶೇಷವಾಗಿ ಸಿದ್ಧಪಡಿಸಲಾದ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು ಮತ್ತು ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು.'
-            : 'Access syllabus-targeted test series, Google Drive PDF summaries, and real-time performance analytics.'}
+            : 'Access syllabus-targeted test series, high-yield digital notes, and real-time performance analytics.'}
         </p>
       </div>
 
@@ -117,7 +116,7 @@ export const ExamCatalog = ({ onSelectExam, onOpenAuth }) => {
       {/* Exam Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredExams.map((exam) => {
-          const userHasAccess = isEnrolled(exam.id);
+          const userHasAccess = isDeveloper || isEnrolled(exam.id) || (checkHasAccess && checkHasAccess(exam.id, null, null, exam.title)) || exam.isFree || Number(exam.price) === 0;
 
           return (
             <div
