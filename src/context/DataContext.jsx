@@ -733,7 +733,39 @@ export const DataProvider = ({ children }) => {
         });
       }
 
-      // 6. Fetch App Settings (UPI ID, Phone, Name, Razorpay)
+      // 5B. Fetch Official Notices
+      try {
+        const { data: dbNotices, error: notErr } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
+        if (!notErr && dbNotices && dbNotices.length > 0) {
+          const formattedNotices = dbNotices.map(n => ({
+            id: n.id,
+            titleKn: n.title_kn || n.titleKn || n.title || '',
+            titleEn: n.title_en || n.titleEn || n.title || '',
+            categoryKn: n.category_kn || n.categoryKn || 'ಅಧಿಕೃತ ಸುತ್ತೋಲೆ',
+            categoryEn: n.category_en || n.categoryEn || 'Official Circular',
+            type: n.type || 'text',
+            fileUrl: n.file_url || n.fileUrl || '',
+            descriptionKn: n.description_kn || n.descriptionKn || '',
+            descriptionEn: n.description_en || n.descriptionEn || '',
+            date: n.date || new Date().toISOString().split('T')[0],
+            isNew: n.is_new !== undefined ? n.is_new : n.isNew,
+            isPinned: n.is_pinned !== undefined ? n.is_pinned : n.isPinned,
+            createdAt: n.created_at || n.createdAt
+          }));
+
+          setNotices(prev => {
+            const map = new Map(formattedNotices.map(item => [item.id, item]));
+            prev.forEach(localItem => {
+              if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+            });
+            return Array.from(map.values());
+          });
+        }
+      } catch (notErr) {
+        console.warn('Supabase notices fetch notice:', notErr);
+      }
+
+      // 6. Fetch App Settings (UPI ID, Phone, Name, Razorpay, Home Page Sections)
       try {
         const { data: dbSettings } = await supabase.from('app_settings').select('*');
         if (dbSettings && dbSettings.length > 0) {
@@ -759,6 +791,9 @@ export const DataProvider = ({ children }) => {
                 setRazorpayKeyId(s.value.rzpKey);
                 localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, s.value.rzpKey);
               }
+            } else if (s.key === 'home_page_sections' && Array.isArray(s.value) && s.value.length > 0) {
+              setHomeSections(s.value);
+              localStorage.setItem(STORAGE_KEYS.HOME_SECTIONS, JSON.stringify(s.value));
             }
           });
         }
@@ -1035,7 +1070,7 @@ export const DataProvider = ({ children }) => {
       }
       if (allNotesToPush.length > 0 && noteErrCount === 0) logs.push(`✓ Synced ${allNotesToPush.length} Digital Notes & Materials to Cloud`);
 
-      // 4. Seed Payment Settings
+      // 4. Seed Payment Settings & Home Page Sections
       try {
         await supabase.from('app_settings').upsert({
           key: 'payment_settings',
@@ -1049,8 +1084,41 @@ export const DataProvider = ({ children }) => {
           updated_at: new Date().toISOString()
         });
         logs.push(`✓ Synced Developer UPI & Payment Settings`);
+
+        const allSectionsToPush = homeSections.length > 0 ? homeSections : DEFAULT_HOME_SECTIONS;
+        await supabase.from('app_settings').upsert({
+          key: 'home_page_sections',
+          value: allSectionsToPush,
+          updated_at: new Date().toISOString()
+        });
+        logs.push(`✓ Synced Home Page Layout & Custom Banners`);
       } catch (settingsErr) {
         console.warn('App settings sync notice:', settingsErr);
+      }
+
+      // 5. Seed Notices
+      try {
+        const allNoticesToPush = notices.length > 0 ? notices : INITIAL_NOTICES;
+        for (const not of allNoticesToPush) {
+          await supabase.from('notices').upsert({
+            id: not.id,
+            title_kn: not.titleKn || not.title || '',
+            title_en: not.titleEn || not.title || '',
+            category_kn: not.categoryKn || 'ಅಧಿಕೃತ ಸುತ್ತೋಲೆ',
+            category_en: not.categoryEn || 'Official Circular',
+            type: not.type || 'text',
+            file_url: not.fileUrl || '',
+            description_kn: not.descriptionKn || '',
+            description_en: not.descriptionEn || '',
+            date: not.date || new Date().toISOString().split('T')[0],
+            is_new: not.isNew !== undefined ? not.isNew : true,
+            is_pinned: !!not.isPinned,
+            created_at: not.createdAt || new Date().toISOString()
+          });
+        }
+        logs.push(`✓ Synced ${allNoticesToPush.length} Official Notices to Cloud`);
+      } catch (notSyncErr) {
+        console.warn('Notices sync notice:', notSyncErr);
       }
 
       setCloudStatus('connected');
@@ -2335,9 +2403,9 @@ export const DataProvider = ({ children }) => {
   };
 
   // Official Notice Board Handlers
-  const addNotice = (noticeData) => {
+  const addNotice = async (noticeData) => {
     const newNotice = {
-      id: `not_${Date.now()}`,
+      id: noticeData.id || `not_${Date.now()}`,
       titleKn: noticeData.titleKn || 'ಹೊಸ ಪ್ರಕಟಣೆ',
       titleEn: noticeData.titleEn || 'New Notice',
       categoryKn: noticeData.categoryKn || 'ಅಧಿಕೃತ ಸುತ್ತೋಲೆ',
@@ -2351,16 +2419,59 @@ export const DataProvider = ({ children }) => {
       isPinned: !!noticeData.isPinned,
       createdAt: new Date().toISOString()
     };
-    setNotices(prev => [newNotice, ...prev]);
+    setNotices(prev => [newNotice, ...prev.filter(n => n.id !== newNotice.id)]);
+    
+    try {
+      await supabase.from('notices').upsert({
+        id: newNotice.id,
+        title_kn: newNotice.titleKn,
+        title_en: newNotice.titleEn,
+        category_kn: newNotice.categoryKn,
+        category_en: newNotice.categoryEn,
+        type: newNotice.type,
+        file_url: newNotice.fileUrl,
+        description_kn: newNotice.descriptionKn,
+        description_en: newNotice.descriptionEn,
+        date: newNotice.date,
+        is_new: newNotice.isNew,
+        is_pinned: newNotice.isPinned,
+        created_at: newNotice.createdAt
+      });
+    } catch (e) {
+      console.warn('Supabase notice upsert fallback:', e);
+    }
+
     return newNotice;
   };
 
-  const updateNotice = (noticeId, updatedData) => {
+  const updateNotice = async (noticeId, updatedData) => {
     setNotices(prev => prev.map(n => n.id === noticeId ? { ...n, ...updatedData } : n));
+    try {
+      const dbPayload = {};
+      if (updatedData.titleKn !== undefined) dbPayload.title_kn = updatedData.titleKn;
+      if (updatedData.titleEn !== undefined) dbPayload.title_en = updatedData.titleEn;
+      if (updatedData.categoryKn !== undefined) dbPayload.category_kn = updatedData.categoryKn;
+      if (updatedData.categoryEn !== undefined) dbPayload.category_en = updatedData.categoryEn;
+      if (updatedData.type !== undefined) dbPayload.type = updatedData.type;
+      if (updatedData.fileUrl !== undefined) dbPayload.file_url = updatedData.fileUrl;
+      if (updatedData.descriptionKn !== undefined) dbPayload.description_kn = updatedData.descriptionKn;
+      if (updatedData.descriptionEn !== undefined) dbPayload.description_en = updatedData.descriptionEn;
+      if (updatedData.date !== undefined) dbPayload.date = updatedData.date;
+      if (updatedData.isNew !== undefined) dbPayload.is_new = updatedData.isNew;
+      if (updatedData.isPinned !== undefined) dbPayload.is_pinned = updatedData.isPinned;
+      await supabase.from('notices').update(dbPayload).eq('id', noticeId);
+    } catch (e) {
+      console.warn('Supabase notice update fallback:', e);
+    }
   };
 
-  const deleteNotice = (noticeId) => {
+  const deleteNotice = async (noticeId) => {
     setNotices(prev => prev.filter(n => n.id !== noticeId));
+    try {
+      await supabase.from('notices').delete().eq('id', noticeId);
+    } catch (e) {
+      console.warn('Supabase notice delete fallback:', e);
+    }
   };
 
   const markNoticeAsRead = (noticeId) => {

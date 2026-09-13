@@ -135,7 +135,15 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
   const [editingNotice, setEditingNotice] = useState(null);
   const [isNoticeEditModalOpen, setIsNoticeEditModalOpen] = useState(false);
 
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [editModeState, setEditModeState] = useState(false);
+  const isEditMode = isDeveloper && editModeState;
+  const setIsEditMode = (val) => {
+    if (!isDeveloper) {
+      setEditModeState(false);
+      return;
+    }
+    setEditModeState(typeof val === 'function' ? val(editModeState) : val);
+  };
   const [editingSection, setEditingSection] = useState(null);
   const [isAddCustomModalOpen, setIsAddCustomModalOpen] = useState(false);
 
@@ -1596,55 +1604,57 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
         </div>
       )}
 
-      {/* Floating / Sticky Visual Customizer Toggle Toolbar */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 flex items-center justify-between gap-4 flex-wrap">
-        <div className="inline-flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-            {lang === 'kn' ? 'ಮುಖಪುಟ ಲೇಔಟ್ ಮೋಡ್:' : 'Home Page Layout:'}
-          </span>
-          <button
-            onClick={() => setIsEditMode(!isEditMode)}
-            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all ${
-              isEditMode
-                ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-500/40'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950 hover:text-emerald-700'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>
-              {isEditMode 
-                ? (lang === 'kn' ? '✓ ಸಂಪಾದನೆ ಮೋಡ್ ಆಕ್ಟಿವ್' : '✓ Visual Editor Active') 
-                : (lang === 'kn' ? '🛠️ ಮುಖಪುಟ ವಿನ್ಯಾಸ ಸಂಪಾದಿಸಿ' : '🛠️ Customize Home Page')
-              }
+      {/* Floating / Sticky Visual Customizer Toggle Toolbar (Developer only) */}
+      {isDeveloper && (
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 flex items-center justify-between gap-4 flex-wrap">
+          <div className="inline-flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              {lang === 'kn' ? 'ಮುಖಪುಟ ಲೇಔಟ್ ಮೋಡ್:' : 'Home Page Layout:'}
             </span>
-          </button>
-        </div>
-
-        {isEditMode && (
-          <div className="flex items-center gap-2 flex-wrap text-xs">
             <button
-              onClick={() => setIsAddCustomModalOpen(true)}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1 shadow-sm"
+              onClick={() => setIsEditMode(!isEditMode)}
+              className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all ${
+                isEditMode
+                  ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-500/40'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950 hover:text-emerald-700'
+              }`}
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{lang === 'kn' ? '+ ಕಸ್ಟಮ್ ಬ್ಯಾನರ್ ಸೇರಿಸಿ' : '+ Add Custom Banner'}</span>
-            </button>
-            <button
-              onClick={resetHomeSections}
-              className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-300 rounded-xl font-bold flex items-center gap-1"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>{lang === 'kn' ? 'ಡಿಫಾಲ್ಟ್‌ಗೆ ಮರುಹೊಂದಿಸಿ' : 'Reset Defaults'}</span>
-            </button>
-            <button
-              onClick={() => setIsEditMode(false)}
-              className="px-3 py-1.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-xl font-bold"
-            >
-              {lang === 'kn' ? 'ಮುಗಿಸಿ' : 'Done'}
+              <Sliders className="w-3.5 h-3.5" />
+              <span>
+                {isEditMode 
+                  ? (lang === 'kn' ? '✓ ಸಂಪಾದನೆ ಮೋಡ್ ಆಕ್ಟಿವ್' : '✓ Visual Editor Active') 
+                  : (lang === 'kn' ? '🛠️ ಮುಖಪುಟ ವಿನ್ಯಾಸ ಸಂಪಾದಿಸಿ' : '🛠️ Customize Home Page')
+                }
+              </span>
             </button>
           </div>
-        )}
-      </div>
+
+          {isEditMode && (
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <button
+                onClick={() => setIsAddCustomModalOpen(true)}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1 shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{lang === 'kn' ? '+ ಕಸ್ಟಮ್ ಬ್ಯಾನರ್ ಸೇರಿಸಿ' : '+ Add Custom Banner'}</span>
+              </button>
+              <button
+                onClick={resetHomeSections}
+                className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-300 rounded-xl font-bold flex items-center gap-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{lang === 'kn' ? 'ಡಿಫಾಲ್ಟ್‌ಗೆ ಮರುಹೊಂದಿಸಿ' : 'Reset Defaults'}</span>
+              </button>
+              <button
+                onClick={() => setIsEditMode(false)}
+                className="px-3 py-1.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-xl font-bold"
+              >
+                {lang === 'kn' ? 'ಮುಗಿಸಿ' : 'Done'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Render Dynamic Sections with In-Place Relocation / Edit Toolbars */}
       {homeSections.map((sec, idx) => {
@@ -1748,7 +1758,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
       })}
 
       {/* EDIT SECTION MODAL */}
-      {editingSection && (
+      {isDeveloper && editingSection && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -2017,7 +2027,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
       )}
 
       {/* ADD CUSTOM BANNER MODAL */}
-      {isAddCustomModalOpen && (
+      {isDeveloper && isAddCustomModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
