@@ -32,6 +32,24 @@ export const DEFAULT_HOME_SECTIONS = [
     ctaSecondaryTarget: 'exams'
   },
   {
+    id: 'notice_board',
+    type: 'notice_board',
+    isVisible: true,
+    titleKn: '📢 ಅಧಿಕೃತ ಪ್ರಕಟಣಾ ಫಲಕ (Official Notice Board & Circulars)',
+    titleEn: '📢 Official Notice Board & Recruitment Updates',
+    subtitleKn: 'KPSC, HSTR, VAO, ಪೊಲೀಸ್ ಮತ್ತು ಶಿಕ್ಷಕರ ನೇಮಕಾತಿಗಳ ಅಧಿಕೃತ ಸಿಲಬಸ್, ಸುತ್ತೋಲೆಗಳು (PDF/ಚಿತ್ರ/ಮಾಹಿತಿ).',
+    subtitleEn: 'Official government circulars, recruitment notifications, syllabus PDFs & key updates.'
+  },
+  {
+    id: 'recent_updates',
+    type: 'recent_updates',
+    isVisible: true,
+    titleKn: '🔔 ಇತ್ತೀಚಿನ ಹೊಸ ಸೇರ್ಪಡೆಗಳು & ಅಪ್‌ಡೇಟ್‌ಗಳು (Latest Releases & Notifications)',
+    titleEn: '🔔 Recently Added Tests & Digital Notes',
+    subtitleKn: 'ವೇದಿಕೆಗೆ ಹೊಸದಾಗಿ ಸೇರಿಸಲಾದ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು ಮತ್ತು ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳ ತಕ್ಷಣದ ನೇರ ಮಾಹಿತಿ.',
+    subtitleEn: 'Instant live updates on latest mock tests and digital study notes added.'
+  },
+  {
     id: 'rapid_quiz',
     type: 'rapid_quiz',
     isVisible: true,
@@ -161,24 +179,6 @@ export const DEFAULT_HOME_SECTIONS = [
     titleEn: 'Start Your Exam Preparation Journey Today!',
     subtitleKn: 'ಸಾವಿರಾರು ಯಶಸ್ವಿ ಆಕಾಂಕ್ಷಿಗಳೊಂದಿಗೆ ಕೈಜೋಡಿಸಿ. ಉಚಿತ ಟೆಸ್ಟ್ ಬರೆಯಿರಿ ಅಥವಾ ನೋಟ್ಸ್ ಓದಿ.',
     subtitleEn: 'Join thousands of dedicated aspirants preparing with confidence.'
-  },
-  {
-    id: 'notice_board',
-    type: 'notice_board',
-    isVisible: true,
-    titleKn: '📢 ಅಧಿಕೃತ ಪ್ರಕಟಣಾ ಫಲಕ (Official Notice Board & Circulars)',
-    titleEn: '📢 Official Notice Board & Recruitment Updates',
-    subtitleKn: 'KPSC, HSTR, VAO, ಪೊಲೀಸ್ ಮತ್ತು ಶಿಕ್ಷಕರ ನೇಮಕಾತಿಗಳ ಅಧಿಕೃತ ಸಿಲಬಸ್, ಸುತ್ತೋಲೆಗಳು (PDF/ಚಿತ್ರ/ಮಾಹಿತಿ).',
-    subtitleEn: 'Official government circulars, recruitment notifications, syllabus PDFs & key updates.'
-  },
-  {
-    id: 'recent_updates',
-    type: 'recent_updates',
-    isVisible: true,
-    titleKn: '🔔 ಇತ್ತೀಚಿನ ಹೊಸ ಸೇರ್ಪಡೆಗಳು & ಅಪ್‌ಡೇಟ್‌ಗಳು (Latest Releases & Notifications)',
-    titleEn: '🔔 Recently Added Tests & Digital Notes',
-    subtitleKn: 'ವೇದಿಕೆಗೆ ಹೊಸದಾಗಿ ಸೇರಿಸಲಾದ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು ಮತ್ತು ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳ ತಕ್ಷಣದ ನೇರ ಮಾಹಿತಿ.',
-    subtitleEn: 'Instant live updates on latest mock tests and digital study notes added.'
   }
 ];
 
@@ -263,10 +263,10 @@ const STORAGE_KEYS = {
   MISTAKES: 'adhyayana_mistakes_v2',
   LEADERBOARD: 'adhyayana_leaderboard_v2',
   REFERRALS: 'adhyayana_referrals_v2',
-  HOME_SECTIONS: 'adhyayana_home_sections_v2',
-  READ_NOTES: 'adhyayana_read_notes_v2',
-  NOTICES: 'adhyayana_notices_v2',
-  READ_NOTICES: 'adhyayana_read_notices_v2',
+  HOME_SECTIONS: 'adhyayana_home_sections_v3',
+  READ_NOTES: 'adhyayana_read_notes_v3',
+  NOTICES: 'adhyayana_notices_v3',
+  READ_NOTICES: 'adhyayana_read_notices_v3',
   FOOTER_CONFIG: 'adhyayana_footer_v2',
   EMAIL_CONFIG: 'adhyayana_email_config_v2'
 };
