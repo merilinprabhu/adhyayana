@@ -299,6 +299,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     updateSubject,
     deleteSubject,
     addTest, 
+    updateTest,
     deleteTest, 
     addNote, 
     deleteNote, 
@@ -313,6 +314,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
   const [copiedSql, setCopiedSql] = useState(false);
   const [seedResult, setSeedResult] = useState('');
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const [editingTestId, setEditingTestId] = useState(null);
   
   // Payment Settings Form State
   const [devUpiInput, setDevUpiInput] = useState(developerUpiId || 'merilinprabhugk@okaxis');
@@ -740,7 +742,58 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     showToast(lang === 'kn' ? 'Razorpay Key ID ಉಳಿಸಲಾಗಿದೆ!' : 'Razorpay Key ID Updated & Saved!');
   };
 
-  // Handle Test Creation
+  // Handle Test Edit Start
+  const handleStartEditTest = (testToEdit) => {
+    setEditingTestId(testToEdit.id);
+    setActiveTab('tests');
+    setTestForm({
+      examId: testToEdit.examId || exams[0]?.id || '',
+      subjectId: testToEdit.subjectId || '',
+      title: testToEdit.title || '',
+      titleKn: testToEdit.titleKn || testToEdit.title || '',
+      durationMinutes: testToEdit.durationMinutes || 30,
+      totalMarks: testToEdit.totalMarks || 50,
+      negativeMarking: testToEdit.negativeMarking !== undefined ? testToEdit.negativeMarking : 0.25,
+      price: testToEdit.price !== undefined ? testToEdit.price : 49,
+      isFree: Boolean(testToEdit.isFree),
+      freeQuestionsCount: testToEdit.freeQuestionsCount !== undefined ? testToEdit.freeQuestionsCount : 5,
+      sourceType: testToEdit.sourceType || (testToEdit.gsheetUrl ? 'gsheet_url' : 'manual'),
+      gsheetUrl: testToEdit.gsheetUrl || '',
+      gsheetCsvData: GOOGLE_SHEET_TEMPLATE_SAMPLE,
+      questions: Array.isArray(testToEdit.questions) ? testToEdit.questions : []
+    });
+    if (testToEdit.questions && testToEdit.questions.length > 0) {
+      setParsedPreview({ count: testToEdit.questions.length, questions: testToEdit.questions });
+    } else {
+      setParsedPreview(null);
+    }
+    showToast(lang === 'kn' ? `ಟೆಸ್ಟ್ "${testToEdit.title}" ಅನ್ನು ತಿದ್ದುಪಡಿ ಮಾಡಲು ಲೋಡ್ ಮಾಡಲಾಗಿದೆ.` : `Loaded "${testToEdit.title}" for editing.`);
+  };
+
+  // Handle Cancel Test Edit
+  const handleCancelEditTest = () => {
+    setEditingTestId(null);
+    setTestForm({
+      examId: exams[0]?.id || '',
+      subjectId: '',
+      title: '',
+      titleKn: '',
+      durationMinutes: 30,
+      totalMarks: 50,
+      negativeMarking: 0.25,
+      price: 49,
+      isFree: false,
+      freeQuestionsCount: 5,
+      sourceType: 'gsheet_url',
+      gsheetUrl: '',
+      gsheetCsvData: GOOGLE_SHEET_TEMPLATE_SAMPLE,
+      questions: []
+    });
+    setParsedPreview(null);
+    setParseError('');
+  };
+
+  // Handle Test Creation / Update
   const handleCreateTest = async (e) => {
     e.preventDefault();
     if (!testForm.title) return;
@@ -767,8 +820,8 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       }
       finalQuestions = testForm.questions;
     } else {
-      // GDrive link
-      finalQuestions = [
+      // GDrive link or existing
+      finalQuestions = testForm.questions.length > 0 ? testForm.questions : [
         {
           id: 'q_drive_1',
           question: 'Refer to Google Drive attached question paper.',
@@ -784,7 +837,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
 
     const selectedSubj = subjects.find(s => s.id === testForm.subjectId);
 
-    await addTest({
+    const testPayload = {
       ...testForm,
       subjectId: testForm.subjectId || null,
       subjectName: selectedSubj?.name || null,
@@ -795,9 +848,17 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       totalMarks: Number(testForm.totalMarks),
       negativeMarking: Number(testForm.negativeMarking),
       questions: finalQuestions
-    });
+    };
 
-    showToast(lang === 'kn' ? 'ಹೊಸ ಟೆಸ್ಟ್ ಸೇರಿಸಲಾಗಿದೆ & ಕ್ಲೌಡ್‌ನಲ್ಲಿ ಲಭ್ಯ!' : 'New Dynamic Test Published Successfully!');
+    if (editingTestId) {
+      await updateTest(editingTestId, testPayload);
+      showToast(lang === 'kn' ? 'ಟೆಸ್ಟ್ ವಿವರಗಳು ಯಶಸ್ವಿಯಾಗಿ ನವೀಕರಿಸಲ್ಪಟ್ಟಿವೆ!' : 'Test updated and synced successfully!');
+      setEditingTestId(null);
+    } else {
+      await addTest(testPayload);
+      showToast(lang === 'kn' ? 'ಹೊಸ ಟೆಸ್ಟ್ ಸೇರಿಸಲಾಗಿದೆ & ಕ್ಲೌಡ್‌ನಲ್ಲಿ ಲಭ್ಯ!' : 'New Dynamic Test Published Successfully!');
+    }
+
     setTestForm({
       examId: exams[0]?.id || '',
       subjectId: '',
@@ -918,89 +979,89 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       )}
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex overflow-x-auto no-scrollbar gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
         <button
           onClick={() => setActiveTab('database')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === 'database'
               ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
-          <Server className="w-4 h-4" />
-          <span>⚡ Supabase Cloud Database</span>
+          <Server className="w-4 h-4 shrink-0" />
+          <span>⚡ Supabase Database</span>
         </button>
 
         <button
           onClick={() => setActiveTab('exams')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === 'exams'
               ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
-          <Layers className="w-4 h-4" />
-          <span>1. Manage Exams ({exams.length})</span>
+          <Layers className="w-4 h-4 shrink-0" />
+          <span>1. Exams ({exams.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('subjects')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === 'subjects'
               ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
-          <BookMarked className="w-4 h-4" />
-          <span>2. Manage Subjects ({subjects.length})</span>
+          <BookMarked className="w-4 h-4 shrink-0" />
+          <span>2. Subjects ({subjects.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('tests')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === 'tests'
               ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>3. Google Sheets & Tests ({tests.length})</span>
+          <FileSpreadsheet className="w-4 h-4 shrink-0" />
+          <span>3. Tests ({tests.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('notes')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === 'notes'
               ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
-          <FileText className="w-4 h-4" />
-          <span>4. GDrive & Notes ({notes.length})</span>
+          <FileText className="w-4 h-4 shrink-0" />
+          <span>4. Notes ({notes.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('analytics')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === 'analytics'
               ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
-          <QrCode className="w-4 h-4" />
-          <span>5. Direct UPI QR & Payment Settings</span>
+          <QrCode className="w-4 h-4 shrink-0" />
+          <span>5. Payments & QR</span>
         </button>
 
         <button
           onClick={() => setActiveTab('access')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === 'access'
               ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
-          <Users className="w-4 h-4" />
-          <span>6. User Management & Access Control</span>
+          <Users className="w-4 h-4 shrink-0" />
+          <span>6. Users & Access</span>
         </button>
       </div>
 
@@ -1420,10 +1481,32 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
           
           {/* Test Setup Form */}
           <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              Dynamic Test Creator (Google Sheets Auto-Sync)
-            </h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <FileSpreadsheet className={`w-4 h-4 ${editingTestId ? 'text-blue-600' : 'text-emerald-600'}`} />
+                <span>
+                  {editingTestId 
+                    ? (lang === 'kn' ? '✏️ ಟೆಸ್ಟ್ ತಿದ್ದುಪಡಿ / ಅಪ್ಡೇಟ್ (Edit Mock Test)' : '✏️ Edit / Update Mock Test')
+                    : (lang === 'kn' ? 'ಹೊಸ ಟೆಸ್ಟ್ ರಚಿಸಿ (Google Sheets Auto-Sync)' : 'Dynamic Test Creator (Google Sheets Auto-Sync)')
+                  }
+                </span>
+              </h3>
+              {editingTestId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEditTest}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-500 hover:text-red-600 bg-slate-100 dark:bg-slate-800 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  {lang === 'kn' ? '✕ ರದ್ದುಮಾಡಿ' : '✕ Cancel Edit'}
+                </button>
+              )}
+            </div>
+
+            {editingTestId && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between">
+                <span>{lang === 'kn' ? 'ನೀವು ಈಗ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಟೆಸ್ಟ್ ಅನ್ನು ಎಡಿಟ್ ಮಾಡುತ್ತಿದ್ದೀರಿ. ಬದಲಾವಣೆಗಳನ್ನು ಮಾಡಿ "ಅಪ್ಡೇಟ್ ಟೆಸ್ಟ್" ಕ್ಲಿಕ್ ಮಾಡಿ.' : 'You are editing an existing test. Modify questions/details below and click "Update Test".'}</span>
+              </div>
+            )}
 
             <form onSubmit={handleCreateTest} className="space-y-4 text-xs">
               <div>
@@ -1765,10 +1848,19 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2"
+                className={`w-full py-2.5 ${
+                  editingTestId 
+                    ? 'bg-blue-600 hover:bg-blue-700' 
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                } text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2`}
               >
-                <Plus className="w-4 h-4" />
-                <span>Publish Test to Cloud Database</span>
+                {editingTestId ? <CheckCircle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                <span>
+                  {editingTestId 
+                    ? (lang === 'kn' ? '✓ ಟೆಸ್ಟ್ ಬದಲಾವಣೆಗಳನ್ನು ಅಪ್ಡೇಟ್ ಮಾಡಿ (Update Test)' : '✓ Save & Update Mock Test')
+                    : (lang === 'kn' ? 'ಟೆಸ್ಟ್ ಅನ್ನು ಕ್ಲೌಡ್‌ಗೆ ಪ್ರಕಟಿಸಿ (Publish Test)' : 'Publish Test to Cloud Database')
+                  }
+                </span>
               </button>
             </form>
           </div>
@@ -1786,7 +1878,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                 <div className="max-h-40 overflow-y-auto space-y-1.5 text-[11px] text-slate-700 dark:text-slate-300">
                   {parsedPreview.questions.slice(0, 3).map((q, idx) => (
                     <div key={idx} className="p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-                      <p className="font-bold text-slate-800 dark:text-slate-100">Q{idx + 1}: {q.question}</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-100">Q{idx + 1}: {q.question || q.questionKn}</p>
                       <p className="text-[10px] text-emerald-600">Answer: Option {String.fromCharCode(65 + q.correctAnswer)}</p>
                     </div>
                   ))}
@@ -1805,7 +1897,11 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
               {tests.map((t) => (
                 <div
                   key={t.id}
-                  className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4"
+                  className={`p-4 bg-white dark:bg-slate-900 rounded-2xl border ${
+                    editingTestId === t.id 
+                      ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20 dark:bg-blue-950/20' 
+                      : 'border-slate-200 dark:border-slate-800'
+                  } shadow-sm flex items-center justify-between gap-4`}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1830,15 +1926,22 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
 
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => handleStartEditTest(t)}
+                      className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 transition-colors"
+                      title={lang === 'kn' ? 'ಟೆಸ್ಟ್ ತಿದ್ದುಪಡಿ ಮಾಡಿ (Edit Test)' : 'Edit Test'}
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => onSelectTest(t)}
-                      className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:text-emerald-600 text-slate-600"
+                      className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:text-emerald-600 text-slate-600 transition-colors"
                       title="Launch Test"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => deleteTest(t.id)}
-                      className="p-2 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600"
+                      className="p-2 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600 transition-colors"
                       title="Delete Test"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -2995,6 +3098,22 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                                         <CheckCircle2 className="w-3.5 h-3.5" />
                                         <span>{lang === 'kn' ? 'ಪ್ರವೇಶ ನೀಡಿ (Restore)' : 'Restore Access'}</span>
                                       </button>
+                                    )}
+
+                                    {/* Send WhatsApp Confirmation Dispatcher */}
+                                    {isActive && (
+                                      <a
+                                        href={`https://wa.me/?text=${encodeURIComponent(
+                                          `🎉 *ನಮಸ್ಕಾರ ${selectedUser.name || 'ವಿದ್ಯಾರ್ಥಿ'}*,\nನಿಮ್ಮ *ಅಧ್ಯಯನ (ADHYAYANA)* ಖಾತೆಗೆ *"${item.examTitle || item.examId}"* ಪ್ರವೇಶವನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ!\n\n✅ *ಸ್ಥಿತಿ:* ಮಂಜೂರಾಗಿದೆ (Approved & Active)\n⏳ *ವ್ಯಾಲಿಡಿಟಿ:* ${getPurchaseExpiryLabel(item.validUntil, 'kn')}\n🌐 *ಲಾಗಿನ್ ಆಗಿ ಕಲಿಯಲು ಭೇಟಿ ನೀಡಿ:* ${window.location.origin}\n\nಧನ್ಯವಾದಗಳು ಮತ್ತು ನಿಮ್ಮ ಪರೀಕ್ಷಾ ಸಿದ್ಧತೆಗೆ ಶುಭವಾಗಲಿ! 🎯`
+                                        )}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1 transition-all"
+                                        title={lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗೆ WhatsApp ನಲ್ಲಿ ಅನುಮೋದನೆ ಸಂದೇಶ ಕಳುಹಿಸಿ' : 'Send WhatsApp Approval Confirmation'}
+                                      >
+                                        <MessageSquare className="w-3.5 h-3.5" />
+                                        <span>WhatsApp</span>
+                                      </a>
                                     )}
 
                                     {/* Revoke item */}

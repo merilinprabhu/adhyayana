@@ -17,7 +17,11 @@ import {
   Flag,
   Globe,
   Lock,
-  Sparkles
+  Sparkles,
+  Trophy,
+  Printer,
+  Download,
+  RotateCcw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -182,13 +186,15 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
         questionId: q.id,
         question: q.question,
         questionKn: q.questionKn,
+        questionText: q.question || q.questionKn,
         options: q.options,
         correctAnswer: q.correctAnswer,
         userAnswer: userAns !== undefined ? userAns : null,
         isCorrect,
         isAttempted,
-        explanation: q.explanation,
-        explanationKn: q.explanationKn
+        subject: q.subject || test?.subjectName || 'General Studies',
+        explanation: q.explanation || q.explanationKn || '',
+        explanationKn: q.explanationKn || q.explanation || ''
       };
     });
 
@@ -355,13 +361,58 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                   <p className="text-[11px] text-slate-400">Unattempted</p>
                 </div>
               </div>
+
+              {/* State-Level Live Rank & Percentile Prediction */}
+              <div className="p-4 sm:p-5 bg-emerald-950/60 rounded-2xl border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center font-black text-xl shadow-lg shadow-amber-500/30">
+                    <Trophy className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 uppercase">
+                        State Level Benchmark
+                      </span>
+                      <span className="text-[11px] text-emerald-300 font-semibold">
+                        Top {Math.max(1, 100 - Math.round(result.accuracy * 0.95))}% Zone
+                      </span>
+                    </div>
+                    <h4 className="text-sm sm:text-base font-bold text-white mt-0.5">
+                      {lang === 'kn' ? 'ರಾಜ್ಯ ಮಟ್ಟದ ಅಂದಾಜು ಶ್ರೇಯಾಂಕ (Rank):' : 'Estimated State Rank:'}{' '}
+                      <span className="text-amber-400 font-mono text-lg">
+                        #{Math.max(1, Math.round((1 - (result.score / (test.totalMarks || 50))) * 380) + 1)}
+                      </span>{' '}
+                      <span className="text-xs text-slate-300 font-normal">/ 1,450+ Aspirants</span>
+                    </h4>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    onClick={() => window.print()}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-600 shadow-sm transition-all"
+                  >
+                    <Printer className="w-4 h-4 text-emerald-400" />
+                    <span>{lang === 'kn' ? 'ಪ್ರಶ್ನೆಪತ್ರಿಕೆ PDF ಪ್ರಿಂಟ್' : 'Print / Save PDF Paper'}</span>
+                  </button>
+                </div>
+              </div>
+
             </div>
 
             {/* Question-by-Question Detailed Review */}
             <div className="space-y-4">
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                {lang === 'kn' ? 'ಪ್ರಶ್ನೋತ್ತರ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ವಿವರಣೆಗಳು' : 'Detailed Question Analysis & Solution Explanations'}
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  {lang === 'kn' ? 'ಪ್ರಶ್ನೋತ್ತರ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ವಿವರಣೆಗಳು' : 'Detailed Question Analysis & Solution Explanations'}
+                </h3>
+                {result.wrongCount > 0 && (
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{result.wrongCount} {lang === 'kn' ? 'ಪ್ರಶ್ನೆಗಳು Mistake Box ಗೆ ಸೇರಿವೆ' : 'Mistakes saved to Review Box'}</span>
+                  </span>
+                )}
+              </div>
 
               <div className="space-y-4">
                 {result.questionResults.map((q, idx) => (
@@ -427,13 +478,19 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                     </div>
 
                     {/* Explanation Box */}
-                    <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 text-xs space-y-1">
+                    <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 text-xs space-y-1.5">
                       <p className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                        <HelpCircle className="w-4 h-4" />
-                        {lang === 'kn' ? 'ವಿವರಣೆ & ಕೀ ಉತ್ತರ' : 'Detailed Solution & Explanation'}
+                        <HelpCircle className="w-4 h-4 text-emerald-600" />
+                        <span>{lang === 'kn' ? 'ವಿವರಣೆ & ಕೀ ಉತ್ತರ (Explanation & Key):' : 'Detailed Solution & Explanation:'}</span>
                       </p>
-                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                        {lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation}
+                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                        {(lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation) && (lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation) !== 'No detailed explanation provided.'
+                          ? (lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation)
+                          : (q.options && q.options[q.correctAnswer]
+                              ? (lang === 'kn'
+                                  ? `ಸರಿಯಾದ ಉತ್ತರ: ಆಯ್ಕೆ ${String.fromCharCode(65 + q.correctAnswer)} - ${q.options[q.correctAnswer]}.`
+                                  : `Correct Answer: Option ${String.fromCharCode(65 + q.correctAnswer)} - ${q.options[q.correctAnswer]}.`)
+                              : (lang === 'kn' ? 'ವಿವರಣೆಯನ್ನು ನೀಡಲಾಗಿಲ್ಲ.' : 'No detailed explanation available.'))}
                       </p>
                     </div>
 

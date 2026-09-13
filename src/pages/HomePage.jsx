@@ -21,12 +21,25 @@ import {
   Lightbulb, 
   TrendingUp, 
   Layers,
-  ChevronRight
+  ChevronRight,
+  Flame,
+  PlayCircle,
+  Trophy,
+  Star,
+  PackageCheck
 } from 'lucide-react';
 
-export const HomePage = ({ onNavigate, onOpenAuth }) => {
+export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onOpenAuth, onOpenCheckout }) => {
   const { isAuthenticated, triggerGoogleOAuthLogin } = useAuth();
-  const { lang, subjects, exams } = useData();
+  const { lang, subjects, exams, dailyQuiz, combos, leaderboard } = useData();
+
+  const handleStartDailyQuiz = () => {
+    if (onSelectTest && dailyQuiz) {
+      onSelectTest(dailyQuiz);
+    } else {
+      onNavigate('notes');
+    }
+  };
 
   const corePillars = [
     {
@@ -173,7 +186,156 @@ export const HomePage = ({ onNavigate, onOpenAuth }) => {
         </div>
       </section>
 
-      {/* 2. Mission, Vision & Institutional Goals */}
+      {/* 2. Mega Combo Course Bundles & Special Passes */}
+      {combos && combos.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">
+                <PackageCheck className="w-4 h-4" />
+                <span>{lang === 'kn' ? 'ಮೆಗಾ ಕಾಂಬೊ ಆಫರ್ಸ್' : 'Special Combo Passes'}</span>
+              </div>
+              <h2 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1">
+                {lang === 'kn' ? '🏆 ಅಧ್ಯಯನ ಆಲ್-ಇನ್-ಒನ್ ಕೋರ್ಸ್ ಬಂಡಲ್‌ಗಳು' : '🏆 ADHYAYANA Mega Super Bundles'}
+              </h2>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 rounded-full border border-purple-300 dark:border-purple-800">
+              Up to 90% Discount
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {combos.map((combo) => (
+              <div
+                key={combo.id}
+                className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-white via-slate-50 to-purple-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-purple-950/20 border-2 border-purple-200 dark:border-purple-900/60 shadow-lg relative overflow-hidden flex flex-col justify-between gap-6"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-purple-600 text-white shadow-sm">
+                      {combo.badge}
+                    </span>
+                    <div className="text-right">
+                      <span className="text-xs text-slate-400 line-through mr-1.5 font-bold">₹{combo.originalPrice}</span>
+                      <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">₹{combo.price}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100">
+                      {lang === 'kn' ? combo.titleKn || combo.title : combo.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                      {lang === 'kn' ? combo.descriptionKn || combo.description : combo.description}
+                    </p>
+                  </div>
+
+                  {/* Feature Bullets */}
+                  <div className="space-y-2 pt-2 border-t border-purple-100 dark:border-purple-900/40 text-xs text-slate-700 dark:text-slate-300">
+                    {combo.features.map((feat, fIdx) => (
+                      <div key={fIdx} className="flex items-center gap-2 font-medium">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => onOpenCheckout ? onOpenCheckout(combo) : onNavigate('notes')}
+                  className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 hover:scale-[1.02] transition-all"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>{lang === 'kn' ? `₹${combo.price} - ಮೆಗಾ ಪಾಸ್ ಪಡೆಯಿರಿ (Get Access)` : `Unlock Mega Pass for ₹${combo.price}`}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 3. State-Level Live Benchmark Leaderboard */}
+      {leaderboard && leaderboard.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-amber-500 text-xs font-bold uppercase tracking-wider">
+                <Trophy className="w-4 h-4" />
+                <span>{lang === 'kn' ? 'ರಾಜ್ಯ ಮಟ್ಟದ ಶ್ರೇಯಾಂಕ' : 'State-Level Rankings'}</span>
+              </div>
+              <h2 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1">
+                {lang === 'kn' ? '🥇 ಕರ್ನಾಟಕ ಮಾಕ್ ಟೆಸ್ಟ್ ಲೀಡರ್‌ಬೋರ್ಡ್' : '🥇 Karnataka Aspirants Leaderboard'}
+              </h2>
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+              Live Verified Benchmark
+            </span>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm overflow-x-auto no-scrollbar">
+            <div className="min-w-[500px] space-y-2">
+              <div className="grid grid-cols-12 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+                <span className="col-span-2">Rank</span>
+                <span className="col-span-5">Candidate & District</span>
+                <span className="col-span-2 text-center">Score</span>
+                <span className="col-span-3 text-right">Accuracy / Time</span>
+              </div>
+
+              {leaderboard.slice(0, 5).map((cand, idx) => (
+                <div
+                  key={idx}
+                  className={`grid grid-cols-12 items-center p-3 sm:p-4 rounded-2xl border transition-all text-xs font-semibold ${
+                    idx === 0
+                      ? 'bg-amber-500/10 border-amber-500/40 text-amber-950 dark:text-amber-200'
+                      : idx === 1
+                      ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700'
+                      : idx === 2
+                      ? 'bg-orange-500/10 border-orange-500/30'
+                      : 'bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
+                  }`}
+                >
+                  <div className="col-span-2 flex items-center gap-2">
+                    <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs ${
+                      idx === 0
+                        ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                        : idx === 1
+                        ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
+                        : idx === 2
+                        ? 'bg-orange-400 text-slate-950'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    }`}>
+                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${cand.rank}`}
+                    </span>
+                  </div>
+
+                  <div className="col-span-5 flex items-center gap-2.5">
+                    <img
+                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cand.avatarSeed || cand.name)}`}
+                      alt={cand.name}
+                      className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700"
+                    />
+                    <div className="truncate">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{cand.name}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{cand.district}</p>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                    {cand.score} pts
+                  </div>
+
+                  <div className="col-span-3 text-right">
+                    <span className="font-mono text-xs text-slate-800 dark:text-slate-200 font-bold">{cand.accuracy}%</span>
+                    <span className="text-[10px] text-slate-400 block">{cand.timeMins} mins</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 4. Mission, Vision & Institutional Goals */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           

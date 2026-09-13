@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Watermark } from '../components/Watermark';
@@ -13,7 +13,13 @@ import {
   ExternalLink,
   Lock,
   Printer,
-  FileText
+  FileText,
+  Volume2,
+  VolumeX,
+  Play,
+  Pause,
+  Square,
+  Sparkles
 } from 'lucide-react';
 
 export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
@@ -22,6 +28,92 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
 
   const [fontSize, setFontSize] = useState(16); // px
   const [isSaved, setIsSaved] = useState(false);
+
+  // Audio Voice Reader (TTS) State
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [speechRate, setSpeechRate] = useState(1);
+
+  // Clean text content for audio playback
+  const cleanSpeechText = (rawContent) => {
+    if (!rawContent) return '';
+    return rawContent
+      .replace(/#+\s/g, '')
+      .replace(/[-*]\s/g, '')
+      .replace(/[*_~`]/g, '')
+      .replace(/---/g, '')
+      .trim();
+  };
+
+  const handleTogglePlayAudio = () => {
+    if (!window.speechSynthesis) {
+      alert('Audio reader is not supported in your browser.');
+      return;
+    }
+
+    if (isSpeaking && !isPaused) {
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+      return;
+    }
+
+    if (isSpeaking && isPaused) {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+      return;
+    }
+
+    // Start fresh speech
+    window.speechSynthesis.cancel();
+    const textToRead = `${note.title}. ${cleanSpeechText(note.content)}`;
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.rate = speechRate;
+    
+    // Try to find Kannada voice if available, or fallback
+    const voices = window.speechSynthesis.getVoices();
+    const knVoice = voices.find(v => v.lang.includes('kn') || v.name.toLowerCase().includes('kannada') || v.lang.includes('hi'));
+    if (knVoice) {
+      utterance.voice = knVoice;
+    }
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+    setIsPaused(false);
+  };
+
+  const handleStopAudio = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setIsPaused(false);
+  };
+
+  const handleChangeRate = () => {
+    const nextRate = speechRate === 1 ? 1.25 : speechRate === 1.25 ? 1.5 : 1;
+    setSpeechRate(nextRate);
+    if (isSpeaking) {
+      handleStopAudio();
+      setTimeout(handleTogglePlayAudio, 150);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   if (!note) return null;
 
@@ -88,6 +180,42 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
 
         {/* Reader Controls */}
         <div className="flex items-center gap-2">
+          
+          {/* Audio Voice Reader Button */}
+          {hasAccess && note.fileType !== 'gdrive_pdf' && (
+            <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 px-2 py-1 rounded-xl">
+              <button
+                onClick={handleTogglePlayAudio}
+                className="p-1 text-emerald-700 dark:text-emerald-300 hover:scale-110 transition-transform font-bold text-xs flex items-center gap-1"
+                title={isSpeaking && !isPaused ? "Pause Audio" : "Play Voice Notes"}
+              >
+                {isSpeaking && !isPaused ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-emerald-600" />}
+                <span className="hidden md:inline text-[11px]">
+                  {isSpeaking && !isPaused ? (lang === 'kn' ? 'ವಿರಾಮ' : 'Pause') : (lang === 'kn' ? 'ಆಡಿಯೋ ಕೇಳಿ' : 'Listen Audio')}
+                </span>
+              </button>
+
+              {isSpeaking && (
+                <>
+                  <button
+                    onClick={handleChangeRate}
+                    className="px-1.5 py-0.5 rounded bg-emerald-200 dark:bg-emerald-900 text-[10px] font-mono font-bold text-emerald-800 dark:text-emerald-200"
+                    title="Change Voice Speed"
+                  >
+                    {speechRate}x
+                  </button>
+                  <button
+                    onClick={handleStopAudio}
+                    className="p-1 text-red-500 hover:text-red-700"
+                    title="Stop Audio"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Zoom Buttons */}
           <div className="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <button

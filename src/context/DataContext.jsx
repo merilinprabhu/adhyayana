@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { INITIAL_EXAMS, INITIAL_TESTS, INITIAL_NOTES, INITIAL_SUBJECTS } from '../data/initialData';
+import { 
+  INITIAL_EXAMS, 
+  INITIAL_TESTS, 
+  INITIAL_NOTES, 
+  INITIAL_SUBJECTS,
+  INITIAL_DAILY_QUIZ,
+  INITIAL_COMBOS,
+  INITIAL_LEADERBOARD
+} from '../data/initialData';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -20,6 +28,11 @@ const STORAGE_KEYS = {
   DEV_PHONE: 'adhyayana_dev_phone_v2',
   DEV_NAME: 'adhyayana_dev_name_v2',
   DEV_QR_IMAGE: 'adhyayana_dev_qr_image_v2',
+  DAILY_QUIZ: 'adhyayana_daily_quiz_v2',
+  COMBOS: 'adhyayana_combos_v2',
+  MISTAKES: 'adhyayana_mistakes_v2',
+  LEADERBOARD: 'adhyayana_leaderboard_v2',
+  REFERRALS: 'adhyayana_referrals_v2'
 };
 
 export const DataProvider = ({ children }) => {
@@ -137,6 +150,56 @@ export const DataProvider = ({ children }) => {
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
+    }
+  });
+
+  // Daily Rapid Quiz
+  const [dailyQuiz, setDailyQuiz] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.DAILY_QUIZ);
+      return saved ? JSON.parse(saved) : INITIAL_DAILY_QUIZ;
+    } catch {
+      return INITIAL_DAILY_QUIZ;
+    }
+  });
+
+  // Course Combos & Mega Packs
+  const [combos, setCombos] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.COMBOS);
+      return saved ? JSON.parse(saved) : INITIAL_COMBOS;
+    } catch {
+      return INITIAL_COMBOS;
+    }
+  });
+
+  // Mistake Box (Questions answered incorrectly across tests)
+  const [mistakes, setMistakes] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.MISTAKES);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // State-Level Leaderboard
+  const [leaderboard, setLeaderboard] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.LEADERBOARD);
+      return saved ? JSON.parse(saved) : INITIAL_LEADERBOARD;
+    } catch {
+      return INITIAL_LEADERBOARD;
+    }
+  });
+
+  // Referral Stats
+  const [referrals, setReferrals] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.REFERRALS);
+      return saved ? JSON.parse(saved) : { count: 3, points: 60 };
+    } catch {
+      return { count: 3, points: 60 };
     }
   });
 
@@ -435,6 +498,26 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, razorpayKeyId);
   }, [razorpayKeyId]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.DAILY_QUIZ, JSON.stringify(dailyQuiz));
+  }, [dailyQuiz]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.COMBOS, JSON.stringify(combos));
+  }, [combos]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(mistakes));
+  }, [mistakes]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.LEADERBOARD, JSON.stringify(leaderboard));
+  }, [leaderboard]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(referrals));
+  }, [referrals]);
 
   // 1-Click Push / Seed All Current Local & Template Data to Supabase Database
   const seedSupabaseDatabase = async () => {
@@ -753,8 +836,24 @@ export const DataProvider = ({ children }) => {
   const updateTest = async (id, updatedFields) => {
     setTests(prev => prev.map(t => t.id === id ? { ...t, ...updatedFields } : t));
     try {
-      await supabase.from('tests').update(updatedFields).eq('id', id);
-    } catch (e) {}
+      const dbPayload = {
+        title: updatedFields.title,
+        title_kn: updatedFields.titleKn || updatedFields.title,
+        exam_id: updatedFields.examId,
+        subject_id: updatedFields.subjectId,
+        duration_minutes: updatedFields.durationMinutes,
+        total_marks: updatedFields.totalMarks,
+        negative_marking: updatedFields.negativeMarking,
+        source_type: updatedFields.sourceType,
+        price: updatedFields.price !== undefined ? Number(updatedFields.price) : 0,
+        is_free: updatedFields.isFree !== undefined ? updatedFields.isFree : (Number(updatedFields.price) === 0),
+        free_questions_count: updatedFields.freeQuestionsCount,
+        questions: updatedFields.questions
+      };
+      await supabase.from('tests').update(dbPayload).eq('id', id);
+    } catch (e) {
+      console.warn('Update test Supabase sync notice:', e);
+    }
   };
 
   const deleteTest = async (id) => {
@@ -814,71 +913,170 @@ export const DataProvider = ({ children }) => {
     } catch (e) {}
   };
 
-  // Helper: Live Fetch Google Sheet CSV by URL
+  // Helper: Live Fetch Google Sheet CSV by URL (Preserves tab gid and handles all URL variations)
   const fetchLiveGoogleSheetCSV = async (sheetUrl) => {
     try {
-      let exportUrl = sheetUrl.trim();
-      // Auto convert standard Google Sheet URL to CSV export URL
-      if (exportUrl.includes('/edit')) {
-        exportUrl = exportUrl.replace(/\/edit.*$/, '/export?format=csv');
-      } else if (!exportUrl.includes('export?format=csv') && !exportUrl.includes('output=csv')) {
-        exportUrl = exportUrl.endsWith('/') ? exportUrl + 'export?format=csv' : exportUrl + '/export?format=csv';
+      let rawUrl = (sheetUrl || '').trim();
+      if (!rawUrl) throw new Error('Sheet URL cannot be empty.');
+
+      // Extract Google Sheet Document ID
+      const docIdMatch = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!docIdMatch || !docIdMatch[1]) {
+        throw new Error('Invalid Google Sheet URL. Please provide a valid link from Google Sheets.');
       }
+      const docId = docIdMatch[1];
+
+      // Extract GID (Specific Sheet Tab ID) if present (e.g. ?gid=1232586770 or #gid=1232586770)
+      const gidMatch = rawUrl.match(/[?&#]gid=([0-9]+)/);
+      const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
+
+      const exportUrl = `https://docs.google.com/spreadsheets/d/${docId}/export?format=csv${gidParam}`;
 
       const res = await fetch(exportUrl);
-      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`Google Sheets returned HTTP ${res.status}. Please ensure the sheet Sharing is set to "Anyone with the link can view".`);
+      }
       const csvText = await res.text();
       return parseGoogleSheetCSV(csvText);
     } catch (e) {
-      return { success: false, error: `Could not fetch Google Sheet CSV: ${e.message}` };
+      return { success: false, error: `Could not fetch Google Sheet: ${e.message}` };
     }
   };
 
-  // Helper: Parse CSV / Google Sheets Export
+  // Helper: Robust RFC-4180 Multi-format CSV & TSV Parser (Supports Copy-Paste from Google Sheets & CSV export)
   const parseGoogleSheetCSV = (csvText) => {
-    const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
-    if (lines.length < 2) return { success: false, error: 'CSV file is empty or missing data rows' };
+    if (!csvText || typeof csvText !== 'string' || csvText.trim().length === 0) {
+      return { success: false, error: 'Google Sheet / CSV data is empty.' };
+    }
 
-    const parseCSVLine = (text) => {
-      const result = [];
-      let current = '';
-      let inQuotes = false;
-      for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-          result.push(current.trim().replace(/^"|"$/g, ''));
-          current = '';
+    const trimmed = csvText.trim();
+    // Detect delimiter: tab (\t) or comma (,)
+    const firstLine = trimmed.split(/\r?\n/)[0] || '';
+    const tabCount = (firstLine.match(/\t/g) || []).length;
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const delimiter = tabCount > 0 && tabCount >= commaCount ? '\t' : ',';
+
+    // Parse all rows and columns with quotes and newline support
+    const rows = [];
+    let currentRow = [];
+    let currentField = '';
+    let insideQuotes = false;
+
+    for (let i = 0; i < trimmed.length; i++) {
+      const char = trimmed[i];
+      const nextChar = trimmed[i + 1];
+
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          currentField += '"';
+          i++; // Skip escaped quote
         } else {
-          current += char;
+          insideQuotes = !insideQuotes;
         }
+      } else if (char === delimiter && !insideQuotes) {
+        currentRow.push(currentField.trim().replace(/^"|"$/g, '').trim());
+        currentField = '';
+      } else if ((char === '\r' || char === '\n') && !insideQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        currentRow.push(currentField.trim().replace(/^"|"$/g, '').trim());
+        if (currentRow.some(c => c.length > 0)) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentField = '';
+      } else {
+        currentField += char;
       }
-      result.push(current.trim().replace(/^"|"$/g, ''));
-      return result;
-    };
+    }
 
+    if (currentField.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentField.trim().replace(/^"|"$/g, '').trim());
+      if (currentRow.some(c => c.length > 0)) {
+        rows.push(currentRow);
+      }
+    }
+
+    if (rows.length === 0) {
+      return { success: false, error: 'No valid data rows found in Google Sheet.' };
+    }
+
+    // Helper to identify header columns dynamically
+    const headerRow = rows[0].map(h => String(h || '').toLowerCase().trim());
+    let qCol = 0;
+    let optACol = 1;
+    let optBCol = 2;
+    let optCCol = 3;
+    let optDCol = 4;
+    let ansCol = 5;
+    let expCol = 6;
+    let subjCol = 7;
+
+    let hasHeader = false;
+    headerRow.forEach((colName, idx) => {
+      if (colName.includes('question') || colName.includes('ಪ್ರಶ್ನೆ')) { qCol = idx; hasHeader = true; }
+      else if (colName.includes('option a') || colName.includes('opt a') || colName === 'a' || colName.includes('ಆಯ್ಕೆ a') || colName.includes('ಆಯ್ಕೆ ೧') || colName.includes('ಆಯ್ಕೆ-1')) { optACol = idx; hasHeader = true; }
+      else if (colName.includes('option b') || colName.includes('opt b') || colName === 'b' || colName.includes('ಆಯ್ಕೆ b') || colName.includes('ಆಯ್ಕೆ ೨') || colName.includes('ಆಯ್ಕೆ-2')) { optBCol = idx; hasHeader = true; }
+      else if (colName.includes('option c') || colName.includes('opt c') || colName === 'c' || colName.includes('ಆಯ್ಕೆ c') || colName.includes('ಆಯ್ಕೆ ೩') || colName.includes('ಆಯ್ಕೆ-3')) { optCCol = idx; hasHeader = true; }
+      else if (colName.includes('option d') || colName.includes('opt d') || colName === 'd' || colName.includes('ಆಯ್ಕೆ d') || colName.includes('ಆಯ್ಕೆ ೪') || colName.includes('ಆಯ್ಕೆ-4')) { optDCol = idx; hasHeader = true; }
+      else if (colName.includes('correct') || colName.includes('answer') || colName.includes('key') || colName.includes('ಸರಿ ಉತ್ತರ') || colName.includes('ಉತ್ತರ')) { ansCol = idx; hasHeader = true; }
+      else if (colName.includes('explanation') || colName.includes('solution') || colName.includes('ವಿವರಣೆ') || colName.includes('ಟಿಪ್ಪಣಿ')) { expCol = idx; hasHeader = true; }
+      else if (colName.includes('subject') || colName.includes('topic') || colName.includes('ವಿಷಯ') || colName.includes('category')) { subjCol = idx; hasHeader = true; }
+    });
+
+    const startRowIdx = hasHeader ? 1 : 0;
     const questions = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const row = parseCSVLine(lines[i]);
-      if (row.length < 5) continue;
+    // Helper: Parse Correct Answer to 0, 1, 2, 3
+    const parseAnswerIndex = (val) => {
+      if (!val) return 0;
+      const str = String(val).trim().toUpperCase();
+      if (/^(A|0|೧|OPTION\s*A|\(A\))/i.test(str)) return 0;
+      if (/^(B|1|೨|OPTION\s*B|\(B\))/i.test(str)) return 1;
+      if (/^(C|2|೩|OPTION\s*C|\(C\))/i.test(str)) return 2;
+      if (/^(D|3|೪|OPTION\s*D|\(D\))/i.test(str)) return 3;
 
-      const questionText = row[0] || `Question ${i}`;
-      const optA = row[1] || 'Option A';
-      const optB = row[2] || 'Option B';
-      const optC = row[3] || 'Option C';
-      const optD = row[4] || 'Option D';
+      if (str.includes('B') || str.includes('1') || str.includes('೨')) return 1;
+      if (str.includes('C') || str.includes('2') || str.includes('೩')) return 2;
+      if (str.includes('D') || str.includes('3') || str.includes('೪')) return 3;
+      if (str.includes('A') || str.includes('0') || str.includes('೧')) return 0;
+      return 0;
+    };
+
+    for (let i = startRowIdx; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length < 2) continue;
+
+      const questionText = (row[qCol] || '').trim();
+      if (!questionText) continue;
+
+      const optA = (row[optACol] || 'Option A').trim();
+      const optB = (row[optBCol] || 'Option B').trim();
+      const optC = (row[optCCol] || 'Option C').trim();
+      const optD = (row[optDCol] || 'Option D').trim();
+
+      const correctIdx = parseAnswerIndex(row[ansCol]);
       
-      let correctIdx = 0;
-      const rawAns = (row[5] || '0').trim().toUpperCase();
-      if (rawAns === 'A' || rawAns === '0') correctIdx = 0;
-      else if (rawAns === 'B' || rawAns === '1') correctIdx = 1;
-      else if (rawAns === 'C' || rawAns === '2') correctIdx = 2;
-      else if (rawAns === 'D' || rawAns === '3') correctIdx = 3;
+      // Fallback or exact explanation
+      let explanation = (row[expCol] || '').trim();
+      if (!explanation) {
+        // Check if there are other columns beyond standard 7
+        for (let c = 6; c < row.length; c++) {
+          if (c !== qCol && c !== optACol && c !== optBCol && c !== optCCol && c !== optDCol && c !== ansCol && c !== subjCol) {
+            if (row[c] && row[c].trim().length > 5) {
+              explanation = row[c].trim();
+              break;
+            }
+          }
+        }
+      }
 
-      const explanation = row[6] || 'No detailed explanation provided.';
-      const subject = row[7] || 'General Studies';
+      if (!explanation) {
+        explanation = 'ಸರಿಯಾದ ಉತ್ತರ ಆಯ್ಕೆ ' + ['A', 'B', 'C', 'D'][correctIdx] + '.';
+      }
+
+      const subject = (row[subjCol] || 'General Studies').trim();
 
       questions.push({
         id: `q_${Date.now()}_${i}`,
@@ -911,6 +1109,55 @@ export const DataProvider = ({ children }) => {
 
     setAttempts(prev => [fullAttempt, ...prev]);
 
+    // Automatically collect wrong questions into Mistake Box
+    if (Array.isArray(fullAttempt.questionResults)) {
+      const wrongQuestions = fullAttempt.questionResults
+        .filter(qr => !qr.isCorrect && qr.isAttempted)
+        .map(qr => ({
+          id: qr.questionId || 'mistake_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          question: qr.question,
+          questionKn: qr.questionKn || qr.question,
+          options: qr.options,
+          correctAnswer: qr.correctAnswer,
+          userAnswer: qr.userAnswer,
+          explanation: qr.explanation,
+          explanationKn: qr.explanationKn,
+          subject: qr.subject,
+          testTitle: fullAttempt.testTitle,
+          testId: fullAttempt.testId,
+          failedAt: fullAttempt.timestamp
+        }));
+
+      if (wrongQuestions.length > 0) {
+        setMistakes(prev => {
+          const map = new Map(prev.map(m => [m.id || m.question, m]));
+          wrongQuestions.forEach(wq => {
+            map.set(wq.id || wq.question, wq);
+          });
+          return Array.from(map.values());
+        });
+      }
+    }
+
+    // Dynamic State Leaderboard Rank Predictor
+    const userDisplayName = user?.name || user?.email?.split('@')[0] || 'Aspirant (ನೀವು)';
+    const newEntry = {
+      rank: 1,
+      name: userDisplayName,
+      district: 'ಕರ್ನಾಟಕ (Karnataka)',
+      score: fullAttempt.score,
+      accuracy: fullAttempt.accuracy,
+      timeMins: Math.round(fullAttempt.timeSpentSeconds / 60) || 1,
+      avatarSeed: user?.email || 'User',
+      isCurrentUser: true
+    };
+
+    setLeaderboard(prev => {
+      const filtered = prev.filter(p => !p.isCurrentUser && p.name !== userDisplayName);
+      const combined = [...filtered, newEntry].sort((a, b) => b.score - a.score || b.accuracy - a.accuracy);
+      return combined.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+    });
+
     // Push to Supabase user_attempts
     try {
       await supabase.from('user_attempts').upsert({
@@ -934,6 +1181,33 @@ export const DataProvider = ({ children }) => {
     }
 
     return fullAttempt;
+  };
+
+  const removeMistake = (id) => {
+    setMistakes(prev => prev.filter(m => m.id !== id && m.question !== id));
+  };
+
+  const clearMistakes = () => {
+    setMistakes([]);
+  };
+
+  const updateDailyQuiz = (newQuiz) => {
+    setDailyQuiz(newQuiz);
+  };
+
+  const addCombo = (newCombo) => {
+    setCombos(prev => [newCombo, ...prev.filter(c => c.id !== newCombo.id)]);
+  };
+
+  const deleteCombo = (id) => {
+    setCombos(prev => prev.filter(c => c.id !== id));
+  };
+
+  const trackReferral = (code) => {
+    setReferrals(prev => ({
+      count: prev.count + 1,
+      points: prev.points + 20
+    }));
   };
 
   // Update Developer Payment Settings
@@ -1449,6 +1723,17 @@ export const DataProvider = ({ children }) => {
         checkHasAccess,
         toggleBookmark,
         isBookmarked,
+        dailyQuiz,
+        updateDailyQuiz,
+        combos,
+        addCombo,
+        deleteCombo,
+        mistakes,
+        removeMistake,
+        clearMistakes,
+        leaderboard,
+        referrals,
+        trackReferral
       }}
     >
       {children}

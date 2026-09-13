@@ -276,3 +276,118 @@ export const GOOGLE_SHEET_TEMPLATE_SAMPLE = `Question,Option A,Option B,Option C
 "ಭಾರತದ ಮೊದಲ ರಾಷ್ಟ್ರಪತಿ ಯಾರು?","ಡಾ. ರಾಜೇಂದ್ರ ಪ್ರಸಾದ್","ಡಾ. ಸರ್ವಪಲ್ಲಿ ರಾಧಾಕೃಷ್ಣನ್","ಜವಾಹರಲಾಲ್ ನೆಹರು","ಸರ್ದಾರ್ ವಲ್ಲಭಭಾಯಿ ಪಟೇಲ್","A","ಡಾ. ರಾಜೇಂದ್ರ ಪ್ರಸಾದ್ ಅವರು ಭಾರತದ ಪ್ರಥಮ ರಾಷ್ಟ್ರಪತಿಗಳಾಗಿದ್ದರು.","Indian History"
 "Who authored 'Mankuthimmana Kagga'?","Kuvempu","D.V. Gundappa (DVG)","Da.Ra. Bendre","Masti Venkatesha Iyengar","B","Mankuthimmana Kagga was written by D.V. Gundappa in 1944.","Kannada Literature"`;
 
+// Daily 10-Question Rapid Fire & Current Affairs Quiz
+export const INITIAL_DAILY_QUIZ = {
+  id: 'daily_quiz_today',
+  date: new Date().toISOString().split('T')[0],
+  title: 'ದೈನಂದಿನ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು & ಸಾಮಾನ್ಯ ಜ್ಞಾನ (Daily Rapid Quiz)',
+  titleKn: 'ದೈನಂದಿನ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು & ಸಾಮಾನ್ಯ ಜ್ಞಾನ (Daily Rapid Quiz)',
+  durationMinutes: 10,
+  totalMarks: 20,
+  negativeMarking: 0.25,
+  isFree: true,
+  price: 0,
+  questions: [
+    {
+      id: 'dq_1',
+      question: 'ಇತ್ತೀಚೆಗೆ ಭಾರತದ ಯಾವ ರಾಜ್ಯವು ನೂತನ ಶಿಕ್ಷಣ ನೀತಿಯನ್ವಯ "ಕಲಿಕಾ ಸೇತು" ಯೋಜನೆಯನ್ನು ಆರಂಭಿಸಿದೆ?',
+      questionKn: 'ಇತ್ತೀಚೆಗೆ ಭಾರತದ ಯಾವ ರಾಜ್ಯವು ನೂತನ ಶಿಕ್ಷಣ ನೀತಿಯನ್ವಯ "ಕಲಿಕಾ ಸೇತು" ಯೋಜನೆಯನ್ನು ಆರಂಭಿಸಿದೆ?',
+      options: ['ಕರ್ನಾಟಕ', 'ತಮಿಳುನಾಡು', 'ಕೇರಳ', 'ಆಂಧ್ರಪ್ರದೇಶ'],
+      correctAnswer: 0,
+      explanation: 'ಕರ್ನಾಟಕ ಸರ್ಕಾರವು ಶಾಲಾ ಮಕ್ಕಳ ಕಲಿಕಾ ಕೊರತೆಯನ್ನು ನೀಗಿಸಲು ಕಲಿಕಾ ಸೇತು ಕಾರ್ಯಕ್ರಮವನ್ನು ಜಾರಿಗೆ ತಂದಿದೆ.',
+      explanationKn: 'ಕರ್ನಾಟಕ ಸರ್ಕಾರವು ಶಾಲಾ ಮಕ್ಕಳ ಕಲಿಕಾ ಕೊರತೆಯನ್ನು ನೀಗಿಸಲು ಕಲಿಕಾ ಸೇತು ಕಾರ್ಯಕ್ರಮವನ್ನು ಜಾರಿಗೆ ತಂದಿದೆ.',
+      subject: 'ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು'
+    },
+    {
+      id: 'dq_2',
+      question: 'ಭಾರತೀಯ ಸಂವಿಧಾನದ 73ನೇ ತಿದ್ದುಪಡಿಯು ಯಾವುದಕ್ಕೆ ಸಂಬಂಧಿಸಿದೆ?',
+      questionKn: 'ಭಾರತೀಯ ಸಂವಿಧಾನದ 73ನೇ ತಿದ್ದುಪಡಿಯು ಯಾವುದಕ್ಕೆ ಸಂಬಂಧಿಸಿದೆ?',
+      options: ['ಪಂಚಾಯತ್ ರಾಜ್ ವ್ಯವಸ್ಥೆ', 'ನಗರ ಪಾಲಿಕೆಗಳು', 'ಮೂಲಭೂತ ಕರ್ತವ್ಯಗಳು', 'ಚುನಾವಣಾ ಆಯೋಗ'],
+      correctAnswer: 0,
+      explanation: '1992 ರ 73ನೇ ತಿದ್ದುಪಡಿ ಕಾಯ್ದೆಯು ಪಂಚಾಯತ್ ರಾಜ್ ಸಂಸ್ಥೆಗಳಿಗೆ ಸಾಂವಿಧಾನಿಕ ಸ್ಥಾನಮಾನ ನೀಡಿತು.',
+      explanationKn: '1992 ರ 73ನೇ ತಿದ್ದುಪಡಿ ಕಾಯ್ದೆಯು ಪಂಚಾಯತ್ ರಾಜ್ ಸಂಸ್ಥೆಗಳಿಗೆ ಸಾಂವಿಧಾನಿಕ ಸ್ಥಾನಮಾನ ನೀಡಿತು.',
+      subject: 'ಭಾರತೀಯ ಸಂವಿಧಾನ'
+    },
+    {
+      id: 'dq_3',
+      question: 'ಕರ್ನಾಟಕದ ಅತ್ಯಂತ ಎತ್ತರದ ಶಿಖರ ಯಾವುದು?',
+      questionKn: 'ಕರ್ನಾಟಕದ ಅತ್ಯಂತ ಎತ್ತರದ ಶಿಖರ ಯಾವುದು?',
+      options: ['ಮುಳ್ಳಯ್ಯನಗಿರಿ', 'ಕುದುರೆಮುಖ', 'ಬಾಬಾಬುಡನ್‌ಗಿರಿ', 'ಕೊಡಚಾದ್ರಿ'],
+      correctAnswer: 0,
+      explanation: 'ಚಿಕ್ಕಮಗಳೂರು ಜಿಲ್ಲೆಯಲ್ಲಿರುವ ಮುಳ್ಳಯ್ಯನಗಿರಿ (1930 ಮೀ) ಕರ್ನಾಟಕದ ಅತ್ಯುನ್ನತ ಶಿಖರವಾಗಿದೆ.',
+      explanationKn: 'ಚಿಕ್ಕಮಗಳೂರು ಜಿಲ್ಲೆಯಲ್ಲಿರುವ ಮುಳ್ಳಯ್ಯನಗಿರಿ (1930 ಮೀ) ಕರ್ನಾಟಕದ ಅತ್ಯುನ್ನತ ಶಿಖರವಾಗಿದೆ.',
+      subject: 'ಕರ್ನಾಟಕ ಭೂಗೋಳ'
+    },
+    {
+      id: 'dq_4',
+      question: 'ಕನ್ನಡ ಸಾಹಿತ್ಯದಲ್ಲಿ "ವಚನ ಪಿತಾಮಹ" ಎಂದು ಯಾರನ್ನು ಕರೆಯಲಾಗುತ್ತದೆ?',
+      questionKn: 'ಕನ್ನಡ ಸಾಹಿತ್ಯದಲ್ಲಿ "ವಚನ ಪಿತಾಮಹ" ಎಂದು ಯಾರನ್ನು ಕರೆಯಲಾಗುತ್ತದೆ?',
+      options: ['ಫ.ಗು. ಹಳಕಟ್ಟಿ', 'ಬಸವಣ್ಣ', 'ಅಲ್ಲಮಪ್ರಭು', 'ಚನ್ನಬಸವಣ್ಣ'],
+      correctAnswer: 0,
+      explanation: 'ವಚನ ಸಾಹಿತ್ಯವನ್ನು ಸಂಶೋಧಿಸಿ ಪ್ರಕಟಿಸಿದ ಡಾ. ಫ.ಗು. ಹಳಕಟ್ಟಿಯವರನ್ನು "ವಚನ ಪಿತಾಮಹ" ಎನ್ನಲಾಗುತ್ತದೆ.',
+      explanationKn: 'ವಚನ ಸಾಹಿತ್ಯವನ್ನು ಸಂಶೋಧಿಸಿ ಪ್ರಕಟಿಸಿದ ಡಾ. ಫ.ಗು. ಹಳಕಟ್ಟಿಯವರನ್ನು "ವಚನ ಪಿತಾಮಹ" ಎನ್ನಲಾಗುತ್ತದೆ.',
+      subject: 'ಕನ್ನಡ ಸಾಹಿತ್ಯ'
+    },
+    {
+      id: 'dq_5',
+      question: 'ಇಸ್ರೋ (ISRO) ದ ಮುಖ್ಯ ಕಛೇರಿ ಎಲ್ಲಿ ನೆಲೆಸಿದೆ?',
+      questionKn: 'ಇಸ್ರೋ (ISRO) ದ ಮುಖ್ಯ ಕಛೇರಿ ಎಲ್ಲಿ ನೆಲೆಸಿದೆ?',
+      options: ['ಬೆಂಗಳೂರು', 'ಶ್ರೀಹರಿಕೋಟ', 'ತಿರುವನಂತಪುರಂ', 'ಹೈದರಾಬಾದ್'],
+      correctAnswer: 0,
+      explanation: 'ಭಾರತೀಯ ಬಾಹ್ಯಾಕಾಶ ಸಂಶೋಧನಾ ಸಂಸ್ಥೆ (ISRO) ಕೇಂದ್ರ ಕಛೇರಿ ಬೆಂಗಳೂರಿನಲ್ಲಿದೆ.',
+      explanationKn: 'ಭಾರತೀಯ ಬಾಹ್ಯಾಕಾಶ ಸಂಶೋಧನಾ ಸಂಸ್ಥೆ (ISRO) ಕೇಂದ್ರ ಕಛೇರಿ ಬೆಂಗಳೂರಿನಲ್ಲಿದೆ.',
+      subject: 'ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ'
+    }
+  ]
+};
+
+// Mega Combo Bundles
+export const INITIAL_COMBOS = [
+  {
+    id: 'combo_all_kpsc_super',
+    title: 'KPSC All-in-One Mega Pass (KAS + FDA + PSI + PDO)',
+    titleKn: 'ಕೆ.ಪಿ.ಎಸ್.ಸಿ ಆಲ್-ಇನ್-ಒನ್ ಮೆಗಾ ಪಾಸ್ (ಎಲ್ಲಾ ಪರೀಕ್ಷೆಗಳು)',
+    description: 'Complete 1-Year Access to ALL Mock Tests, Google Drive Notes, Daily Quizzes & State Rankings across all Karnataka Exams.',
+    descriptionKn: 'ಕರ್ನಾಟಕದ ಎಲ್ಲಾ ಪರೀಕ್ಷೆಗಳ ಸಂಪೂರ್ಣ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು, ಪಿಡಿಎಫ್ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ರ್ಯಾಂಕಿಂಗ್‌ಗಳಿಗೆ 1 ವರ್ಷದ ಅನಿಯಮಿತ ಪ್ರವೇಶಾವಕಾಶ.',
+    price: 99,
+    originalPrice: 999,
+    discountPercent: 90,
+    badge: '🏆 BEST VALUE MEGA PACK',
+    features: [
+      '50+ Dynamic Mock Tests with Instant Explanations',
+      '30+ High-Yield Digital Handbooks & Drive PDFs',
+      'State-Level Live Leaderboard & Rank Predictor',
+      'Daily 10-Q Current Affairs Rapid Quizzes',
+      'Mistake Box Practice & Weak Topic Analysis'
+    ]
+  },
+  {
+    id: 'combo_kannada_mastery',
+    title: 'Karnataka General Kannada Complete Master Pack',
+    titleKn: 'ಸಾಮಾನ್ಯ ಕನ್ನಡ & ವ್ಯಾಕರಣ ಕಂಪ್ಲೀಟ್ ಮಾಸ್ಟರ್ ಪ್ಯಾಕ್',
+    description: 'Topic-wise Grammar, Sandhi, Samasa, Tatkama-Tadbhava, Idioms and 15 Practice Mock Tests.',
+    descriptionKn: 'ಕಡ್ಡಾಯ ಕನ್ನಡ ಪತ್ರಿಕೆ ಮತ್ತು FDA/SDA ಸಾಮಾನ್ಯ ಕನ್ನಡಕ್ಕಾಗಿ 15 ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು & ಸಂಕ್ಷಿಪ್ತ ನೋಟ್ಸ್.',
+    price: 49,
+    originalPrice: 399,
+    discountPercent: 88,
+    badge: '🔥 POPULAR',
+    features: [
+      '15 Topic-wise Kannada Grammar Tests',
+      'Comprehensive Vyakarna Handbook Notes',
+      'Audio Voice Reader Mode',
+      'Full Answer Key & Rationale in Kannada'
+    ]
+  }
+];
+
+// State-Level Benchmark Leaderboard
+export const INITIAL_LEADERBOARD = [
+  { rank: 1, name: 'ಮಂಜುನಾಥ್ ಕೆ. (Manjunath K.)', district: 'ಶಿವಮೊಗ್ಗ (Shivamogga)', score: 48.5, accuracy: 98, timeMins: 14, avatarSeed: 'Manjunath' },
+  { rank: 2, name: 'ಪ್ರಿಯಾಂಕಾ ಎನ್. (Priyanka N.)', district: 'ಮೈಸೂರು (Mysuru)', score: 47.25, accuracy: 96, timeMins: 16, avatarSeed: 'Priyanka' },
+  { rank: 3, name: 'ರಾಘವೇಂದ್ರ ಬಿ. (Raghavendra B.)', district: 'ಬೆಳಗಾವಿ (Belagavi)', score: 46.0, accuracy: 94, timeMins: 15, avatarSeed: 'Raghavendra' },
+  { rank: 4, name: 'ಅನಿತಾ ಎಸ್. (Anitha S.)', district: 'ಬೆಂಗಳೂರು (Bengaluru)', score: 45.0, accuracy: 92, timeMins: 18, avatarSeed: 'Anitha' },
+  { rank: 5, name: 'ಬಸವರಾಜ್ ಪಾಟೀಲ್ (Basavaraj Patil)', district: 'ಕಲಬುರಗಿ (Kalaburagi)', score: 44.5, accuracy: 90, timeMins: 19, avatarSeed: 'Basavaraj' },
+  { rank: 6, name: 'ದಿವ್ಯಾ ಕುಮಾರಿ (Divya Kumari)', district: 'ದಾವಣಗೆರೆ (Davanagere)', score: 43.75, accuracy: 88, timeMins: 20, avatarSeed: 'Divya' },
+  { rank: 7, name: 'ಚೇತನ್ ಕುಮಾರ್ (Chetan Kumar)', district: 'ಹಾಸನ (Hassan)', score: 42.5, accuracy: 86, timeMins: 21, avatarSeed: 'Chetan' }
+];
+
