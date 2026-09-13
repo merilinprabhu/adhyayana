@@ -2,21 +2,17 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { 
-  CreditCard, 
   CheckCircle2, 
   ShieldCheck, 
   Tag, 
   X, 
   QrCode, 
   Smartphone, 
-  FileText, 
   Lock,
   Sparkles,
   Copy,
   Check,
-  ExternalLink,
-  HelpCircle,
-  Clock
+  CreditCard
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -26,7 +22,6 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
   const { 
     lang, 
     recordPurchase, 
-    razorpayKeyId, 
     developerUpiId, 
     developerPhone, 
     developerName,
@@ -34,7 +29,6 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
     allPurchases
   } = useData();
 
-  const [activePaymentTab, setActivePaymentTab] = useState('razorpay'); // 'razorpay' (default automatic) | 'upi_qr'
   const [couponCode, setCouponCode] = useState('');
   const [discountPercent, setDiscountPercent] = useState(0);
   const [couponError, setCouponError] = useState('');
@@ -91,7 +85,6 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
     }
   };
 
-  // Submit UPI Direct Payment / UTR
   // Submit UPI Direct Payment / UTR
   const handleConfirmUpiPayment = async (e) => {
     e.preventDefault();
@@ -150,7 +143,7 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
 
     enrollExam(item.id);
     setLastPaymentId(txnId);
-    setLastPaymentMethod('UPI QR Code (PhonePe / GPay / Paytm)');
+    setLastPaymentMethod('Direct UPI (PhonePe / GPay / Paytm)');
     setIsProcessing(false);
     setIsCompleted(true);
 
@@ -160,6 +153,33 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
       origin: { y: 0.6 }
     });
 
+    if (onPurchaseSuccess) {
+      onPurchaseSuccess(item);
+    }
+  };
+
+  // Instant Free Access (e.g. via 100% Coupon)
+  const handleFreeUnlock = async () => {
+    setIsProcessing(true);
+    setPaymentError('');
+    const freeTxnId = 'FREE_COUPON_' + Date.now();
+    await recordPurchase({
+      examId: item.id,
+      examTitle: item.title,
+      amountPaid: 0,
+      paymentMethod: 'FREE_COUPON',
+      paymentId: freeTxnId,
+    });
+    enrollExam(item.id);
+    setLastPaymentId(freeTxnId);
+    setLastPaymentMethod('100% Free Coupon');
+    setIsProcessing(false);
+    setIsCompleted(true);
+    confetti({
+      particleCount: 120,
+      spread: 80,
+      origin: { y: 0.6 }
+    });
     if (onPurchaseSuccess) {
       onPurchaseSuccess(item);
     }
@@ -179,7 +199,7 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
     });
     enrollExam(item.id);
     setLastPaymentId(unlockId);
-    setLastPaymentMethod('Instant Simulator');
+    setLastPaymentMethod('Instant Developer Simulator');
     setIsProcessing(false);
     setIsCompleted(true);
     confetti({
@@ -209,158 +229,6 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
     }
   };
 
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const handleCompleteRazorpayPayment = async () => {
-    setPaymentError('');
-    setIsProcessing(true);
-
-    // Case 1: 100% Free or 100% Discounted
-    if (discountedPrice === 0) {
-      const freePaymentId = 'FREE_COUPON_' + Date.now();
-      await recordPurchase({
-        examId: item.id,
-        examTitle: item.title,
-        amountPaid: 0,
-        paymentMethod: 'FREE_COUPON',
-        paymentId: freePaymentId,
-      });
-      enrollExam(item.id);
-      setLastPaymentId(freePaymentId);
-      setLastPaymentMethod('100% Free Coupon');
-      setIsProcessing(false);
-      setIsCompleted(true);
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.6 }
-      });
-      if (onPurchaseSuccess) {
-        onPurchaseSuccess(item);
-      }
-      return;
-    }
-
-    // Case 2: Check if Razorpay Key is configured or dummy
-    if (!razorpayKeyId || razorpayKeyId === 'rzp_test_51AdhyayanaLive' || razorpayKeyId.length < 15) {
-      setIsProcessing(false);
-      setPaymentError(
-        lang === 'kn'
-          ? '⚠️ Razorpay Key ID ಅನ್ನು ಇನ್ನೂ ಕಾನ್ಫಿಗರ್ ಮಾಡಲಾಗಿಲ್ಲ. ದಯವಿಟ್ಟು "PhonePe QR / UPI" ಟ್ಯಾಬ್ ಮೂಲಕ ನೇರವಾಗಿ ಪಾವತಿಸಿ ಅಥವಾ Developer Studio ದಲ್ಲಿ ನಿಮ್ಮ ಅಧಿಕೃತ Razorpay Key ನಮೂದಿಸಿ.'
-          : '⚠️ Razorpay API Key is not configured yet. Switched to PhonePe QR / Direct UPI tab for instant payment.'
-      );
-      setActivePaymentTab('upi_qr');
-      return;
-    }
-
-    // Case 3: Real Razorpay API Payment Flow
-    const isLoaded = await loadRazorpayScript();
-    if (!isLoaded || !window.Razorpay) {
-      setIsProcessing(false);
-      setPaymentError(
-        lang === 'kn'
-          ? 'Razorpay ಪಾವತಿ ಗೇಟ್‌ವೇ ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಿಲ್ಲ. ಪಕ್ಕದ "PhonePe QR / UPI" ವಿಧಾನ ಬಳಸಿ ಸುಲಭವಾಗಿ ಪಾವತಿಸಿ.'
-          : 'Could not load Razorpay SDK. You can use the Direct UPI QR Code option above.'
-      );
-      setActivePaymentTab('upi_qr');
-      return;
-    }
-
-    try {
-      const options = {
-        key: razorpayKeyId,
-        amount: discountedPrice * 100, // in paise
-        currency: 'INR',
-        name: 'ADHYAYANA (ಅಧ್ಯಯನ)',
-        description: `${item.title} - Full Unlock`,
-        image: item.banner || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80',
-        handler: async function (response) {
-          const payId = response.razorpay_payment_id || ('rzp_' + Date.now());
-          
-          await recordPurchase({
-            examId: item.id,
-            examTitle: item.title,
-            amountPaid: discountedPrice,
-            paymentMethod: 'RAZORPAY',
-            paymentId: payId,
-          });
-
-          enrollExam(item.id);
-          setLastPaymentId(payId);
-          setLastPaymentMethod('Razorpay Gateway');
-          setIsProcessing(false);
-          setIsCompleted(true);
-
-          confetti({
-            particleCount: 120,
-            spread: 80,
-            origin: { y: 0.6 }
-          });
-
-          if (onPurchaseSuccess) {
-            onPurchaseSuccess(item);
-          }
-        },
-        prefill: {
-          name: user?.name || 'Aspirant',
-          email: user?.email || 'student@adhyayana.com',
-          contact: ''
-        },
-        notes: {
-          item_id: item.id,
-          item_title: item.title,
-          user_email: user?.email || ''
-        },
-        theme: {
-          color: '#059669' // Emerald Green theme
-        },
-        modal: {
-          ondismiss: function () {
-            setIsProcessing(false);
-            setPaymentError(
-              lang === 'kn'
-                ? 'ಪಾವತಿ ಪ್ರಕ್ರಿಯೆ ರದ್ದುಗೊಂಡಿದೆ. ಪಾವತಿ ಪೂರ್ಣಗೊಳ್ಳದ ಕಾರಣ ಅನ್‌ಲಾಕ್ ಆಗಿಲ್ಲ.'
-                : 'Payment checkout was closed. Access will remain locked until payment is completed.'
-            );
-          }
-        }
-      };
-
-      const razorpayInstance = new window.Razorpay(options);
-      
-      razorpayInstance.on('payment.failed', function (response) {
-        setIsProcessing(false);
-        setPaymentError(
-          lang === 'kn'
-            ? `ಪಾವತಿ ವಿಫಲವಾಗಿದೆ: ${response.error?.description || 'ದೋಷ ಉಂಟಾಗಿದೆ'}`
-            : `Payment Failed: ${response.error?.description || 'Transaction unsuccessful'}`
-        );
-      });
-
-      razorpayInstance.open();
-    } catch (err) {
-      console.error('Razorpay Launch Error:', err);
-      setIsProcessing(false);
-      setPaymentError(
-        lang === 'kn'
-          ? `Razorpay ಆರಂಭ ದೋಷ: ${err.message}`
-          : `Razorpay Error: ${err.message}`
-      );
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
@@ -373,10 +241,10 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-bold">
-                {lang === 'kn' ? 'ಸುರಕ್ಷಿತ ಪಾವತಿ & ಅನ್‌ಲಾಕ್' : 'Direct Checkout & Unlock'}
+                {lang === 'kn' ? 'ನೇರ UPI ಪಾವತಿ & ಅನ್‌ಲಾಕ್' : 'Direct UPI Checkout & Unlock'}
               </h3>
               <p className="text-[10px] sm:text-[11px] text-slate-400">
-                Direct UPI QR / PhonePe / GPay / Razorpay • Instant Lifetime Access
+                PhonePe / Google Pay / Paytm QR • 0% Platform Fee • Instant Lifetime Access
               </p>
             </div>
           </div>
@@ -416,7 +284,7 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Payment Method:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{lastPaymentMethod || 'UPI Direct'}</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{lastPaymentMethod || 'Direct UPI QR'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Reference / Txn ID:</span>
@@ -459,92 +327,32 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
               </div>
             </div>
 
-            {/* Payment Mode Selector Tabs */}
-            <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/60">
-              <button
-                type="button"
-                onClick={() => setActivePaymentTab('razorpay')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                  activePaymentTab === 'razorpay'
-                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 shadow-sm border border-blue-500/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                }`}
-              >
-                <CreditCard className="w-4 h-4 text-blue-600" />
-                <span>{lang === 'kn' ? '⚡ Razorpay (Auto-Unlock)' : '⚡ Razorpay Gateway'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActivePaymentTab('upi_qr')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                  activePaymentTab === 'upi_qr'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-500/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                }`}
-              >
-                <QrCode className="w-4 h-4 text-emerald-600" />
-                <span>{lang === 'kn' ? 'PhonePe QR / UPI' : 'PhonePe QR / UPI'}</span>
-              </button>
-            </div>
-
-            {/* TAB 1: OFFICIAL RAZORPAY GATEWAY (PHONEPE / GPAY / CARDS / NETBANKING - 100% AUTOMATED) */}
-            {activePaymentTab === 'razorpay' && (
-              <div className="space-y-4 p-4 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 dark:from-blue-950/30 dark:to-slate-900 rounded-3xl border border-blue-200 dark:border-blue-900/60 shadow-sm">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
-                      {lang === 'kn' ? 'ಅಧಿಕೃತ ಸ್ವಯಂಚಾಲಿತ ಪಾವತಿ ಗೇಟ್‌ವೇ' : 'Official Automated Bank Gateway'}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full">
-                    ✓ 100% Verified
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-500 font-bold">✓</span>
-                    <span><strong>PhonePe, Google Pay, Paytm, BHIM, Cred</strong> ಮೂಲಕ ತಕ್ಷಣ ಪಾವತಿ</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-500 font-bold">✓</span>
-                    <span>Debit / Credit Cards & Net Banking ಲಭ್ಯ</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-500 font-bold">✓</span>
-                    <span><strong>ಯಾವುದೇ UTR ಟೈಪ್ ಮಾಡುವ ಅಗತ್ಯವಿಲ್ಲ</strong> — ಪಾವತಿಯಾದ ತಕ್ಷಣ ತಾನಾಗಿಯೇ ಅನ್‌ಲಾಕ್ ಆಗುತ್ತದೆ!</span>
-                  </p>
-                </div>
-
+            {/* 100% Free Coupon Instant Unlock */}
+            {discountedPrice === 0 ? (
+              <div className="space-y-3 p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-center">
+                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  🎉 {lang === 'kn' ? '100% ರಿಯಾಯಿತಿ! ಯಾವುದೇ ಶುಲ್ಕವಿಲ್ಲದೆ ತಕ್ಷಣ ಪ್ರವೇಶ ಪಡೆಯಿರಿ.' : '100% Free! Unlock this item now.'}
+                </p>
                 <button
                   type="button"
-                  onClick={handleCompleteRazorpayPayment}
+                  onClick={handleFreeUnlock}
                   disabled={isProcessing}
-                  className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-black text-xs sm:text-sm shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-[0.98]"
+                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all"
                 >
-                  <CreditCard className="w-4 h-4" />
-                  <span>
-                    {isProcessing
-                      ? (lang === 'kn' ? 'ಪಾವತಿ ವಿಂಡೋ ತೆರೆಯಲಾಗುತ್ತಿದೆ...' : 'Opening Payment Gateway...')
-                      : (lang === 'kn' ? `PhonePe / Cards ಮೂಲಕ ₹${discountedPrice} ಪಾವತಿಸಿ (Auto Unlock)` : `Pay ₹${discountedPrice} via PhonePe / Cards / UPI`)}
-                  </span>
+                  {isProcessing ? 'ಅನ್‌ಲಾಕ್ ಆಗುತ್ತಿದೆ...' : (lang === 'kn' ? 'ಉಚಿತವಾಗಿ ತಕ್ಷಣ ಅನ್‌ಲಾಕ್ ಮಾಡಿ' : 'Claim Free Access Now')}
                 </button>
               </div>
-            )}
-
-            {/* TAB 2: DIRECT UPI / QR CODE (PHONEPE / GPAY MANUAL) */}
-            {activePaymentTab === 'upi_qr' && (
+            ) : (
+              /* DIRECT UPI / QR CODE (PHONEPE / GPAY / PAYTM) */
               <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-800/50">
                 <div className="text-center space-y-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full inline-block">
-                    ⚡ {lang === 'kn' ? 'ಡೆವಲಪರ್‌ಗೆ ನೇರ ಪಾವತಿ (Direct UPI QR)' : 'Direct Developer UPI Transfer'}
+                    ⚡ {lang === 'kn' ? 'ನೇರ PhonePe / GPay QR ಪಾವತಿ (0% ಶುಲ್ಕ)' : 'Direct PhonePe / GPay QR (0% Fee)'}
                   </span>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
                     {lang === 'kn'
-                      ? 'ಕೆಳಗಿನ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ UPI ಐಡಿಗೆ ಹಣ ಪಾವತಿಸಿ UTR ನಮೂದಿಸಿ.'
-                      : 'Scan the QR code via PhonePe, Google Pay, Paytm, or BHIM to pay.'}
+                      ? 'ಕೆಳಗಿನ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ/UPI ಗೆ ₹' + discountedPrice + ' ಪಾವತಿಸಿ UTR ನಮೂದಿಸಿ.'
+                      : `Scan QR code or pay ₹${discountedPrice} via PhonePe/GPay and submit 12-digit UTR.`}
                   </p>
                 </div>
 
@@ -587,7 +395,7 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                     {/* Copy Phone Number */}
                     {developerPhone && (
                       <div className="space-y-1">
-                        <span className="text-slate-400 text-[10px] block">Phone Number (PhonePe/GPay):</span>
+                        <span className="text-slate-400 text-[10px] block">PhonePe / GPay Phone Number:</span>
                         <div className="flex items-center gap-1">
                           <span className="font-mono text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-slate-700 dark:text-slate-300">
                             {developerPhone}
@@ -711,3 +519,4 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
     </div>
   );
 };
+

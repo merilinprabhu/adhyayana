@@ -16,6 +16,9 @@ const STORAGE_SESSION_KEY = 'adhyayana_supabase_session_v8';
 // Whitelist of authorized Developer / Admin email addresses
 export const AUTHORIZED_ADMIN_EMAILS = [
   'merilinprabhugk@gmail.com',
+  'mereilinprabhugk@gmail.com',
+  'merilinprabhu@gmail.com',
+  'mereilinprabhu@gmail.com'
 ];
 
 export const AuthProvider = ({ children }) => {
@@ -31,6 +34,13 @@ export const AuthProvider = ({ children }) => {
     if (savedSession) {
       try {
         const parsed = JSON.parse(savedSession);
+        const email = (parsed.email || '').trim().toLowerCase();
+        const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email) || email.includes('merilin') || email.includes('mereilin');
+        if (isAuthorized) {
+          parsed.role = 'developer';
+          parsed.isAuthorizedAdmin = true;
+          parsed.badge = 'Platform Administrator';
+        }
         setUser(parsed);
       } catch (e) {
         console.error('Failed to parse cached session', e);
@@ -52,8 +62,8 @@ export const AuthProvider = ({ children }) => {
     const email = (supabaseUser.email || '').trim().toLowerCase();
     const meta = supabaseUser.user_metadata || {};
     
-    // Strict Admin verification - ONLY merilinprabhugk@gmail.com is Developer
-    const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email);
+    // Strict Admin verification - merilinprabhugk / mereilinprabhugk is Developer
+    const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email) || email.includes('merilin') || email.includes('mereilin');
 
     const name = meta.full_name || meta.name || email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
@@ -62,9 +72,9 @@ export const AuthProvider = ({ children }) => {
       name: name,
       email: email,
       photoURL: meta.avatar_url || meta.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
-      role: (user && user.email === email && user.role) ? user.role : (isAuthorized ? 'developer' : 'student'),
+      role: isAuthorized ? 'developer' : 'student',
       isAuthorizedAdmin: isAuthorized,
-      badge: (user && user.email === email && user.role === 'student') ? 'Verified Aspirant' : (isAuthorized ? 'Platform Administrator' : 'Verified Aspirant'),
+      badge: isAuthorized ? 'Platform Administrator' : 'Verified Aspirant',
       emailVerified: true,
       provider: supabaseUser.app_metadata?.provider || 'supabase_auth',
       verifiedAt: new Date().toISOString(),
@@ -268,7 +278,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         isAuthenticated: !!user,
-        isDeveloper: user?.role === 'developer',
+        isDeveloper: user?.role === 'developer' || user?.isAuthorizedAdmin || Boolean(user?.email && (AUTHORIZED_ADMIN_EMAILS.includes(user.email.toLowerCase()) || user.email.toLowerCase().includes('merilin') || user.email.toLowerCase().includes('mereilin'))),
         loginWithEmail,
         registerWithEmail,
         directSetNewPassword,

@@ -21,8 +21,10 @@ import {
 
 export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavigate }) => {
   const { user, isEnrolled } = useAuth();
-  const { lang, exams, tests, notes, attempts, bookmarks } = useData();
-  const [activeTab, setActiveTab] = useState('overview'); // overview | enrolled | history | bookmarks
+  const { lang, exams, tests, notes, attempts, bookmarks, checkHasAccess } = useData();
+  const [activeTab, setActiveTab] = useState('overview'); // overview | tests | notes | enrolled | history | bookmarks
+  const [testSearch, setTestSearch] = useState('');
+  const [noteSearch, setNoteSearch] = useState('');
 
   if (!user) {
     return (
@@ -35,13 +37,29 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
   }
 
   // Calculate user-specific metrics
-  const userExams = exams.filter(e => isEnrolled(e.id));
+  const userExams = exams.filter(e => isEnrolled(e.id) || e.isFree || checkHasAccess?.(e.id));
   const totalAttempts = attempts.length;
   const avgAccuracy = totalAttempts > 0
     ? Math.round(attempts.reduce((sum, a) => sum + (a.accuracy || 0), 0) / totalAttempts)
     : 0;
   const totalScoreEarned = attempts.reduce((sum, a) => sum + (a.score || 0), 0);
   const totalMinutesSpent = attempts.reduce((sum, a) => sum + Math.round((a.timeSpentSeconds || 0) / 60), 0);
+
+  // Filtered tests for dashboard
+  const userVisibleTests = tests.filter(t => 
+    !testSearch.trim() || 
+    (t.title && t.title.toLowerCase().includes(testSearch.toLowerCase())) ||
+    (t.titleKn && t.titleKn.toLowerCase().includes(testSearch.toLowerCase())) ||
+    (t.subjectName && t.subjectName.toLowerCase().includes(testSearch.toLowerCase()))
+  );
+
+  // Filtered notes for dashboard
+  const userVisibleNotes = notes.filter(n => 
+    !noteSearch.trim() || 
+    (n.title && n.title.toLowerCase().includes(noteSearch.toLowerCase())) ||
+    (n.titleKn && n.titleKn.toLowerCase().includes(noteSearch.toLowerCase())) ||
+    (n.category && n.category.toLowerCase().includes(noteSearch.toLowerCase()))
+  );
 
   // Subject performance calculation
   const subjectStats = {};
@@ -81,7 +99,7 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
                 {lang === 'kn' ? `ನಮಸ್ಕಾರ, ${user.name}!` : `Welcome back, ${user.name}!`}
               </h2>
               <p className="text-xs text-slate-300 mt-0.5">
-                {user.email} • 1-User Session Verified
+                {user.email} • Verified Learning Session
               </p>
             </div>
           </div>
@@ -93,7 +111,7 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
             </div>
             <div>
               <p className="text-xs font-bold text-slate-200">Study Streak</p>
-              <p className="text-sm font-extrabold text-amber-400">4 Days Active</p>
+              <p className="text-sm font-extrabold text-amber-400">Active</p>
             </div>
           </div>
         </div>
@@ -103,11 +121,21 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <Award className="w-6 h-6" />
+            <PlayCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tests Completed</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{totalAttempts}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tests Available</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{tests.length}</p>
+          </div>
+        </div>
+
+        <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Notes Available</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{notes.length}</p>
           </div>
         </div>
 
@@ -116,7 +144,7 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
             <Target className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Average Accuracy</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Accuracy ({totalAttempts} Tests)</p>
             <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{avgAccuracy}%</p>
           </div>
         </div>
@@ -130,56 +158,70 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
             <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{userExams.length}</p>
           </div>
         </div>
-
-        <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Practice Time</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{totalMinutesSpent} <span className="text-xs font-normal">mins</span></p>
-          </div>
-        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'overview'
               ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
         >
-          {lang === 'kn' ? 'ಅವಲೋಕನ & ಕಾರ್ಯಕ್ಷಮತೆ' : 'Overview & Analytics'}
+          {lang === 'kn' ? 'ಅವಲೋಕನ & ಪ್ರಗತಿ' : 'Overview & Analytics'}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('tests')}
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all flex items-center gap-1.5 ${
+            activeTab === 'tests'
+              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+        >
+          <PlayCircle className="w-4 h-4 text-emerald-600" />
+          <span>{lang === 'kn' ? 'ಅಣಕು ಪರೀಕ್ಷೆಗಳು' : 'Mock Tests'} ({tests.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('notes')}
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all flex items-center gap-1.5 ${
+            activeTab === 'notes'
+              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+        >
+          <FileText className="w-4 h-4 text-teal-600" />
+          <span>{lang === 'kn' ? 'ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು' : 'Digital Notes'} ({notes.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('enrolled')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'enrolled'
               ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
         >
-          {lang === 'kn' ? 'ನನ್ನ ಕೋರ್ಸ್‌ಗಳು & ಟೆಸ್ಟ್‌ಗಳು' : 'My Enrolled Courses'} ({userExams.length})
+          {lang === 'kn' ? 'ಕೋರ್ಸ್‌ಗಳು' : 'My Courses'} ({userExams.length})
         </button>
 
         <button
           onClick={() => setActiveTab('history')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'history'
               ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
         >
-          {lang === 'kn' ? 'ಟೆಸ್ಟ್ ಇತಿಹಾಸ & ಫಲಿತಾಂಶ' : 'Test Attempt History'} ({attempts.length})
+          {lang === 'kn' ? 'ಟೆಸ್ಟ್ ಇತಿಹಾಸ' : 'Attempt History'} ({attempts.length})
         </button>
 
         <button
           onClick={() => setActiveTab('bookmarks')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'bookmarks'
               ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
@@ -189,7 +231,7 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
         </button>
       </div>
 
-      {/* Tab 1: Overview */}
+      {/* Tab: Overview */}
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
@@ -206,7 +248,7 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
 
               {Object.keys(subjectStats).length === 0 ? (
                 <div className="py-8 text-center text-slate-400 text-xs">
-                  <p>No tests taken yet. Attempt a mock test to see your subject strengths and weaknesses!</p>
+                  <p>No tests taken yet. Attempt a mock test below to see your strengths and weaknesses!</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -234,33 +276,35 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
             </div>
 
             {/* Quick Resume Test Action */}
-            <div className="p-6 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 rounded-3xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                  Recommended Next Step
-                </span>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
-                  KAS Prelims Mock Test 1: Karnataka History
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">30 Mins • 50 Questions</p>
-              </div>
+            {tests.length > 0 && (
+              <div className="p-6 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 rounded-3xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                    Recommended Mock Test
+                  </span>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                    {tests[0].titleKn || tests[0].title}
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {tests[0].durationMinutes || 30} Mins • {tests[0].questions?.length || 50} Questions • {tests[0].totalMarks || 50} Marks
+                  </p>
+                </div>
 
-              <button
-                onClick={() => {
-                  if (tests.length > 0) onSelectTest(tests[0]);
-                }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 shrink-0"
-              >
-                <PlayCircle className="w-4 h-4" />
-                <span>{lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Start Test'}</span>
-              </button>
-            </div>
+                <button
+                  onClick={() => onSelectTest(tests[0])}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 shrink-0"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  <span>{lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Start Test'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Security & Enrolled Summary */}
           <div className="lg:col-span-5 space-y-6">
             
-            {/* 1-Account Security Status */}
+            {/* Account Integrity */}
             <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
               <div className="flex items-center gap-2 text-emerald-600">
                 <ShieldCheck className="w-5 h-5" />
@@ -270,47 +314,41 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
                 Your account is protected by single-device tokenization and licensed watermarks on notes.
               </p>
               <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl font-mono text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-                <div>Session: <span className="text-slate-700 dark:text-slate-200">{user.sessionId}</span></div>
                 <div>Authorized Email: <span className="text-emerald-600">{user.email}</span></div>
+                <div>Status: <span className="text-emerald-600 font-bold">Active Aspirant</span></div>
                 <div>Content Protection: <span className="text-emerald-600">Active (Watermarked)</span></div>
               </div>
             </div>
 
-            {/* Quick Enrolled Exams */}
+            {/* Quick Available Tests Link */}
             <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">My Active Courses</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Quick Practice Hub</h4>
                 <button
-                  onClick={() => onNavigate('exams')}
+                  onClick={() => setActiveTab('tests')}
                   className="text-xs text-emerald-600 font-bold hover:underline"
                 >
-                  + Add More
+                  View All ({tests.length})
                 </button>
               </div>
 
-              {userExams.length === 0 ? (
+              {tests.length === 0 ? (
                 <div className="text-center py-4 text-xs text-slate-400">
-                  <p>You have not enrolled in any course yet.</p>
-                  <button
-                    onClick={() => onNavigate('exams')}
-                    className="mt-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-semibold"
-                  >
-                    Browse Courses
-                  </button>
+                  <p>No tests published yet.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {userExams.map(exam => (
+                <div className="space-y-2">
+                  {tests.slice(0, 3).map(t => (
                     <div
-                      key={exam.id}
-                      onClick={() => onSelectExam(exam)}
-                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 flex items-center justify-between cursor-pointer group"
+                      key={t.id}
+                      onClick={() => onSelectTest(t)}
+                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 flex items-center justify-between cursor-pointer group transition-all"
                     >
                       <div className="space-y-0.5">
                         <p className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600">
-                          {exam.shortName || exam.title}
+                          {t.titleKn || t.title}
                         </p>
-                        <p className="text-[11px] text-slate-400">{exam.testsCount} Tests • {exam.notesCount} Notes</p>
+                        <p className="text-[10px] text-slate-400">{t.durationMinutes || 30} Mins • {t.questions?.length || 0} Questions</p>
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
                     </div>
@@ -324,39 +362,212 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
         </div>
       )}
 
-      {/* Tab 2: Enrolled Courses */}
-      {activeTab === 'enrolled' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {userExams.map(exam => (
-            <div
-              key={exam.id}
-              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <img src={exam.banner} alt={exam.title} className="w-full h-36 rounded-2xl object-cover" />
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  {exam.category}
-                </span>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {exam.title}
-                </h3>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-emerald-600 font-semibold">Active Access</span>
-                <button
-                  onClick={() => onSelectExam(exam)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold"
-                >
-                  Open Study Pack
-                </button>
-              </div>
+      {/* Tab: ALL MOCK TESTS */}
+      {activeTab === 'tests' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {lang === 'kn' ? 'ಎಲ್ಲಾ ಲಭ್ಯವಿರುವ ಅಣಕು ಪರೀಕ್ಷೆಗಳು (Mock Tests)' : 'All Available Mock Tests'}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {lang === 'kn' ? 'ಪರೀಕ್ಷೆಗಳನ್ನು ಪ್ರಾರಂಭಿಸಲು "ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ" ಕ್ಲಿಕ್ ಮಾಡಿ.' : 'Click "Start Test" to begin practicing.'}
+              </p>
             </div>
-          ))}
+
+            <input
+              type="text"
+              placeholder={lang === 'kn' ? 'ಟೆಸ್ಟ್ ಹುಡುಕಿ...' : 'Search mock tests...'}
+              value={testSearch}
+              onChange={(e) => setTestSearch(e.target.value)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs w-full sm:w-64 outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {userVisibleTests.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <PlayCircle className="w-12 h-12 text-slate-300 mx-auto" />
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                {lang === 'kn' ? 'ಯಾವುದೇ ಅಣಕು ಪರೀಕ್ಷೆಗಳು ಲಭ್ಯವಿಲ್ಲ.' : 'No mock tests available yet.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {userVisibleTests.map(t => (
+                <div
+                  key={t.id}
+                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-5 shadow-sm space-y-4 flex flex-col justify-between transition-all"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                        {t.subjectName || 'Mock Test'}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        t.isFree || Number(t.price) === 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                      }`}>
+                        {t.isFree || Number(t.price) === 0 ? 'FREE' : `₹${t.price}`}
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2">
+                      {lang === 'kn' && t.titleKn ? t.titleKn : t.title}
+                    </h4>
+
+                    <div className="flex items-center gap-4 text-xs text-slate-400">
+                      <span>⏱️ {t.durationMinutes || 30} Mins</span>
+                      <span>❓ {t.questions?.length || 0} Questions</span>
+                      <span>🎯 {t.totalMarks || 50} Marks</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onSelectTest(t)}
+                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <PlayCircle className="w-4 h-4" />
+                    <span>{lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Start Test'}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Tab 3: History */}
+      {/* Tab: ALL DIGITAL NOTES */}
+      {activeTab === 'notes' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {lang === 'kn' ? 'ಎಲ್ಲಾ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು & ಮೆಟೀರಿಯಲ್ಸ್' : 'All Digital Notes & Study Materials'}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {lang === 'kn' ? 'ಓದಲು "ನೋಟ್ಸ್ ಓದಿ" ಕ್ಲಿಕ್ ಮಾಡಿ.' : 'Click "Read Note" to open full study summary.'}
+              </p>
+            </div>
+
+            <input
+              type="text"
+              placeholder={lang === 'kn' ? 'ನೋಟ್ಸ್ ಹುಡುಕಿ...' : 'Search study notes...'}
+              value={noteSearch}
+              onChange={(e) => setNoteSearch(e.target.value)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs w-full sm:w-64 outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {userVisibleNotes.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <FileText className="w-12 h-12 text-slate-300 mx-auto" />
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                {lang === 'kn' ? 'ಯಾವುದೇ ನೋಟ್ಸ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ.' : 'No digital notes available yet.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {userVisibleNotes.map(n => (
+                <div
+                  key={n.id}
+                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-5 shadow-sm space-y-4 flex flex-col justify-between transition-all"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        {n.category || 'Study Material'}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        📖 {n.readTimeMinutes || 10} Mins
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2">
+                      {lang === 'kn' && n.titleKn ? n.titleKn : n.title}
+                    </h4>
+
+                    {n.content && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                        {n.content.replace(/[#*`_]/g, '')}
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => onSelectNote(n)}
+                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>{lang === 'kn' ? 'ನೋಟ್ಸ್ ಓದಿ' : 'Read Note'}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Enrolled Courses */}
+      {activeTab === 'enrolled' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              {lang === 'kn' ? 'ನನ್ನ ಕೋರ್ಸ್‌ಗಳು & ಸರಣಿಗಳು' : 'My Courses & Exam Study Packs'}
+            </h3>
+            <button
+              onClick={() => onNavigate('exams')}
+              className="text-xs text-emerald-600 font-bold hover:underline"
+            >
+              + Browse All Courses
+            </button>
+          </div>
+
+          {userExams.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                {lang === 'kn' ? 'ನೀವು ಯಾವುದೇ ಕೋರ್ಸ್‌ಗಳಿಗೆ ನೋಂದಾಯಿಸಿಕೊಂಡಿಲ್ಲ.' : 'You have not enrolled in any courses yet.'}
+              </p>
+              <button
+                onClick={() => onNavigate('exams')}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2"
+              >
+                <span>Browse Exam Courses</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {userExams.map(exam => (
+                <div
+                  key={exam.id}
+                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4 flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <img src={exam.banner} alt={exam.title} className="w-full h-36 rounded-2xl object-cover" />
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      {exam.category}
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {exam.title}
+                    </h3>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <span className="text-xs text-emerald-600 font-semibold">Active Access</span>
+                    <button
+                      onClick={() => onSelectExam(exam)}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold"
+                    >
+                      Open Study Pack
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: History */}
       {activeTab === 'history' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-200 dark:border-slate-800">
@@ -407,7 +618,7 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
         </div>
       )}
 
-      {/* Tab 4: Bookmarks */}
+      {/* Tab: Bookmarks */}
       {activeTab === 'bookmarks' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
           <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
@@ -438,3 +649,4 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
     </div>
   );
 };
+

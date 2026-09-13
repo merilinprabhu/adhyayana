@@ -389,26 +389,64 @@ export const DataProvider = ({ children }) => {
     const logs = [];
 
     try {
+      // 0. Seed Current & Initial Exams
+      const allExamsToPush = exams.length > 0 ? exams : INITIAL_EXAMS;
+      let examErrCount = 0;
+      for (const exam of allExamsToPush) {
+        const { error } = await supabase.from('exams').upsert({
+          id: exam.id,
+          title: exam.title,
+          short_name: exam.shortName || exam.short_name || '',
+          category: exam.category || 'State Civil Services',
+          description: exam.description || '',
+          description_kn: exam.descriptionKn || exam.description_kn || '',
+          price: Number(exam.price) || 0,
+          original_price: Number(exam.originalPrice || exam.original_price) || 0,
+          is_free: exam.isFree !== undefined ? exam.isFree : (Number(exam.price) === 0),
+          banner: exam.banner,
+          syllabus: Array.isArray(exam.syllabus) ? exam.syllabus : [],
+          badge: exam.badge || 'Verified',
+          rating: Number(exam.rating) || 5.0,
+          enrolled_count: Number(exam.enrolledCount || exam.enrolled_count) || 1,
+          tests_count: Number(exam.testsCount || exam.tests_count) || 0,
+          notes_count: Number(exam.notesCount || exam.notes_count) || 0
+        });
+        if (error) {
+          console.error('Exam upsert error:', error);
+          examErrCount++;
+          logs.push(`⚠️ Exam Sync Warning (${exam.title}): ${error.message}`);
+        }
+      }
+      if (allExamsToPush.length > 0 && examErrCount === 0) logs.push(`✓ Synced ${allExamsToPush.length} Exam Courses to Cloud`);
+
       // 1. Seed Current & Initial Subjects
       const allSubjsToPush = subjects.length > 0 ? subjects : INITIAL_SUBJECTS;
+      let subjErrCount = 0;
       for (const subj of allSubjsToPush) {
         const { error } = await supabase.from('subjects').upsert({
           id: subj.id,
+          exam_id: subj.examId || null,
           name: subj.name,
           name_kn: subj.nameKn || subj.name,
           description: subj.description || '',
           icon: subj.icon || 'BookOpen',
           display_order: subj.order || 1
         });
-        if (error) console.warn('Subject upsert error:', error);
+        if (error) {
+          console.error('Subject upsert error:', error);
+          subjErrCount++;
+          logs.push(`⚠️ Subject Sync Warning (${subj.name}): ${error.message}`);
+        }
       }
-      logs.push(`✓ Synced ${allSubjsToPush.length} Subject Sections to Cloud`);
+      if (allSubjsToPush.length > 0 && subjErrCount === 0) logs.push(`✓ Synced ${allSubjsToPush.length} Subject Sections to Cloud`);
 
       // 2. Seed Current & Initial Tests
       const allTestsToPush = tests.length > 0 ? tests : INITIAL_TESTS;
+      let testErrCount = 0;
       for (const test of allTestsToPush) {
         const { error } = await supabase.from('tests').upsert({
           id: test.id,
+          exam_id: test.examId || null,
           subject_id: test.subjectId || null,
           title: test.title,
           title_kn: test.titleKn || test.title,
@@ -422,15 +460,21 @@ export const DataProvider = ({ children }) => {
           free_questions_count: Number(test.freeQuestionsCount !== undefined ? test.freeQuestionsCount : 5),
           questions: Array.isArray(test.questions) ? test.questions : []
         });
-        if (error) console.warn('Test upsert error:', error);
+        if (error) {
+          console.error('Test upsert error:', error);
+          testErrCount++;
+          logs.push(`⚠️ Test Sync Warning (${test.title}): ${error.message}`);
+        }
       }
-      logs.push(`✓ Synced ${allTestsToPush.length} Mock Tests to Cloud`);
+      if (allTestsToPush.length > 0 && testErrCount === 0) logs.push(`✓ Synced ${allTestsToPush.length} Mock Tests to Cloud`);
 
       // 3. Seed Current & Initial Notes
       const allNotesToPush = notes.length > 0 ? notes : INITIAL_NOTES;
+      let noteErrCount = 0;
       for (const note of allNotesToPush) {
         const { error } = await supabase.from('notes').upsert({
           id: note.id,
+          exam_id: note.examId || null,
           subject_id: note.subjectId || null,
           title: note.title,
           title_kn: note.titleKn || note.title,
@@ -442,9 +486,13 @@ export const DataProvider = ({ children }) => {
           price: Number(note.price) || 0,
           content: note.content || ''
         });
-        if (error) console.warn('Notes upsert error:', error);
+        if (error) {
+          console.error('Notes upsert error:', error);
+          noteErrCount++;
+          logs.push(`⚠️ Note Sync Warning (${note.title}): ${error.message}`);
+        }
       }
-      logs.push(`✓ Synced ${allNotesToPush.length} Digital Notes & Materials to Cloud`);
+      if (allNotesToPush.length > 0 && noteErrCount === 0) logs.push(`✓ Synced ${allNotesToPush.length} Digital Notes & Materials to Cloud`);
 
       // 4. Seed Payment Settings
       try {
@@ -482,31 +530,35 @@ export const DataProvider = ({ children }) => {
     const examWithId = {
       ...newExam,
       id: newExam.id || 'exam-' + Date.now(),
-      rating: 5.0,
-      enrolledCount: 1,
+      rating: newExam.rating || 5.0,
+      enrolledCount: newExam.enrolledCount || 1,
       createdAt: new Date().toISOString(),
     };
 
-    setExams(prev => [examWithId, ...prev]);
+    setExams(prev => [examWithId, ...prev.filter(e => e.id !== examWithId.id)]);
 
-    // Push to Supabase
+    // Push to Supabase with upsert
     try {
-      await supabase.from('exams').insert([{
+      await supabase.from('exams').upsert({
         id: examWithId.id,
         title: examWithId.title,
-        short_name: examWithId.shortName,
-        category: examWithId.category,
-        description: examWithId.description,
-        description_kn: examWithId.descriptionKn,
-        price: examWithId.price,
-        original_price: examWithId.originalPrice,
-        is_free: examWithId.isFree,
+        short_name: examWithId.shortName || '',
+        category: examWithId.category || 'State Civil Services',
+        description: examWithId.description || '',
+        description_kn: examWithId.descriptionKn || '',
+        price: Number(examWithId.price) || 0,
+        original_price: Number(examWithId.originalPrice) || 0,
+        is_free: examWithId.isFree !== undefined ? examWithId.isFree : (Number(examWithId.price) === 0),
         banner: examWithId.banner,
-        syllabus: examWithId.syllabus,
-        badge: examWithId.badge,
-      }]);
+        syllabus: Array.isArray(examWithId.syllabus) ? examWithId.syllabus : [],
+        badge: examWithId.badge || 'Verified',
+        rating: Number(examWithId.rating) || 5.0,
+        enrolled_count: Number(examWithId.enrolledCount) || 1,
+        tests_count: Number(examWithId.testsCount) || 0,
+        notes_count: Number(examWithId.notesCount) || 0
+      });
     } catch (e) {
-      console.warn('Supabase exam insert fallback:', e);
+      console.warn('Supabase exam upsert fallback:', e);
     }
 
     return examWithId;
@@ -540,10 +592,10 @@ export const DataProvider = ({ children }) => {
       createdAt: new Date().toISOString(),
     };
 
-    setSubjects(prev => [...prev, subjectWithId]);
+    setSubjects(prev => [...prev.filter(s => s.id !== subjectWithId.id), subjectWithId]);
 
     try {
-      await supabase.from('subjects').insert([{
+      await supabase.from('subjects').upsert({
         id: subjectWithId.id,
         exam_id: subjectWithId.examId || null,
         name: subjectWithId.name,
@@ -551,9 +603,9 @@ export const DataProvider = ({ children }) => {
         description: subjectWithId.description || '',
         icon: subjectWithId.icon || 'BookOpen',
         display_order: subjectWithId.order || 1
-      }]);
+      });
     } catch (e) {
-      console.warn('Supabase subject insert fallback:', e);
+      console.warn('Supabase subject upsert fallback:', e);
     }
 
     return subjectWithId;
@@ -593,12 +645,14 @@ export const DataProvider = ({ children }) => {
     setRazorpayKeyId(newKey.trim());
   };
 
-  // Test Operations (Pure Subject Linked)
+  // Test Operations (Pure Subject Linked & Exam Linked)
   const addTest = async (newTest) => {
     const isFree = newTest.isFree === true || Number(newTest.price) === 0;
     const testWithId = {
       ...newTest,
       id: newTest.id || 'test-' + Date.now(),
+      examId: newTest.examId || null,
+      subjectId: newTest.subjectId || null,
       price: isFree ? 0 : Number(newTest.price || 49),
       isFree: isFree,
       freeQuestionsCount: isFree ? (newTest.questions?.length || 50) : Number(newTest.freeQuestionsCount !== undefined ? newTest.freeQuestionsCount : 2),
@@ -614,18 +668,18 @@ export const DataProvider = ({ children }) => {
         subject_id: testWithId.subjectId || null,
         title: testWithId.title,
         title_kn: testWithId.titleKn || testWithId.title,
-        duration_minutes: testWithId.durationMinutes,
-        total_marks: testWithId.totalMarks,
-        negative_marking: testWithId.negativeMarking,
+        duration_minutes: Number(testWithId.durationMinutes) || 30,
+        total_marks: Number(testWithId.totalMarks) || 50,
+        negative_marking: Number(testWithId.negativeMarking) || 0.25,
         source_type: testWithId.sourceType || 'manual',
-        questions: testWithId.questions,
+        questions: Array.isArray(testWithId.questions) ? testWithId.questions : [],
         price: testWithId.price,
         is_free: testWithId.isFree,
         free_questions_count: testWithId.freeQuestionsCount,
         is_free_preview: !isFree && testWithId.freeQuestionsCount > 0
       });
     } catch (e) {
-      console.warn('Supabase test insert fallback:', e);
+      console.warn('Supabase test upsert fallback:', e);
     }
 
     return testWithId;
@@ -645,12 +699,14 @@ export const DataProvider = ({ children }) => {
     } catch (e) {}
   };
 
-  // Note Operations (Pure Subject Linked)
+  // Note Operations (Pure Subject Linked & Exam Linked)
   const addNote = async (newNote) => {
     const isFree = newNote.isFree === true || Number(newNote.price) === 0;
     const noteWithId = {
       ...newNote,
       id: newNote.id || 'note-' + Date.now(),
+      examId: newNote.examId || null,
+      subjectId: newNote.subjectId || null,
       price: isFree ? 0 : Number(newNote.price || 29),
       isFree: isFree,
       createdAt: new Date().toISOString(),
@@ -668,7 +724,7 @@ export const DataProvider = ({ children }) => {
         category: noteWithId.category || 'General',
         file_type: noteWithId.fileType || 'rich_text',
         gdrive_url: noteWithId.gdriveUrl || '',
-        read_time_minutes: noteWithId.readTimeMinutes || 10,
+        read_time_minutes: Number(noteWithId.readTimeMinutes) || 10,
         is_free: noteWithId.isFree,
         price: noteWithId.price,
         content: noteWithId.content || ''

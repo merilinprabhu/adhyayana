@@ -177,50 +177,21 @@ ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAUL
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS utr_number TEXT;
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS item_type TEXT DEFAULT 'exam';
 
--- Enable Row Level Security (RLS)
-ALTER TABLE public.exams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_attempts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+-- Grant schema and table permissions to anon and authenticated roles
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
 
--- Allow Public Read Access Policies
-DO $$ BEGIN
-  DROP POLICY IF EXISTS "Public Exams Read" ON public.exams;
-  DROP POLICY IF EXISTS "Public Subjects Read" ON public.subjects;
-  DROP POLICY IF EXISTS "Public Tests Read" ON public.tests;
-  DROP POLICY IF EXISTS "Public Notes Read" ON public.notes;
-  DROP POLICY IF EXISTS "Public App Settings Read" ON public.app_settings;
-  DROP POLICY IF EXISTS "Public Purchases Read" ON public.purchases;
-  DROP POLICY IF EXISTS "Public Attempts Read" ON public.user_attempts;
-  
-  DROP POLICY IF EXISTS "Allow All Inserts Exams" ON public.exams;
-  DROP POLICY IF EXISTS "Allow All Inserts Subjects" ON public.subjects;
-  DROP POLICY IF EXISTS "Allow All Inserts Tests" ON public.tests;
-  DROP POLICY IF EXISTS "Allow All Inserts Notes" ON public.notes;
-  DROP POLICY IF EXISTS "Allow All User Attempts" ON public.user_attempts;
-  DROP POLICY IF EXISTS "Allow All Purchases" ON public.purchases;
-  DROP POLICY IF EXISTS "Allow All App Settings" ON public.app_settings;
-END $$;
-
-CREATE POLICY "Public Exams Read" ON public.exams FOR SELECT USING (true);
-CREATE POLICY "Public Subjects Read" ON public.subjects FOR SELECT USING (true);
-CREATE POLICY "Public Tests Read" ON public.tests FOR SELECT USING (true);
-CREATE POLICY "Public Notes Read" ON public.notes FOR SELECT USING (true);
-CREATE POLICY "Public App Settings Read" ON public.app_settings FOR SELECT USING (true);
-CREATE POLICY "Public Purchases Read" ON public.purchases FOR SELECT USING (true);
-CREATE POLICY "Public Attempts Read" ON public.user_attempts FOR SELECT USING (true);
-
--- Allow All Inserts / Updates / Deletes for App Operations
-CREATE POLICY "Allow All Inserts Exams" ON public.exams FOR ALL USING (true);
-CREATE POLICY "Allow All Inserts Subjects" ON public.subjects FOR ALL USING (true);
-CREATE POLICY "Allow All Inserts Tests" ON public.tests FOR ALL USING (true);
-CREATE POLICY "Allow All Inserts Notes" ON public.notes FOR ALL USING (true);
-CREATE POLICY "Allow All User Attempts" ON public.user_attempts FOR ALL USING (true);
-CREATE POLICY "Allow All Purchases" ON public.purchases FOR ALL USING (true);
-CREATE POLICY "Allow All App Settings" ON public.app_settings FOR ALL USING (true);
+-- Disable Row Level Security (RLS) to prevent any permission blocking, or set open access
+ALTER TABLE public.exams DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subjects DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tests DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_attempts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_settings DISABLE ROW LEVEL SECURITY;
 `;
 
 export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => {
@@ -791,7 +762,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
           }`}
         >
           <QrCode className="w-4 h-4" />
-          <span>5. Direct UPI QR & Razorpay API</span>
+          <span>5. Direct UPI QR & Payment Settings</span>
         </button>
 
         <button
@@ -2049,56 +2020,6 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                 </p>
               </div>
             </form>
-          </div>
-
-          {/* Razorpay API Gateway Configuration Card */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
-                <CreditCard className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {lang === 'kn' ? 'Razorpay Payment Gateway API ಸಂರಚನೆ (ಐಚ್ಛಿಕ)' : 'Razorpay Gateway API Configuration (Optional)'}
-                </h3>
-                <p className="text-[11px] text-slate-400">
-                  {lang === 'kn' ? 'ಕ್ರೆಡಿಟ್/ಡೆಬಿಟ್ ಕಾರ್ಡ್ & ನೆಟ್ ಬ್ಯಾಂಕಿಂಗ್ ಸಕ್ರಿಯಗೊಳಿಸಲು Razorpay Key ID ಬಳಸಿ' : 'Enter Razorpay Key ID to support instant cards and netbanking'}
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSavePaymentSettings} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-              <div className="sm:col-span-8">
-                <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                  Razorpay Key ID (Key_ID)
-                </label>
-                <div className="relative">
-                  <Key className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="e.g. rzp_test_... or rzp_live_..."
-                    value={rzpKeyInput}
-                    onChange={(e) => setRzpKeyInput(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-              <div className="sm:col-span-4">
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md transition-all"
-                >
-                  {lang === 'kn' ? 'Key ID ಉಳಿಸಿ (Save Key)' : 'Save Razorpay Key'}
-                </button>
-              </div>
-            </form>
-
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
-              <span>Active Gateway Mode: <strong className="text-slate-800 dark:text-slate-200 font-mono">{rzpKeyInput.startsWith('rzp_live') ? 'LIVE PRODUCTION' : 'SANDBOX / TEST MODE'}</strong></span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                Active & Ready
-              </span>
-            </div>
           </div>
 
           {/* Transactions Audit Feed */}

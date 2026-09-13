@@ -52,10 +52,10 @@ export const HomePage = ({ onNavigate, onOpenAuth }) => {
     },
     {
       icon: <CreditCard className="w-7 h-7 text-purple-600 dark:text-purple-400" />,
-      titleEn: "Direct Razorpay UPI & Free Coupons",
-      titleKn: "ಸುರಕ್ಷಿತ ರೇಜರ್‌ಪೇ UPI & ಉಚಿತ ಪ್ರವೇಶ",
-      descEn: "Transparent payment gateway supporting GPay, PhonePe, Paytm, Cards and automated instant access verification without manual delays.",
-      descKn: "GPay, PhonePe, UPI ಮತ್ತು ಕಾರ್ಡ್‌ಗಳ ಮೂಲಕ ತತ್ಕ್ಷಣದ ಸುರಕ್ಷಿತ ರೇಜರ್‌ಪೇ ಪಾವತಿ ಹಾಗೂ 100% ಉಚಿತ ಸ್ಕಾಲರ್‌ಶಿಪ್ ಕೂಪನ್‌ಗಳ ಸೌಲಭ್ಯ."
+      titleEn: "Direct PhonePe / GPay QR & Free Coupons",
+      titleKn: "ನೇರ PhonePe / UPI QR & ಉಚಿತ ಪ್ರವೇಶ",
+      descEn: "Zero-fee direct payment supporting PhonePe, GPay, Paytm, and instant UTR verification without intermediary gateway commissions.",
+      descKn: "PhonePe, GPay, Paytm QR ಮೂಲಕ 0% ಶುಲ್ಕದಲ್ಲಿ ನೇರ ಪಾವತಿ ಹಾಗೂ 100% ಉಚಿತ ಸ್ಕಾಲರ್‌ಶಿಪ್ ಕೂಪನ್‌ಗಳ ಸೌಲಭ್ಯ."
     }
   ];
 
@@ -162,7 +162,7 @@ export const HomePage = ({ onNavigate, onOpenAuth }) => {
             </div>
             <div className="flex items-center justify-center gap-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <CreditCard className="w-4 h-4 text-purple-600" />
-              <span>Razorpay UPI Gateway</span>
+              <span>PhonePe / GPay QR (0% Fee)</span>
             </div>
             <div className="flex items-center justify-center gap-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <Globe2 className="w-4 h-4 text-amber-500" />

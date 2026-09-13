@@ -26,10 +26,20 @@ export const ExamDetail = ({ exam, onBack, onSelectTest, onSelectNote, onOpenChe
 
   if (!exam) return null;
 
-  const userHasAccess = isEnrolled(exam.id);
-  const examSubjects = subjects.filter(s => s.examId === exam.id);
-  const examTests = tests.filter(t => t.examId === exam.id);
-  const examNotes = notes.filter(n => n.examId === exam.id);
+  const userHasAccess = isEnrolled(exam.id) || exam.isFree || Number(exam.price) === 0;
+  
+  // Find subjects that belong to this exam, or fallback to all subjects if none explicitly tagged
+  const specificSubjects = subjects.filter(s => s.examId === exam.id);
+  const examSubjects = specificSubjects.length > 0 ? specificSubjects : subjects;
+  const examSubjectIds = new Set(examSubjects.map(s => s.id));
+
+  // Find tests that belong to this exam or its subjects
+  const specificTests = tests.filter(t => t.examId === exam.id || examSubjectIds.has(t.subjectId));
+  const examTests = specificTests.length > 0 ? specificTests : tests;
+
+  // Find notes that belong to this exam or its subjects
+  const specificNotes = notes.filter(n => n.examId === exam.id || examSubjectIds.has(n.subjectId));
+  const examNotes = specificNotes.length > 0 ? specificNotes : notes;
 
   const [activeTab, setActiveTab] = useState('subjects'); // subjects | tests | notes | syllabus
   const [expandedSubjectId, setExpandedSubjectId] = useState(null);
