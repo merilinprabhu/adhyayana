@@ -93,10 +93,11 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
     addTest,
     updateTest,
     deleteTest,
-    clearAllData,
+    restoreInitialData,
     fetchLiveGoogleSheetCSV,
     parseGoogleSheetCSV,
     syncLocalToSupabase,
+    syncFromSupabase,
     isCloudSyncing
   } = useData();
 
@@ -508,20 +509,6 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
               <PlayCircle className="w-4 h-4" />
               <span>{lang === 'kn' ? '+ ಟೆಸ್ಟ್ ಸೇರಿಸಿ' : '+ Add Test'}</span>
             </button>
-
-            {/* Clear All Dummy Data Button */}
-            <button
-              onClick={() => {
-                if (window.confirm('Delete all dummy data and start 100% fresh? This will clear all subjects, notes, and tests.')) {
-                  clearAllData();
-                  setSelectedSubjectId('ALL');
-                }
-              }}
-              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-all"
-              title="Clear All Data & Start Clean"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
           </div>
         )}
       </div>
@@ -539,25 +526,47 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
         </div>
 
         {subjects.length === 0 ? (
-          <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+          <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-4">
             <FolderPlus className="w-12 h-12 text-slate-400 mx-auto" />
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-              {lang === 'kn' ? 'ಯಾವುದೇ ವಿಷಯ ವಿಭಾಗಗಳಿಲ್ಲ' : 'No Subjects Created Yet'}
-            </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              {lang === 'kn'
-                ? 'ಮೊದಲು "+ ಹೊಸ ವಿಷಯ ರಚಿಸಿ" ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ವಿಷಯವನ್ನು ರಚಿಸಿ, ನಂತರ ಆ ವಿಷಯದ ಅಡಿಯಲ್ಲಿ ನೋಟ್ಸ್ ಮತ್ತು ಟೆಸ್ಟ್‌ಗಳನ್ನು ಸೇರಿಸಿ.'
-                : 'Click "+ Create Subject" to create your first subject, then directly add notes and mock tests inside it.'}
-            </p>
-            {isDeveloper && (
+            <div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                {lang === 'kn' ? 'ಯಾವುದೇ ವಿಷಯ ವಿಭಾಗಗಳಿಲ್ಲ' : 'No Subjects Loaded'}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                {lang === 'kn'
+                  ? 'ಕೆಳಗಿನ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ಕರ್ನಾಟಕ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ಸಿಲಬಸ್, ಮಾಕ್ ಟೆಸ್ಟ್ ಮತ್ತು ನೋಟ್ಸ್‌ಗಳನ್ನು ತಕ್ಷಣ ಮರುಸ್ಥಾಪಿಸಿ.'
+                  : 'Click below to restore default syllabus subjects, mock tests, and notes or sync from Cloud.'}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
-                onClick={() => setIsNewSubjectModalOpen(true)}
-                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-purple-600/20"
+                onClick={restoreInitialData}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-emerald-600/20"
               >
-                <Plus className="w-4 h-4" />
-                <span>{lang === 'kn' ? '+ ಮೊದಲ ವಿಷಯ ರಚಿಸಿ' : '+ Create First Subject'}</span>
+                <Sparkles className="w-4 h-4" />
+                <span>{lang === 'kn' ? '⚡ ಸಿಲಬಸ್ & ಟೆಸ್ಟ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ (Restore Default Data)' : 'Restore Default Syllabus & Tests'}</span>
               </button>
-            )}
+
+              <button
+                onClick={syncFromSupabase}
+                disabled={isCloudSyncing}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-blue-600/20 disabled:opacity-50"
+              >
+                <Cloud className="w-4 h-4" />
+                <span>{isCloudSyncing ? 'ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...' : (lang === 'kn' ? '☁️ Supabase ಕ್ಲೌಡ್‌ನಿಂದ ಸಿಂಕ್ ಮಾಡಿ' : 'Sync from Cloud')}</span>
+              </button>
+
+              {isDeveloper && (
+                <button
+                  onClick={() => setIsNewSubjectModalOpen(true)}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-purple-600/20"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{lang === 'kn' ? '+ ಹೊಸ ವಿಷಯ ರಚಿಸಿ' : '+ Create Subject'}</span>
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">

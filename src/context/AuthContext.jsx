@@ -278,7 +278,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         isAuthenticated: !!user,
-        isDeveloper: user?.role === 'developer' || user?.isAuthorizedAdmin || Boolean(user?.email && (AUTHORIZED_ADMIN_EMAILS.includes(user.email.toLowerCase()) || user.email.toLowerCase().includes('merilin') || user.email.toLowerCase().includes('mereilin'))),
+        isDeveloper: user?.role === 'developer',
         loginWithEmail,
         registerWithEmail,
         directSetNewPassword,

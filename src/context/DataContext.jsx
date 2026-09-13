@@ -59,7 +59,8 @@ export const DataProvider = ({ children }) => {
   const [exams, setExams] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.EXAMS);
-      return saved ? JSON.parse(saved) : INITIAL_EXAMS;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_EXAMS;
     } catch {
       return INITIAL_EXAMS;
     }
@@ -69,7 +70,8 @@ export const DataProvider = ({ children }) => {
   const [subjects, setSubjects] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
-      return saved ? JSON.parse(saved) : INITIAL_SUBJECTS;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_SUBJECTS;
     } catch {
       return INITIAL_SUBJECTS;
     }
@@ -79,7 +81,8 @@ export const DataProvider = ({ children }) => {
   const [tests, setTests] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.TESTS);
-      return saved ? JSON.parse(saved) : INITIAL_TESTS;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_TESTS;
     } catch {
       return INITIAL_TESTS;
     }
@@ -89,7 +92,8 @@ export const DataProvider = ({ children }) => {
   const [notes, setNotes] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.NOTES);
-      return saved ? JSON.parse(saved) : INITIAL_NOTES;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_NOTES;
     } catch {
       return INITIAL_NOTES;
     }
@@ -630,6 +634,18 @@ export const DataProvider = ({ children }) => {
     } catch (e) {}
   };
 
+  const restoreInitialData = () => {
+    setExams(INITIAL_EXAMS);
+    setSubjects(INITIAL_SUBJECTS);
+    setTests(INITIAL_TESTS);
+    setNotes(INITIAL_NOTES);
+    localStorage.setItem(STORAGE_KEYS.EXAMS, JSON.stringify(INITIAL_EXAMS));
+    localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(INITIAL_SUBJECTS));
+    localStorage.setItem(STORAGE_KEYS.TESTS, JSON.stringify(INITIAL_TESTS));
+    localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(INITIAL_NOTES));
+    return { success: true, message: 'Default Syllabus, Tests, and Notes restored successfully!' };
+  };
+
   const clearAllData = () => {
     setSubjects([]);
     setTests([]);
@@ -1075,6 +1091,7 @@ export const DataProvider = ({ children }) => {
         updateSubject,
         deleteSubject,
         clearAllData,
+        restoreInitialData,
         addTest,
         updateTest,
         deleteTest,

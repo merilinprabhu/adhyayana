@@ -7,12 +7,14 @@ import {
   Tag, 
   X, 
   QrCode, 
-  Smartphone, 
   Lock,
   Sparkles,
   Copy,
   Check,
-  CreditCard
+  MessageCircle,
+  Clock,
+  BookOpen,
+  PlayCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -68,11 +70,10 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
   const discountedPrice = Math.max(0, Math.round(originalPrice * (1 - discountPercent / 100)));
 
   // Dynamic UPI Payment String for PhonePe/GPay/Paytm/BHIM
-  const upiId = developerUpiId || 'merilinprabhugk@okaxis';
-  const merchantName = developerName || 'Merilin Prabhu (ADHYAYANA)';
-  const itemNote = `${item.title || 'Course Access'}`.slice(0, 30);
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${discountedPrice}&cu=INR&tn=${encodeURIComponent(itemNote)}`;
-  const qrCodeImageUrl = developerUpiQrImage || `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(upiUrl)}&margin=10`;
+  const upiId = developerUpiId || '6360433316@ybl';
+  const merchantName = developerName || 'ADHYAYANA (ಅಧ್ಯಯನ)';
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${discountedPrice}&cu=INR`;
+  const qrCodeImageUrl = developerUpiQrImage || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiUrl)}&margin=10`;
 
   const copyToClipboard = (text, type) => {
     navigator.clipboard.writeText(text);
@@ -84,6 +85,13 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
       setTimeout(() => setCopiedPhone(false), 2500);
     }
   };
+
+  // WhatsApp prefilled support message
+  const whatsappNumber = (developerPhone || '6360433316').replace(/\D/g, '');
+  const whatsappText = encodeURIComponent(
+    `ನಮಸ್ಕಾರ, ನಾನು ADHYAYANA ವೆಬ್‌ಸೈಟ್‌ನಲ್ಲಿ "${item.title}" (₹${discountedPrice}) ಗಾಗಿ ಪಾವತಿ ಮಾಡಿದ್ದೇನೆ.\nನನ್ನ ಇಮೇಲ್: ${user?.email || 'N/A'}\nದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
+  );
+  const whatsappUrl = `https://wa.me/91${whatsappNumber}?text=${whatsappText}`;
 
   // Submit UPI Direct Payment / UTR
   const handleConfirmUpiPayment = async (e) => {
@@ -234,17 +242,20 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
         
         {/* Header */}
-        <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white p-4 sm:p-5 flex items-center justify-between border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shadow-inner">
               <Lock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-bold">
-                {lang === 'kn' ? 'ನೇರ UPI ಪಾವತಿ & ಅನ್‌ಲಾಕ್' : 'Direct UPI Checkout & Unlock'}
+              <h3 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+                <span>{lang === 'kn' ? 'ನೇರ ಆನ್‌ಲೈನ್ ಪಾವತಿ & ಅನ್‌ಲಾಕ್' : 'Direct Online Checkout'}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono border border-emerald-500/30">
+                  ₹{discountedPrice}
+                </span>
               </h3>
               <p className="text-[10px] sm:text-[11px] text-slate-400">
-                PhonePe / Google Pay / Paytm QR • 0% Platform Fee • Instant Lifetime Access
+                PhonePe / Google Pay / Paytm QR • Instant Lifetime Access
               </p>
             </div>
           </div>
@@ -259,12 +270,12 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
         {isCompleted ? (
           /* SUCCESS SCREEN */
           <div className="p-6 sm:p-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-50 dark:ring-emerald-900/30">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-50 dark:ring-emerald-900/30 animate-bounce">
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <div>
               <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                {lang === 'kn' ? 'ಯಶಸ್ವಿ ಪ್ರವೇಶ ದೊರೆತಿದೆ!' : 'Enrollment Successful!'}
+                {lang === 'kn' ? '🎉 ಯಶಸ್ವಿ ಪ್ರವೇಶ ದೊರೆತಿದೆ!' : '🎉 Enrollment Successful!'}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
                 {lang === 'kn' 
@@ -283,11 +294,11 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{user?.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Payment Method:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{lastPaymentMethod || 'Direct UPI QR'}</span>
+                <span className="text-slate-500">Amount Paid:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{discountedPrice}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Reference / Txn ID:</span>
+                <span className="text-slate-500">Payment Reference:</span>
                 <span className="font-mono font-semibold text-purple-600 dark:text-purple-400">{lastPaymentId || 'VERIFIED'}</span>
               </div>
             </div>
@@ -302,27 +313,39 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
         ) : (
           <div className="p-4 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             
-            {/* Item Summary Card */}
-            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            {/* Item Order Summary Card */}
+            <div className="p-4 bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-slate-50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-lg border border-emerald-300 dark:border-emerald-800">
+                <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-emerald-600/20">
                   ₹
                 </div>
                 <div>
                   <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-1">
                     {item.title}
                   </h4>
-                  <p className="text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                    {item.questions ? `${item.questions.length} Questions • ${item.durationMinutes || 30} Mins` : (item.readTimeMinutes ? `${item.readTimeMinutes} Mins Read • Digital Notes` : 'Full Premium Module')}
-                  </p>
+                  <div className="flex items-center gap-2 mt-0.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
+                    {item.questions ? (
+                      <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                        <PlayCircle className="w-3.5 h-3.5" />
+                        {item.questions.length} ಪ್ರಶ್ನೆಗಳು • {item.durationMinutes || 30} ನಿಮಿಷ
+                      </span>
+                    ) : item.readTimeMinutes ? (
+                      <span className="flex items-center gap-1 font-semibold text-teal-600 dark:text-teal-400">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        {item.readTimeMinutes} ನಿಮಿಷ ಓದುವಿಕೆ • ಡಿಜಿಟಲ್ ನೋಟ್ಸ್
+                      </span>
+                    ) : (
+                      <span className="font-semibold text-purple-600">ಪೂರ್ಣ ಪ್ರೀಮಿಯಂ ಕೋರ್ಸ್ ಪ್ಯಾಕೇಜ್</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
+                <p className="text-lg sm:text-xl font-black text-emerald-700 dark:text-emerald-400">
                   ₹{discountedPrice}
                 </p>
                 {discountPercent > 0 && (
-                  <p className="text-[10px] text-slate-400 line-through">₹{originalPrice}</p>
+                  <p className="text-[10px] text-slate-400 line-through font-semibold">₹{originalPrice}</p>
                 )}
               </div>
             </div>
@@ -331,7 +354,7 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
             {discountedPrice === 0 ? (
               <div className="space-y-3 p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-center">
                 <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                  🎉 {lang === 'kn' ? '100% ರಿಯಾಯಿತಿ! ಯಾವುದೇ ಶುಲ್ಕವಿಲ್ಲದೆ ತಕ್ಷಣ ಪ್ರವೇಶ ಪಡೆಯಿರಿ.' : '100% Free! Unlock this item now.'}
+                  🎉 {lang === 'kn' ? '100% ರಿಯಾಯಿತಿ ಕೂಪನ್! ಯಾವುದೇ ಶುಲ್ಕವಿಲ್ಲದೆ ತಕ್ಷಣ ಪ್ರವೇಶ ಪಡೆಯಿರಿ.' : '100% Free! Unlock this item now.'}
                 </p>
                 <button
                   type="button"
@@ -347,28 +370,31 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
               <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-800/50">
                 <div className="text-center space-y-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full inline-block">
-                    ⚡ {lang === 'kn' ? 'ನೇರ PhonePe / GPay QR ಪಾವತಿ (0% ಶುಲ್ಕ)' : 'Direct PhonePe / GPay QR (0% Fee)'}
+                    ⚡ {lang === 'kn' ? 'PhonePe / GPay / Paytm ನೇರ ಪಾವತಿ' : 'Direct PhonePe / GPay / Paytm QR'}
                   </span>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
                     {lang === 'kn'
-                      ? 'ಕೆಳಗಿನ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ/UPI ಗೆ ₹' + discountedPrice + ' ಪಾವತಿಸಿ UTR ನಮೂದಿಸಿ.'
-                      : `Scan QR code or pay ₹${discountedPrice} via PhonePe/GPay and submit 12-digit UTR.`}
+                      ? `ಕೆಳಗಿನ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ UPI ಗೆ ನಿಖರವಾಗಿ ₹${discountedPrice} ಪಾವತಿಸಿ UTR ನಮೂದಿಸಿ.`
+                      : `Scan QR code or send exactly ₹${discountedPrice} via PhonePe/GPay and submit 12-digit UTR.`}
                   </p>
                 </div>
 
-                {/* QR Code Card */}
+                {/* QR Code & Payee Details */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-inner">
+                  <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-inner text-center">
                     <img
                       src={qrCodeImageUrl}
                       alt="UPI Payment QR Code"
-                      className="w-36 h-36 object-contain"
+                      className="w-40 h-40 object-contain mx-auto rounded-lg"
                     />
+                    <span className="text-[10px] font-bold text-emerald-700 block mt-1">
+                      ನಿಖರ ಮೊತ್ತ: ₹{discountedPrice}
+                    </span>
                   </div>
 
-                  <div className="space-y-2 text-left w-full sm:w-auto">
+                  <div className="space-y-2.5 text-left w-full sm:w-auto">
                     <div className="text-xs">
-                      <span className="text-slate-400 text-[10px] block">Payee Name:</span>
+                      <span className="text-slate-400 text-[10px] block font-medium">ಸ್ವೀಕರಿಸುವವರ ಹೆಸರು:</span>
                       <span className="font-bold text-slate-800 dark:text-slate-100 text-xs truncate max-w-[190px] block">
                         {merchantName}
                       </span>
@@ -376,15 +402,15 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
 
                     {/* Copy UPI ID */}
                     <div className="space-y-1">
-                      <span className="text-slate-400 text-[10px] block">UPI ID:</span>
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono font-bold text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-emerald-700 dark:text-emerald-300 border border-slate-200 dark:border-slate-700">
+                      <span className="text-slate-400 text-[10px] block font-medium">UPI ID:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-xs bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-emerald-700 dark:text-emerald-300 border border-slate-200 dark:border-slate-700">
                           {upiId}
                         </span>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(upiId, 'upi')}
-                          className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg text-slate-500 transition-colors"
+                          className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg text-slate-600 transition-colors shadow-sm"
                           title="Copy UPI ID"
                         >
                           {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -395,15 +421,15 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                     {/* Copy Phone Number */}
                     {developerPhone && (
                       <div className="space-y-1">
-                        <span className="text-slate-400 text-[10px] block">PhonePe / GPay Phone Number:</span>
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-slate-700 dark:text-slate-300">
+                        <span className="text-slate-400 text-[10px] block font-medium">PhonePe / GPay ಸಂಖ್ಯೆ:</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                             {developerPhone}
                           </span>
                           <button
                             type="button"
                             onClick={() => copyToClipboard(developerPhone, 'phone')}
-                            className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg text-slate-500 transition-colors"
+                            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg text-slate-600 transition-colors shadow-sm"
                             title="Copy Phone Number"
                           >
                             {copiedPhone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -414,18 +440,29 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                   </div>
                 </div>
 
-                {/* Mobile & Direct App Intent Link */}
-                <div>
-                  <a
-                    href={upiUrl}
-                    className="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all"
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    <span>{lang === 'kn' ? '⚡ PhonePe / Google Pay ಆಪ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ' : '⚡ Pay via PhonePe / Google Pay App'}</span>
-                  </a>
-                  <p className="text-[10px] text-center text-slate-400 mt-1">
-                    {lang === 'kn' ? '(ಮೊಬೈಲ್‌ನಲ್ಲಿ ನೇರವಾಗಿ PhonePe / GPay ಆಪ್ ತೆರೆದು ಹಣ ಪಾವತಿಸಿ)' : '(Opens PhonePe / GPay automatically on your mobile device)'}
+                {/* 3-Step PhonePe / GPay Instructions */}
+                <div className="bg-emerald-50/80 dark:bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1.5">
+                  <p className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
+                    <span>📲</span>
+                    <span>{lang === 'kn' ? 'ಪಾವತಿಸುವ ಸರಳ 3 ಹಂತಗಳು:' : 'Simple 3 Steps to Pay:'}</span>
                   </p>
+                  <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-700 dark:text-slate-300">
+                    <li>
+                      {lang === 'kn' 
+                        ? 'ನಿಮ್ಮ ಮೊಬೈಲ್‌ನಲ್ಲಿ PhonePe, Google Pay ಅಥವಾ Paytm ಆಪ್ ತೆರೆಯಿರಿ.' 
+                        : 'Open PhonePe, Google Pay or Paytm app on your phone.'}
+                    </li>
+                    <li>
+                      {lang === 'kn'
+                        ? `ಮೇಲಿನ QR Code ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ₹${discountedPrice} ಕಳುಹಿಸಿ (ಅಥವಾ UPI ID ಗೆ ಕಳುಹಿಸಿ).`
+                        : `Scan the QR code above or pay ₹${discountedPrice} to the UPI ID.`}
+                    </li>
+                    <li>
+                      {lang === 'kn'
+                        ? 'ಪಾವತಿಯಾದ ನಂತರ ರಸೀದಿಯಲ್ಲಿರುವ 12-ಅಂಕಿಯ UPI Ref / UTR ಸಂಖ್ಯೆಯನ್ನು ಕೆಳಗೆ ಹಾಕಿ ತಕ್ಷಣ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.'
+                        : 'Enter the 12-digit UTR from your bank receipt below to unlock instantly.'}
+                    </li>
+                  </ol>
                 </div>
 
                 {/* UTR / Reference ID Submission Form */}
@@ -434,14 +471,20 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                       {lang === 'kn' ? 'ಪಾವತಿಯ 12-ಅಂಕಿಯ UPI Ref / UTR ಸಂಖ್ಯೆ ನಮೂದಿಸಿ:' : 'Enter 12-digit UPI UTR / Transaction Ref ID:'} *
                     </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. 423589124578"
-                      value={utrNumber}
-                      onChange={(e) => setUtrNumber(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-xs font-mono font-bold tracking-wider outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        maxLength={12}
+                        placeholder="ಉದಾ: 423589124578"
+                        value={utrNumber}
+                        onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ''))}
+                        className="w-full p-2.5 pr-14 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-xs font-mono font-bold tracking-wider outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner"
+                      />
+                      <span className="absolute right-3 top-2.5 text-[10px] font-mono text-slate-400">
+                        {utrNumber.length}/12
+                      </span>
+                    </div>
                     <p className="text-[10px] text-slate-400 mt-1">
                       {lang === 'kn'
                         ? 'PhonePe / Google Pay / Paytm ರಸೀದಿಯಲ್ಲಿ "UPI Ref No / UTR" ಅನ್ನು ನೋಡಿ ನಮೂದಿಸಿ.'
@@ -451,23 +494,37 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
 
                   <button
                     type="submit"
-                    disabled={isProcessing}
-                    className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                    disabled={isProcessing || (discountedPrice > 0 && utrNumber.length < 12)}
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-[0.99]"
                   >
                     <ShieldCheck className="w-4 h-4" />
                     <span>
                       {isProcessing
                         ? 'ಖಚಿತಪಡಿಸಲಾಗುತ್ತಿದೆ...'
-                        : (lang === 'kn' ? 'ಖಚಿತಪಡಿಸಿ & ತಕ್ಷಣ ಅನ್‌ಲಾಕ್ ಮಾಡಿ' : 'Confirm Payment & Instant Unlock')}
+                        : (lang === 'kn' ? `₹${discountedPrice} ಪಾವತಿ ಖಚಿತಪಡಿಸಿ & ತಕ್ಷಣ ಅನ್‌ಲಾಕ್ ಮಾಡಿ` : `Confirm ₹${discountedPrice} Payment & Instant Unlock`)}
                     </span>
                   </button>
                 </form>
+
+                {/* WhatsApp Help Button */}
+                <div className="text-center pt-1">
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{lang === 'kn' ? '💬 ಪಾವತಿಯಲ್ಲಿ ಸಹಾಯ ಬೇಕೇ? WhatsApp ನಲ್ಲಿ ಸಂಪರ್ಕಿಸಿ' : '💬 Need help with payment? Contact on WhatsApp'}</span>
+                  </a>
+                </div>
+
               </div>
             )}
 
             {/* Payment Error Alert */}
             {paymentError && (
-              <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-300">
+              <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-300 font-medium">
                 {paymentError}
               </div>
             )}
@@ -519,4 +576,5 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
     </div>
   );
 };
+
 
