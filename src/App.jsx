@@ -104,16 +104,21 @@ const MainApp = () => {
         )}
 
         {currentView === 'exams' && (
-          <ExamCatalog
+          <NotesCatalog
+            initialTab="exams"
             onSelectExam={handleSelectExam}
+            onSelectNote={handleSelectNote}
+            onSelectTest={handleSelectTest}
             onOpenAuth={handleOpenAuth}
+            onOpenCheckout={handleOpenCheckout}
+            onNavigate={(v) => setCurrentView(v)}
           />
         )}
 
         {currentView === 'exam_detail' && (
           <ExamDetail
             exam={selectedExam || exams[0]}
-            onBack={() => setCurrentView('exams')}
+            onBack={() => setCurrentView('notes')}
             onSelectTest={handleSelectTest}
             onSelectNote={handleSelectNote}
             onOpenCheckout={handleOpenCheckout}
@@ -123,6 +128,7 @@ const MainApp = () => {
 
         {currentView === 'notes' && (
           <NotesCatalog
+            onSelectExam={handleSelectExam}
             onSelectNote={handleSelectNote}
             onSelectTest={handleSelectTest}
             onOpenAuth={handleOpenAuth}

@@ -400,6 +400,92 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
 
             </div>
 
+            {/* Deep Performance Diagnostics & Subject Mastery Breakdown */}
+            {(() => {
+              const avgSecondsPerQ = Math.round((result.timeSpentSeconds || 60) / (result.totalQuestions || 1));
+              const subjectMap = {};
+              (result.questionResults || []).forEach(q => {
+                const sub = q.subject || 'General Studies';
+                if (!subjectMap[sub]) subjectMap[sub] = { total: 0, correct: 0 };
+                subjectMap[sub].total += 1;
+                if (q.isCorrect) subjectMap[sub].correct += 1;
+              });
+
+              const weakSubjects = Object.entries(subjectMap).filter(([_, stats]) => {
+                const acc = Math.round((stats.correct / stats.total) * 100);
+                return acc < 60;
+              });
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Speed & Accuracy Metric Card */}
+                  <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        {lang === 'kn' ? 'ವೇಗ ಮತ್ತು ಸಮಯ ವಿಶ್ಲೇಷಣೆ (Speed Diagnostics)' : 'Speed Diagnostics'}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        {avgSecondsPerQ <= 45 ? '⚡ ಸೂಪರ್ ವೇಗ (Fast)' : '⏳ ಸಮತೋಲಿತ ವೇಗ (Moderate)'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <p className="text-2xl font-black text-slate-900 dark:text-slate-100">
+                          {avgSecondsPerQ}s
+                        </p>
+                        <p className="text-[10px] text-slate-500">{lang === 'kn' ? 'ಪ್ರತಿ ಪ್ರಶ್ನೆಗೆ ಸರಾಸರಿ ಸಮಯ' : 'Avg Time / Question'}</p>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                          {result.accuracy}%
+                        </p>
+                        <p className="text-[10px] text-slate-500">{lang === 'kn' ? 'ನಿಖರತೆ (Overall Accuracy)' : 'Overall Accuracy'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Subject Mastery & Weak Area Guidance */}
+                  <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-purple-600" />
+                        {lang === 'kn' ? 'ವಿಷಯವಾರು ನಿಖರತೆ & ಸುಧಾರಣಾ ಸಲಹೆ' : 'Subject Mastery & Guidance'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                      {Object.entries(subjectMap).map(([subName, stats], sIdx) => {
+                        const subAcc = Math.round((stats.correct / stats.total) * 100);
+                        return (
+                          <div key={sIdx} className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[150px]">{subName}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-slate-400">{stats.correct}/{stats.total}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                subAcc >= 70 ? 'bg-emerald-100 text-emerald-800' : subAcc >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                              }`}>
+                                {subAcc}%
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {weakSubjects.length > 0 && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold bg-amber-50 dark:bg-amber-950/60 p-2 rounded-xl border border-amber-200 dark:border-amber-800">
+                        💡 {lang === 'kn'
+                          ? `ಸಲಹೆ: ${weakSubjects.map(([s]) => s).join(', ')} ವಿಷಯದ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳನ್ನು ಪುನರಾವರ್ತಿಸಿ.`
+                          : `Recommendation: Revise notes for ${weakSubjects.map(([s]) => s).join(', ')} to boost score.`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Question-by-Question Detailed Review */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -710,23 +796,27 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                 </h4>
 
                 {/* Legend */}
-                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 dark:text-slate-400 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                    <span>Answered ({Object.keys(selectedAnswers).length})</span>
+                    <span className="w-3 h-3 rounded-md bg-emerald-600"></span>
+                    <span>{lang === 'kn' ? 'ಉತ್ತರಿಸಿದ್ದು' : 'Answered'} ({Object.keys(selectedAnswers).length})</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                    <span>Review ({Object.values(markedForReview).filter(Boolean).length})</span>
+                    <span className="w-3 h-3 rounded-md bg-rose-500"></span>
+                    <span>{lang === 'kn' ? 'ಉತ್ತರಿಸಿಲ್ಲ' : 'Not Answered'} ({Object.keys(visited).filter(k => selectedAnswers[k] === undefined).length})</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-slate-200 dark:bg-slate-700"></span>
-                    <span>Unanswered</span>
+                    <span className="w-3 h-3 rounded-md bg-purple-600"></span>
+                    <span>{lang === 'kn' ? 'ರಿವ್ಯೂ' : 'Marked'} ({Object.values(markedForReview).filter(Boolean).length})</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-md bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></span>
+                    <span>{lang === 'kn' ? 'ಭೇಟಿ ನೀಡಿಲ್ಲ' : 'Not Visited'} ({Math.max(0, activeQuestions.length - Object.keys(visited).length)})</span>
                   </div>
                   {!hasFullAccess && (
-                    <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold">
+                    <div className="col-span-2 flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold pt-1">
                       <Lock className="w-3 h-3" />
-                      <span>Pro Locked ({Math.max(0, activeQuestions.length - freeQuestionsCount)})</span>
+                      <span>{lang === 'kn' ? 'ಪ್ರೀಮಿಯಂ ಲಾಕ್' : 'Pro Locked'} ({Math.max(0, activeQuestions.length - freeQuestionsCount)})</span>
                     </div>
                   )}
                 </div>
@@ -738,16 +828,19 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                     const isReview = markedForReview[idx];
                     const isCurrent = currentIdx === idx;
                     const isLocked = isQuestionLocked(idx);
+                    const isVisited = visited[idx];
 
-                    let btnStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300';
+                    let btnStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
                     if (isLocked) {
                       btnStyle = 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
-                    } else if (isAnswered) {
-                      btnStyle = 'bg-emerald-500 text-white font-bold';
                     } else if (isReview) {
-                      btnStyle = 'bg-amber-500 text-white font-bold';
+                      btnStyle = 'bg-purple-600 text-white font-bold shadow-sm';
+                    } else if (isAnswered) {
+                      btnStyle = 'bg-emerald-600 text-white font-bold shadow-sm';
+                    } else if (isVisited) {
+                      btnStyle = 'bg-rose-500 text-white font-bold shadow-sm';
                     }
-                    if (isCurrent) btnStyle += ' ring-2 ring-emerald-400 dark:ring-emerald-300 scale-105';
+                    if (isCurrent) btnStyle += ' ring-2 ring-amber-400 dark:ring-amber-300 scale-105 z-10';
 
                     return (
                       <button

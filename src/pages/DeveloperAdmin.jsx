@@ -51,7 +51,15 @@ import {
   ToggleRight,
   XCircle,
   Activity,
-  Percent
+  Percent,
+  Bell,
+  Pin,
+  Image as ImageIcon,
+  ExternalLink,
+  Mail,
+  Send,
+  Share2,
+  MessageCircle
 } from 'lucide-react';
 
 const SUPABASE_SCHEMA_SQL = `-- ADHYAYANA (ಅಧ್ಯಯನ) Complete Production Database Schema for Supabase
@@ -100,6 +108,7 @@ CREATE TABLE IF NOT EXISTS public.tests (
   total_marks INT DEFAULT 50,
   negative_marking NUMERIC DEFAULT 0.25,
   source_type TEXT DEFAULT 'manual',
+  gsheet_url TEXT,
   is_free_preview BOOLEAN DEFAULT false,
   price NUMERIC DEFAULT 0,
   is_free BOOLEAN DEFAULT false,
@@ -142,6 +151,7 @@ CREATE TABLE IF NOT EXISTS public.user_attempts (
   id TEXT PRIMARY KEY,
   user_id TEXT,
   user_email TEXT NOT NULL,
+  user_name TEXT,
   test_id TEXT,
   test_title TEXT,
   score NUMERIC,
@@ -189,15 +199,20 @@ ALTER TABLE public.notes DROP CONSTRAINT IF EXISTS notes_exam_id_fkey;
 ALTER TABLE public.notes DROP CONSTRAINT IF EXISTS notes_subject_id_fkey;
 
 -- Safe Column Alterations for Existing Tables (Ensures no missing columns)
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS gsheet_url TEXT;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS is_free BOOLEAN DEFAULT false;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS free_questions_count INT DEFAULT 2;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS subject_id TEXT;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS questions JSONB DEFAULT '[]'::jsonb;
 
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS gdrive_url TEXT;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS content TEXT;
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS is_free BOOLEAN DEFAULT false;
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS subject_id TEXT;
+
+ALTER TABLE public.user_attempts ADD COLUMN IF NOT EXISTS user_name TEXT;
 
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'student';
@@ -303,18 +318,67 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     deleteTest, 
     addNote, 
     deleteNote, 
+    notices,
+    addNotice,
+    updateNotice,
+    deleteNotice,
+    emailConfig,
+    updateEmailConfig,
+    generateWhatsAppBroadcastUrl,
+    generateGmailComposeUrl,
+    sendBackgroundEmail,
     razorpayKeyId,
     updateRazorpayKeyId,
     parseGoogleSheetCSV,
     fetchLiveGoogleSheetCSV
   } = useData();
 
-  const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | analytics | access
+  const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | analytics | access | notices | broadcast
   const [notification, setNotification] = useState('');
   const [copiedSql, setCopiedSql] = useState(false);
   const [seedResult, setSeedResult] = useState('');
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
   const [editingTestId, setEditingTestId] = useState(null);
+
+  // Broadcast & Email Automation State
+  const [emailForm, setEmailForm] = useState(emailConfig || {
+    serviceId: '',
+    templateId: '',
+    publicKey: '',
+    resendApiKey: '',
+    senderName: 'ಅಧ್ಯಯನ (ADHYAYANA)',
+    senderEmail: 'merilinprabhugk@gmail.com',
+    autoSendOnNotice: true,
+    autoSendOnTest: true,
+    autoSendOnNote: true
+  });
+  const [customBroadcast, setCustomBroadcast] = useState({
+    title: '',
+    category: 'ಅಧಿಕೃತ ಅಧಿಸೂಚನೆ (Official Notice)',
+    type: 'circular',
+    link: '',
+    description: ''
+  });
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [broadcastModalItem, setBroadcastModalItem] = useState(null);
+
+  // Notice Board Form State
+  const [noticeForm, setNoticeForm] = useState({
+    titleKn: '',
+    titleEn: '',
+    categoryKn: 'ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ (Syllabus)',
+    categoryEn: 'Official Syllabus',
+    type: 'pdf',
+    fileUrl: '',
+    descriptionKn: '',
+    descriptionEn: '',
+    date: new Date().toISOString().split('T')[0],
+    isNew: true,
+    isPinned: false
+  });
+  const [editingNoticeId, setEditingNoticeId] = useState(null);
+  const [noticeSearchQuery, setNoticeSearchQuery] = useState('');
+  const [noticeFilterAdmin, setNoticeFilterAdmin] = useState('all'); // all | pinned | pdf | image | circular
   
   // Payment Settings Form State
   const [devUpiInput, setDevUpiInput] = useState(developerUpiId || 'merilinprabhugk@okaxis');
@@ -757,9 +821,9 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       price: testToEdit.price !== undefined ? testToEdit.price : 49,
       isFree: Boolean(testToEdit.isFree),
       freeQuestionsCount: testToEdit.freeQuestionsCount !== undefined ? testToEdit.freeQuestionsCount : 5,
-      sourceType: testToEdit.sourceType || (testToEdit.gsheetUrl ? 'gsheet_url' : 'manual'),
-      gsheetUrl: testToEdit.gsheetUrl || '',
-      gsheetCsvData: GOOGLE_SHEET_TEMPLATE_SAMPLE,
+      sourceType: testToEdit.sourceType || (testToEdit.gsheetUrl || testToEdit.gsheet_url ? 'gsheet_url' : 'gsheet_url'),
+      gsheetUrl: testToEdit.gsheetUrl || testToEdit.gsheet_url || '',
+      gsheetCsvData: testToEdit.gsheetCsvData || GOOGLE_SHEET_TEMPLATE_SAMPLE,
       questions: Array.isArray(testToEdit.questions) ? testToEdit.questions : []
     });
     if (testToEdit.questions && testToEdit.questions.length > 0) {
@@ -857,6 +921,26 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     } else {
       await addTest(testPayload);
       showToast(lang === 'kn' ? 'ಹೊಸ ಟೆಸ್ಟ್ ಸೇರಿಸಲಾಗಿದೆ & ಕ್ಲೌಡ್‌ನಲ್ಲಿ ಲಭ್ಯ!' : 'New Dynamic Test Published Successfully!');
+
+      // Trigger Auto-broadcast modal
+      setBroadcastModalItem({
+        title: testPayload.titleKn || testPayload.title,
+        category: testPayload.subjectName || 'Online Test Series',
+        type: 'test',
+        link: window.location.origin,
+        description: `ಹೊಸ ಅಣಕು ಪರೀಕ್ಷೆ (Mock Test) ಲಭ್ಯವಿದೆ! ಒಟ್ಟು ಅಂಕಗಳು: ${testPayload.totalMarks}, ಅವಧಿ: ${testPayload.durationMinutes} ನಿಮಿಷಗಳು.`
+      });
+
+      // Auto-dispatch background email if enabled
+      if (emailConfig?.autoSendOnTest && (emailConfig?.serviceId || emailConfig?.resendApiKey)) {
+        sendBackgroundEmail({
+          subject: `[ಅಧ್ಯಯನ ADHYAYANA] ಹೊಸ ಪರೀಕ್ಷೆ: ${testPayload.titleKn || testPayload.title}`,
+          title: testPayload.titleKn || testPayload.title,
+          category: testPayload.subjectName || 'Online Mock Test',
+          description: `ಹೊಸ ಮಾದರಿ ಪರೀಕ್ಷೆ ಲಭ್ಯವಿದೆ. ಒಟ್ಟು ಅಂಕಗಳು: ${testPayload.totalMarks}, ಸಮಯ: ${testPayload.durationMinutes} ನಿಮಿಷಗಳು. ಈಗಲೇ ಹಾಜರಾಗಿ!`,
+          link: window.location.origin
+        });
+      }
     }
 
     setTestForm({
@@ -912,6 +996,27 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     });
 
     showToast(lang === 'kn' ? 'ಹೊಸ ನೋಟ್ಸ್ ಪ್ರಕಟಿಸಲಾಗಿದೆ!' : 'New Digital Study Note Published!');
+    
+    // Trigger Auto-broadcast modal
+    setBroadcastModalItem({
+      title: noteForm.titleKn || noteForm.title,
+      category: noteForm.category || 'Digital Notes',
+      type: 'note',
+      link: noteForm.gdriveUrl || '',
+      description: `ಹೊಸ ಅಧ್ಯಯನ ನೋಟ್ಸ್ ಲಭ್ಯವಿದೆ. ಓದುವ ಸಮಯ: ${noteForm.readTimeMinutes} ನಿಮಿಷಗಳು.`
+    });
+
+    // Auto-dispatch background email if enabled
+    if (emailConfig?.autoSendOnNote && (emailConfig?.serviceId || emailConfig?.resendApiKey)) {
+      sendBackgroundEmail({
+        subject: `[ಅಧ್ಯಯನ ADHYAYANA] ಹೊಸ ನೋಟ್ಸ್: ${noteForm.titleKn || noteForm.title}`,
+        title: noteForm.titleKn || noteForm.title,
+        category: noteForm.category || 'Study Material',
+        description: 'ಹೊಸ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಬಿಡುಗಡೆಯಾಗಿದೆ. ಈಗಲೇ ಅಧ್ಯಯನ ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ವೀಕ್ಷಿಸಿ.',
+        link: noteForm.gdriveUrl || window.location.origin
+      });
+    }
+
     setNoteForm({
       examId: exams[0]?.id || '',
       subjectId: '',
@@ -925,6 +1030,228 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       readTimeMinutes: 10,
       content: ''
     });
+  };
+
+  // Save Email Settings
+  const handleSaveEmailSettings = (e) => {
+    e.preventDefault();
+    updateEmailConfig(emailForm);
+    showToast(lang === 'kn' ? '✓ ಇಮೇಲ್ & ಆಟೋ-ರವಾನೆ ಸೆಟ್ಟಿಂಗ್ಸ್ ಉಳಿಸಲಾಗಿದೆ!' : '✓ Email & Automation Settings Saved!');
+  };
+
+  // Trigger Test Email
+  const handleTriggerTestEmail = async () => {
+    setIsSendingEmail(true);
+    const res = await sendBackgroundEmail({
+      subject: '[ಅಧ್ಯಯನ ADHYAYANA] ಟೆಸ್ಟ್ ಇಮೇಲ್ ಸಂದೇಶ',
+      title: 'ಅಧ್ಯಯನ ಇಮೇಲ್ ಪರೀಕ್ಷೆ (Test Dispatch)',
+      category: 'ಸಿಸ್ಟಮ್ ಪರೀಕ್ಷೆ',
+      description: 'ನಿಮ್ಮ EmailJS / Resend ಇಂಟಿಗ್ರೇಷನ್ ಯಶಸ್ವಿಯಾಗಿ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತಿದೆ!',
+      link: window.location.origin
+    });
+    setIsSendingEmail(false);
+    if (res.success) {
+      showToast(lang === 'kn' ? `🎉 ಇಮೇಲ್ ಯಶಸ್ವಿಯಾಗಿ ರವಾನೆಯಾಗಿದೆ! (${res.method})` : `🎉 Test Email Sent Successfully! (${res.method})`);
+    } else {
+      alert(lang === 'kn' ? `ಇಮೇಲ್ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: ${res.message || res.error}\nದಯವಿಟ್ಟು ಕೆಳಗೆ 1-Click Gmail Broadcast ಬಳಸಿ ಅಥವಾ API ಕೀ ಪರಿಶೀಲಿಸಿ.` : `Failed to send email: ${res.message || res.error}`);
+    }
+  };
+
+  // Handle Notice Creation / Update in Admin Hub
+  const handleCreateOrUpdateNotice = (e) => {
+    e.preventDefault();
+    if (!noticeForm.titleKn && !noticeForm.titleEn) return;
+
+    if (editingNoticeId) {
+      updateNotice(editingNoticeId, noticeForm);
+      showToast(lang === 'kn' ? 'ಪ್ರಕಟಣೆ ಯಶಸ್ವಿಯಾಗಿ ತಿದ್ದುಪಡಿಯಾಗಿದೆ!' : 'Notice updated successfully!');
+      setEditingNoticeId(null);
+    } else {
+      addNotice(noticeForm);
+      showToast(lang === 'kn' ? 'ಹೊಸ ಅಧಿಕೃತ ಪ್ರಕಟಣೆ ಪ್ರಕಟಿಸಲಾಗಿದೆ!' : 'New Official Notice Published Successfully!');
+      
+      // Trigger Auto-broadcast modal
+      setBroadcastModalItem({
+        title: noticeForm.titleKn || noticeForm.titleEn,
+        category: noticeForm.categoryKn || 'ಅಧಿಕೃತ ಪ್ರಕಟಣೆ',
+        type: noticeForm.type,
+        link: noticeForm.fileUrl,
+        description: noticeForm.descriptionKn || 'ಅಧಿಕೃತ ಮಾಹಿತಿ ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಲಭ್ಯವಿದೆ.'
+      });
+
+      // Auto-dispatch background email if enabled
+      if (emailConfig?.autoSendOnNotice && (emailConfig?.serviceId || emailConfig?.resendApiKey)) {
+        sendBackgroundEmail({
+          subject: `[ಅಧ್ಯಯನ ADHYAYANA] ಹೊಸ ಪ್ರಕಟಣೆ: ${noticeForm.titleKn || noticeForm.titleEn}`,
+          title: noticeForm.titleKn || noticeForm.titleEn,
+          category: noticeForm.categoryKn || 'ಅಧಿಕೃತ ಪ್ರಕಟಣೆ',
+          description: noticeForm.descriptionKn || 'ಹೊಸ ಸುತ್ತೋಲೆ / ಸಿಲಬಸ್ ಪ್ರಕಟಿಸಲಾಗಿದೆ.',
+          link: noticeForm.fileUrl || window.location.origin
+        });
+      }
+    }
+
+    setNoticeForm({
+      titleKn: '',
+      titleEn: '',
+      categoryKn: 'ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ (Syllabus)',
+      categoryEn: 'Official Syllabus',
+      type: 'pdf',
+      fileUrl: '',
+      descriptionKn: '',
+      descriptionEn: '',
+      date: new Date().toISOString().split('T')[0],
+      isNew: true,
+      isPinned: false
+    });
+  };
+
+  const handleEditNoticeAdmin = (notice) => {
+    setEditingNoticeId(notice.id);
+    setNoticeForm({
+      titleKn: notice.titleKn || '',
+      titleEn: notice.titleEn || '',
+      categoryKn: notice.categoryKn || 'ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ (Syllabus)',
+      categoryEn: notice.categoryEn || 'Official Syllabus',
+      type: notice.type || 'pdf',
+      fileUrl: notice.fileUrl || '',
+      descriptionKn: notice.descriptionKn || '',
+      descriptionEn: notice.descriptionEn || '',
+      date: notice.date || new Date().toISOString().split('T')[0],
+      isNew: !!notice.isNew,
+      isPinned: !!notice.isPinned
+    });
+    window.scrollTo({ top: 400, behavior: 'smooth' });
+  };
+
+  const handleDeleteNoticeAdmin = (noticeId) => {
+    if (window.confirm(lang === 'kn' ? 'ಈ ಪ್ರಕಟಣೆಯನ್ನು ಖಚಿತವಾಗಿ ಅಳಿಸಬೇಕೇ?' : 'Are you sure you want to delete this notice?')) {
+      deleteNotice(noticeId);
+      showToast(lang === 'kn' ? 'ಪ್ರಕಟಣೆ ಅಳಿಸಲಾಗಿದೆ.' : 'Notice deleted.');
+    }
+  };
+
+  // 1-Click Duplicate / Copy Existing Notice
+  const handleDuplicateNotice = (notice) => {
+    const duplicatedNotice = {
+      titleKn: `${notice.titleKn || notice.titleEn} (ನಕಲು / Copy)`,
+      titleEn: `${notice.titleEn || notice.titleKn} (Copy)`,
+      categoryKn: notice.categoryKn || 'ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ (Syllabus)',
+      categoryEn: notice.categoryEn || 'Official Syllabus',
+      type: notice.type || 'pdf',
+      fileUrl: notice.fileUrl || '',
+      descriptionKn: notice.descriptionKn || '',
+      descriptionEn: notice.descriptionEn || '',
+      date: new Date().toISOString().split('T')[0],
+      isNew: true,
+      isPinned: false
+    };
+
+    const created = addNotice(duplicatedNotice);
+    setEditingNoticeId(created.id);
+    setNoticeForm({ ...duplicatedNotice });
+    showToast(lang === 'kn' ? '✓ ಪ್ರಕಟಣೆಯನ್ನು ನಕಲಿಸಲಾಗಿದೆ (Duplicated) & ತಿದ್ದುಪಡಿಗೆ ಲೋಡ್ ಆಗಿದೆ!' : '✓ Notice duplicated and loaded for instant editing!');
+    window.scrollTo({ top: 400, behavior: 'smooth' });
+  };
+
+  // 1-Click Toggle Pin directly from card
+  const handleTogglePinDirect = (notice) => {
+    updateNotice(notice.id, { isPinned: !notice.isPinned });
+    showToast(notice.isPinned ? 'ಮುಖ್ಯ ಪ್ರಕಟಣೆ ಅನ್‌ಪಿನ್ ಮಾಡಲಾಗಿದೆ' : '📌 ಮುಖ್ಯ ಪ್ರಕಟಣೆಯಾಗಿ ಪಿನ್ ಮಾಡಲಾಗಿದೆ!');
+  };
+
+  // 1-Click Toggle NEW Badge directly from card
+  const handleToggleNewDirect = (notice) => {
+    updateNotice(notice.id, { isNew: !notice.isNew });
+    showToast(notice.isNew ? 'ಹೊಸತು ಬ್ಯಾಡ್ಜ್ ತೆಗೆಯಲಾಗಿದೆ' : '⚡ ಹೊಸತು (NEW) ಬ್ಯಾಡ್ಜ್ ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ!');
+  };
+
+  // Quick One-Click Notice Templates Presets
+  const NOTICE_PRESETS = [
+    {
+      label: '🎓 HSTR 2026-27 ಸಿಲಬಸ್',
+      preset: {
+        titleKn: 'SYLLABUS FOR HSTR (ಹೈಸ್ಕೂಲ್ ಶಿಕ್ಷಕರ ನೇಮಕಾತಿ 2026-27 ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ)',
+        titleEn: 'Official Syllabus for HSTR (High School Teacher Recruitment 2026-27)',
+        categoryKn: 'ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ (Syllabus)',
+        categoryEn: 'Official Syllabus',
+        type: 'pdf',
+        fileUrl: 'https://schooleducation.karnataka.gov.in/uploads/media_to_upload17865.pdf',
+        descriptionKn: 'ಶಿಕ್ಷಣ ಇಲಾಖೆ ಬಿಡುಗಡೆ ಮಾಡಿರುವ ಹೈಸ್ಕೂಲ್ ಶಿಕ್ಷಕರ ನೇಮಕಾತಿಯ ಪತ್ರಿಕೆ-1 ಮತ್ತು ಪತ್ರಿಕೆ-2 ರ ವಿವರವಾದ ಪಠ್ಯಕ್ರಮ ಮತ್ತು ಅಂಕಗಳ ಹಂಚಿಕೆ.',
+        descriptionEn: 'Detailed paper-1 & paper-2 syllabus blueprint released for High School Teacher Recruitment.',
+        isNew: true,
+        isPinned: true
+      }
+    },
+    {
+      label: '📚 GPSTR ಶಿಕ್ಷಕರ ನೇಮಕಾತಿ',
+      preset: {
+        titleKn: 'GPSTR 6-8th ಶಿಕ್ಷಕರ ನೇಮಕಾತಿ ಪರೀಕ್ಷಾ ಮಾದರಿ & ಪರಿಷ್ಕೃತ ಬ್ಲೂಪ್ರಿಂಟ್',
+        titleEn: 'GPSTR 6th-8th Teacher Recruitment Exam Pattern & Blueprint',
+        categoryKn: 'ಶಿಕ್ಷಕರ ನೇಮಕಾತಿ (Teacher Recruitment)',
+        categoryEn: 'Teacher Recruitment',
+        type: 'pdf',
+        fileUrl: 'https://schooleducation.karnataka.gov.in/GPSTR_Scheme.pdf',
+        descriptionKn: 'ಗಣಿತ-ವಿಜ್ಞಾನ, ಸಮಾಜ ಪಾಠಗಳು ಹಾಗೂ ಭಾಷಾ ಶಿಕ್ಷಕರ ಪತ್ರಿಕೆವಾರು ಪರೀಕ್ಷಾ ಅಂಕಗಳು ಮತ್ತು ಅರ್ಹತಾ ಮಾನದಂಡಗಳು.',
+        descriptionEn: 'Subject-wise marks distribution and eligibility norms for Mathematics, Science, Social and Language teachers.',
+        isNew: true,
+        isPinned: false
+      }
+    },
+    {
+      label: '🏛️ KPSC FDA / SDA ಸುತ್ತೋಲೆ',
+      preset: {
+        titleKn: 'KPSC FDA / SDA ನೇಮಕಾತಿ ಪರೀಕ್ಷಾ ದಿನಾಂಕ & ಹೊಸ ಸಿಲಬಸ್ ಅಧಿಸೂಚನೆ',
+        titleEn: 'KPSC FDA / SDA Recruitment Exam Date & Revised Circular',
+        categoryKn: 'ಅಧಿಸೂಚನೆ (Circular)',
+        categoryEn: 'Official Circular',
+        type: 'pdf',
+        fileUrl: 'https://kpsc.kar.nic.in/FDA_SDA_Scheme.pdf',
+        descriptionKn: 'ಸಾಮಾನ್ಯ ಕನ್ನಡ ಮತ್ತು ಸಾಮಾನ್ಯ ಜ್ಞಾನ ಪತ್ರಿಕೆಗಳ ಪರಿಷ್ಕೃತ ಪರೀಕ್ಷಾ ಮಾದರಿ ಹಾಗೂ ಅಧಿಕೃತ ಸುತ್ತೋಲೆ.',
+        descriptionEn: 'Revised exam scheme and syllabus for General Kannada and General Knowledge papers.',
+        isNew: true,
+        isPinned: false
+      }
+    },
+    {
+      label: '👮 ಪೊಲೀಸ್ PSI / PC ಬ್ಲೂಪ್ರಿಂಟ್',
+      preset: {
+        titleKn: 'ಕರ್ನಾಟಕ ಪೊಲೀಸ್ PSI & ಕಾನ್‌ಸ್ಟೇಬಲ್ ಪರೀಕ್ಷಾ ಪಠ್ಯಕ್ರಮ & ದೈಹಿಕ ಪರೀಕ್ಷೆ ವಿವರ',
+        titleEn: 'Karnataka Police PSI & PC Syllabus & Physical Test Guidelines',
+        categoryKn: 'ಪೊಲೀಸ್ ನೇಮಕಾತಿ (Police Recruitment)',
+        categoryEn: 'Police Recruitment',
+        type: 'pdf',
+        fileUrl: 'https://ksp-recruitment.in/Syllabus_PSI.pdf',
+        descriptionKn: 'ಪ್ರಬಂಧ, ಭಾಷಾಂತರ ಹಾಗೂ ವಸ್ತುನಿಷ್ಠ ಸಾಮಾನ್ಯ ಅಧ್ಯಯನ ಪತ್ರಿಕೆಯ ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ ಮತ್ತು ಅಂಕ ಹಂಚಿಕೆ.',
+        descriptionEn: 'Paper-1 Essay/Translation and Paper-2 Objective GK syllabus blueprint.',
+        isNew: true,
+        isPinned: false
+      }
+    },
+    {
+      label: '📝 ಕೀ ಉತ್ತರ & ಆಕ್ಷೇಪಣೆ ಅರ್ಜಿ',
+      preset: {
+        titleKn: 'ಅಧಿಕೃತ ತಾತ್ಕಾಲಿಕ ಕೀ ಉತ್ತರಗಳು & ಆಕ್ಷೇಪಣೆ ಸಲ್ಲಿಸುವ ಅರ್ಜಿ ನಮೂನೆ',
+        titleEn: 'Official Provisional Answer Key & Objection Submission Format',
+        categoryKn: 'ಕೀ ಉತ್ತರ (Key Answers)',
+        categoryEn: 'Key Answers',
+        type: 'pdf',
+        fileUrl: 'https://kpsc.kar.nic.in/Provisional_Key.pdf',
+        descriptionKn: 'ಪರೀಕ್ಷೆಯ ಅಧಿಕೃತ ಕೀ ಉತ್ತರಗಳು ಹಾಗೂ ಆಕ್ಷೇಪಣೆಗಳನ್ನು ದಿನಾಂಕದೊಳಗೆ ಸಲ್ಲಿಸಲು ನಿಗದಿತ ನಮೂನೆ.',
+        descriptionEn: 'Provisional answer keys and prescribed objection submission format.',
+        isNew: true,
+        isPinned: false
+      }
+    }
+  ];
+
+  const handleApplyPreset = (p) => {
+    setNoticeForm({
+      ...p.preset,
+      date: new Date().toISOString().split('T')[0]
+    });
+    setEditingNoticeId(null);
+    showToast(`✓ "${p.label}" ಟೆಂಪ್ಲೇಟ್ ವಿವರಗಳು ಫಾರ್ಮ್‌ನಲ್ಲಿ ಲೋಡ್ ಆಗಿವೆ!`);
   };
 
   return (
@@ -1062,6 +1389,30 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
         >
           <Users className="w-4 h-4 shrink-0" />
           <span>6. Users & Access</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('notices')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
+            activeTab === 'notices'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <Bell className="w-4 h-4 shrink-0 text-amber-400" />
+          <span>7. Notices ({(notices || []).length}) 📢</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('broadcast')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
+            activeTab === 'broadcast'
+              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+              : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+          }`}
+        >
+          <Send className="w-4 h-4 shrink-0 text-emerald-500" />
+          <span>8. Broadcast & Email Automation ✉️</span>
         </button>
       </div>
 
@@ -1743,15 +2094,22 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                     onChange={(e) => setTestForm({ ...testForm, gsheetUrl: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none text-xs"
                   />
-                  <button
-                    type="button"
-                    onClick={handleFetchFromUrl}
-                    disabled={isFetchingUrl}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isFetchingUrl ? 'animate-spin' : ''}`} />
-                    <span>{isFetchingUrl ? 'Fetching from Google Sheets...' : 'Fetch Questions Live from Sheet'}</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleFetchFromUrl}
+                      disabled={isFetchingUrl}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isFetchingUrl ? 'animate-spin' : ''}`} />
+                      <span>{isFetchingUrl ? 'Fetching from Google Sheets...' : 'Fetch Questions Live from Sheet'}</span>
+                    </button>
+                    {editingTestId && testForm.questions.length > 0 && (
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800 font-semibold">
+                        ✓ ಲಿಂಕ್ ಮತ್ತು {testForm.questions.length} ಪ್ರಶ್ನೆಗಳು ಸೇವ್ ಆಗಿವೆ (ಶೀಟ್ ತಿದ್ದುಪಡಿ ಮಾಡಿದರೆ ಮಾತ್ರ ರಿಫ್ರೆಶ್ ಮಾಡಿ).
+                      </span>
+                    )}
+                  </div>
 
                   {parseError && (
                     <p className="text-red-500 text-[11px] flex items-center gap-1">
@@ -1938,7 +2296,33 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => window.open(generateWhatsAppBroadcastUrl({
+                        title: t.titleKn || t.title,
+                        type: 'test',
+                        category: t.subjectName || 'Mock Test Series',
+                        link: window.location.origin,
+                        description: `ಹೊಸ ಮಾದರಿ ಪರೀಕ್ಷೆ ಲಭ್ಯವಿದೆ. ಪ್ರಶ್ನೆಗಳು: ${t.questions?.length || 0}, ಅವಧಿ: ${t.durationMinutes} ನಿಮಿಷಗಳು.`
+                      }), '_blank')}
+                      className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                      title="WhatsApp ನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ (1-Click WhatsApp Share)"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => window.open(generateGmailComposeUrl({
+                        title: t.titleKn || t.title,
+                        type: 'test',
+                        category: t.subjectName || 'Mock Test Series',
+                        link: window.location.origin,
+                        description: `ಹೊಸ ಮಾದರಿ ಪರೀಕ್ಷೆ ಲಭ್ಯವಿದೆ. ಪ್ರಶ್ನೆಗಳು: ${t.questions?.length || 0}, ಅವಧಿ: ${t.durationMinutes} ನಿಮಿಷಗಳು.`
+                      }), '_blank')}
+                      className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 hover:bg-rose-100 transition-colors"
+                      title="Gmail ಮೂಲಕ ಕಳುಹಿಸಿ (1-Click Gmail Share)"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleStartEditTest(t)}
                       className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 transition-colors"
@@ -2181,17 +2565,43 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => window.open(generateWhatsAppBroadcastUrl({
+                        title: n.titleKn || n.title,
+                        type: 'note',
+                        category: n.category,
+                        link: n.gdriveUrl || window.location.origin,
+                        description: `ಅಧ್ಯಯನ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಲಭ್ಯವಿದೆ. ಓದುವ ಸಮಯ: ${n.readTimeMinutes} ನಿಮಿಷಗಳು.`
+                      }), '_blank')}
+                      className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                      title="WhatsApp ನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ (1-Click WhatsApp Share)"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => window.open(generateGmailComposeUrl({
+                        title: n.titleKn || n.title,
+                        type: 'note',
+                        category: n.category,
+                        link: n.gdriveUrl || window.location.origin,
+                        description: `ಅಧ್ಯಯನ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಲಭ್ಯವಿದೆ. ಓದುವ ಸಮಯ: ${n.readTimeMinutes} ನಿಮಿಷಗಳು.`
+                      }), '_blank')}
+                      className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 hover:bg-rose-100 transition-colors"
+                      title="Gmail ಮೂಲಕ ಕಳುಹಿಸಿ (1-Click Gmail Share)"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => onSelectNote(n)}
-                      className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:text-blue-600 text-slate-600"
+                      className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:text-blue-600 text-slate-600 transition-colors"
                       title="Read Note"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => deleteNote(n.id)}
-                      className="p-2 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600"
+                      className="p-2 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600 transition-colors"
                       title="Delete Note"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -3418,6 +3828,1010 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
           </div>
         );
       })()}
+
+      {/* TAB 7: OFFICIAL NOTICES & CIRCULARS STUDIO */}
+      {activeTab === 'notices' && (() => {
+        const filteredNoticesAdmin = (notices || []).filter(not => {
+          if (noticeFilterAdmin === 'pinned' && !not.isPinned) return false;
+          if (noticeFilterAdmin === 'pdf' && not.type !== 'pdf') return false;
+          if (noticeFilterAdmin === 'image' && not.type !== 'image') return false;
+          if (noticeFilterAdmin === 'circular' && not.type !== 'link' && not.type !== 'text') return false;
+
+          if (noticeSearchQuery.trim()) {
+            const q = noticeSearchQuery.toLowerCase();
+            const knMatch = (not.titleKn || '').toLowerCase().includes(q);
+            const enMatch = (not.titleEn || '').toLowerCase().includes(q);
+            const catMatch = (not.categoryKn || '').toLowerCase().includes(q);
+            const descMatch = (not.descriptionKn || '').toLowerCase().includes(q);
+            return knMatch || enMatch || catMatch || descMatch;
+          }
+          return true;
+        }).sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0);
+        });
+
+        return (
+          <div className="space-y-6">
+            
+            {/* Quick Template Presets Bar */}
+            <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-emerald-500/10 p-4 rounded-3xl border border-amber-500/30 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 text-xs font-black text-amber-900 dark:text-amber-300">
+                  <Sparkles className="w-4 h-4 text-amber-500 animate-spin" />
+                  <span>ತ್ವರಿತ ಟೆಂಪ್ಲೇಟ್‌ಗಳು (1-Click Notice Presets - ಯಾವುದೇ ಟೈಪಿಂಗ್ ಇಲ್ಲದೆ ತಕ್ಷಣ ಲೋಡ್ ಮಾಡಿ):</span>
+                </div>
+                <span className="text-[11px] text-slate-500">ಕ್ಲಿಕ್ ಮಾಡಿ ಫಾರ್ಮ್ ಸ್ವಯಂ-ಭರ್ತಿ ಮಾಡಿ</span>
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+                {NOTICE_PRESETS.map((presetItem, pIdx) => (
+                  <button
+                    key={pIdx}
+                    type="button"
+                    onClick={() => handleApplyPreset(presetItem)}
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-800 dark:text-slate-200 font-bold hover:bg-amber-500 hover:text-slate-950 dark:hover:bg-amber-500 dark:hover:text-slate-950 transition-all shadow-sm shrink-0 flex items-center gap-1.5 active:scale-95"
+                  >
+                    <span>{presetItem.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Left Col: Create / Edit Notice Form & Live Preview */}
+              <div className="lg:col-span-5 space-y-6">
+                
+                {/* Form Card */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center font-bold shadow-sm">
+                        <Bell className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                          {editingNoticeId ? 'ಪ್ರಕಟಣೆ ತಿದ್ದುಪಡಿ (Edit Notice)' : 'ಹೊಸ ಪ್ರಕಟಣೆ ರಚಿಸಿ (Publish Notice)'}
+                        </h3>
+                        <p className="text-[11px] text-slate-500">
+                          PDF, Image, Circular or Text Announcements
+                        </p>
+                      </div>
+                    </div>
+
+                    {editingNoticeId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingNoticeId(null);
+                          setNoticeForm({
+                            titleKn: '',
+                            titleEn: '',
+                            categoryKn: 'ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ (Syllabus)',
+                            categoryEn: 'Official Syllabus',
+                            type: 'pdf',
+                            fileUrl: '',
+                            descriptionKn: '',
+                            descriptionEn: '',
+                            date: new Date().toISOString().split('T')[0],
+                            isNew: true,
+                            isPinned: false
+                          });
+                        }}
+                        className="text-xs text-rose-500 hover:underline font-bold"
+                      >
+                        ✕ Cancel Edit
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleCreateOrUpdateNotice} className="space-y-3.5 text-xs">
+                    
+                    <div>
+                      <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                        ಪ್ರಕಟಣೆ ಶೀರ್ಷಿಕೆ (Title - Kannada) *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="ಉದಾ: SYLLABUS FOR HSTR (ಹೈಸ್ಕೂಲ್ ಶಿಕ್ಷಕರ ನೇಮಕಾತಿ ಸಿಲಬಸ್)"
+                        value={noticeForm.titleKn || ''}
+                        onChange={(e) => setNoticeForm({ ...noticeForm, titleKn: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                        Title (English)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Official Syllabus for HSTR 2026-27..."
+                        value={noticeForm.titleEn || ''}
+                        onChange={(e) => setNoticeForm({ ...noticeForm, titleEn: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                          ಮಾದರಿ (Type)
+                        </label>
+                        <select
+                          value={noticeForm.type || 'pdf'}
+                          onChange={(e) => setNoticeForm({ ...noticeForm, type: e.target.value })}
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                        >
+                          <option value="pdf">📄 PDF ಸಿಲಬಸ್ / ದಾಖಲೆ</option>
+                          <option value="image">🖼️ ಅಧಿಕೃತ ಚಿತ್ರ / ಬ್ಲೂಪ್ರಿಂಟ್</option>
+                          <option value="link">🔗 ಅಧಿಕೃತ ವೆಬ್ ಲಿಂಕ್</option>
+                          <option value="text">📝 ಮಾಹಿತಿ / ಸುತ್ತೋಲೆ ಮಾತ್ರ</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                          ವಿಭಾಗ (Category)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ಅಧಿಕೃತ ಪಠ್ಯಕ್ರಮ / ಸುತ್ತೋಲೆ"
+                          value={noticeForm.categoryKn || ''}
+                          onChange={(e) => setNoticeForm({ ...noticeForm, categoryKn: e.target.value })}
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                        ಫೈಲ್ / ಇಮೇಜ್ / ವೆಬ್ ಲಿಂಕ್ URL (Resource URL)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://.../Syllabus.pdf ಅಥವಾ Google Drive Link"
+                        value={noticeForm.fileUrl || ''}
+                        onChange={(e) => setNoticeForm({ ...noticeForm, fileUrl: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Google Drive ಶೇರ್ ಲಿಂಕ್ ಅಥವಾ ನೇರ PDF/Image URL ಹಾಕಿ.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                        ವಿವರಣೆ (Description - Kannada)
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="ಪ್ರಕಟಣೆಯ ಪ್ರಮುಖ ಮುಖ್ಯಾಂಶಗಳು..."
+                        value={noticeForm.descriptionKn || ''}
+                        onChange={(e) => setNoticeForm({ ...noticeForm, descriptionKn: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                          ದಿನಾಂಕ (Date)
+                        </label>
+                        <input
+                          type="date"
+                          value={noticeForm.date || ''}
+                          onChange={(e) => setNoticeForm({ ...noticeForm, date: e.target.value })}
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      <div className="flex flex-col justify-end space-y-1.5 pb-1">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-slate-300 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={!!noticeForm.isNew}
+                            onChange={(e) => setNoticeForm({ ...noticeForm, isNew: e.target.checked })}
+                            className="w-4 h-4 text-amber-500 rounded focus:ring-amber-400"
+                          />
+                          <span>⚡ ಹೊಸತು (NEW) ಬ್ಯಾಡ್ಜ್</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-slate-300 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={!!noticeForm.isPinned}
+                            onChange={(e) => setNoticeForm({ ...noticeForm, isPinned: e.target.checked })}
+                            className="w-4 h-4 text-amber-500 rounded focus:ring-amber-400"
+                          />
+                          <span>📌 ಮುಖ್ಯ ಪ್ರಕಟಣೆ (Pin)</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 text-xs"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{editingNoticeId ? 'ಪ್ರಕಟಣೆ ಅಪ್‌ಡೇಟ್ ಮಾಡಿ (Update Notice)' : 'ಹೊಸ ಪ್ರಕಟಣೆ ಪ್ರಕಟಿಸಿ (Publish Notice)'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Live Real-Time In-Situ Card Preview */}
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-1">
+                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>ಲೈವ್ ಕಾರ್ಡ್ ಪ್ರಿವ್ಯೂ (Live Student Card Preview):</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400">ಮುಖಪುಟದಲ್ಲಿ ಹೀಗೆ ಕಾಣುತ್ತದೆ</span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {noticeForm.isPinned && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 flex items-center gap-1">
+                            <Pin className="w-3 h-3" />
+                            <span>ಮುಖ್ಯ</span>
+                          </span>
+                        )}
+                        {noticeForm.isNew && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white animate-pulse">
+                            ⚡ ಹೊಸತು (NEW)
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {noticeForm.categoryKn || 'ಪ್ರಕಟಣೆ'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">{noticeForm.date || 'ಇತ್ತೀಚಿನದು'}</span>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        noticeForm.type === 'pdf' ? 'bg-rose-100 text-rose-600 dark:bg-rose-950' :
+                        noticeForm.type === 'image' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950' :
+                        noticeForm.type === 'link' ? 'bg-teal-100 text-teal-600 dark:bg-teal-950' :
+                        'bg-amber-100 text-amber-600 dark:bg-amber-950'
+                      }`}>
+                        {noticeForm.type === 'pdf' && <FileText className="w-4 h-4" />}
+                        {noticeForm.type === 'image' && <ImageIcon className="w-4 h-4" />}
+                        {noticeForm.type === 'link' && <ExternalLink className="w-4 h-4" />}
+                        {noticeForm.type === 'text' && <Bell className="w-4 h-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 line-clamp-1">
+                          {noticeForm.titleKn || 'ಪ್ರಕಟಣೆಯ ಶೀರ್ಷಿಕೆ'}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                          {noticeForm.descriptionKn || 'ಪ್ರಕಟಣೆಯ ವಿವರಣೆ ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ...'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Col: Live Notices List with Search & Quick Actions */}
+              <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                
+                {/* List Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                        ಪ್ರಕಟಣಾ ಪಟ್ಟಿ (Active Notices - {(notices || []).length})
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        ಮುಖಪುಟದಲ್ಲಿ ಲೈವ್ ಆಗಿ ಲಭ್ಯವಿರುವ ಪ್ರಕಟಣೆಗಳು
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative w-full sm:w-60">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="ಪ್ರಕಟಣೆ ಹುಡುಕಿ (Search)..."
+                      value={noticeSearchQuery}
+                      onChange={(e) => setNoticeSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Filter Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                  {[
+                    { id: 'all', label: 'ಎಲ್ಲಾ (All)', count: (notices || []).length },
+                    { id: 'pinned', label: '📌 ಮುಖ್ಯ (Pinned)', count: (notices || []).filter(n => n.isPinned).length },
+                    { id: 'pdf', label: '📄 PDF', count: (notices || []).filter(n => n.type === 'pdf').length },
+                    { id: 'image', label: '🖼️ Image', count: (notices || []).filter(n => n.type === 'image').length },
+                    { id: 'circular', label: '📢 ಲಿಂಕ್/ಮಾಹಿತಿ', count: (notices || []).filter(n => n.type === 'link' || n.type === 'text').length }
+                  ].map(fc => (
+                    <button
+                      key={fc.id}
+                      type="button"
+                      onClick={() => setNoticeFilterAdmin(fc.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
+                        noticeFilterAdmin === fc.id
+                          ? 'bg-amber-500 text-slate-950 shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span>{fc.label}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                        noticeFilterAdmin === fc.id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                      }`}>
+                        {fc.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Cards List */}
+                <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+                  {filteredNoticesAdmin.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl space-y-1">
+                      <p className="font-bold">ಯಾವುದೇ ಪ್ರಕಟಣೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ.</p>
+                      <p className="text-[11px]">ಹುಡುಕಾಟ ಪದ ಬದಲಾಯಿಸಿ ಅಥವಾ ಎಡಭಾಗದ ಫಾರ್ಮ್ ಬಳಸಿ ಹೊಸ ಪ್ರಕಟಣೆ ಸೇರಿಸಿ.</p>
+                    </div>
+                  ) : (
+                    filteredNoticesAdmin.map((not) => (
+                      <div
+                        key={not.id}
+                        className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row items-start justify-between gap-3 group ${
+                          not.isPinned
+                            ? 'border-amber-400 bg-amber-50/40 dark:bg-amber-950/20 shadow-sm'
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* 1-Click Fast Pin Toggle */}
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePinDirect(not)}
+                              title={not.isPinned ? 'ಅನ್‌ಪಿನ್ ಮಾಡಲು ಕ್ಲಿಕ್ ಮಾಡಿ' : 'ಪಿನ್ ಮಾಡಲು ಕ್ಲಿಕ್ ಮಾಡಿ'}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition-all ${
+                                not.isPinned
+                                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-100'
+                              }`}
+                            >
+                              <Pin className="w-3 h-3" />
+                              <span>{not.isPinned ? '📌 Pinned' : 'Pin'}</span>
+                            </button>
+
+                            {/* 1-Click Fast NEW Badge Toggle */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleNewDirect(not)}
+                              title={not.isNew ? 'ಹೊಸತು ಬ್ಯಾಡ್ಜ್ ಆಫ್ ಮಾಡಲು ಕ್ಲಿಕ್ ಮಾಡಿ' : 'ಹೊಸತು ಬ್ಯಾಡ್ಜ್ ಆನ್ ಮಾಡಲು ಕ್ಲಿಕ್ ಮಾಡಿ'}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 transition-all ${
+                                not.isNew
+                                  ? 'bg-rose-500 text-white animate-pulse shadow-sm'
+                                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-rose-100'
+                              }`}
+                            >
+                              <span>{not.isNew ? '⚡ NEW' : '+ NEW'}</span>
+                            </button>
+
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              not.type === 'pdf' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' :
+                              not.type === 'image' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
+                              not.type === 'link' ? 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300' :
+                              'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                            }`}>
+                              {not.type === 'pdf' ? '📄 PDF' : not.type === 'image' ? '🖼️ Image' : not.type === 'link' ? '🔗 Link' : '📝 Text'}
+                            </span>
+
+                            <span className="text-[11px] text-slate-400">
+                              📅 {not.date || 'Recent'}
+                            </span>
+                          </div>
+
+                          <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 leading-snug">
+                            {lang === 'kn' ? (not.titleKn || not.titleEn) : (not.titleEn || not.titleKn)}
+                          </h4>
+
+                          {not.descriptionKn && (
+                            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                              {not.descriptionKn}
+                            </p>
+                          )}
+
+                          {not.fileUrl && (
+                            <p className="text-[11px] text-slate-400 truncate max-w-md font-mono">
+                              🔗 {not.fileUrl}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Fast Action Buttons Toolbar */}
+                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-wrap">
+                          
+                          {/* 1-Click WhatsApp Share Button */}
+                          <button
+                            type="button"
+                            onClick={() => window.open(generateWhatsAppBroadcastUrl({
+                              title: not.titleKn || not.titleEn,
+                              type: not.type,
+                              category: not.categoryKn || not.categoryEn,
+                              link: not.fileUrl,
+                              description: not.descriptionKn || not.descriptionEn
+                            }), '_blank')}
+                            className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center gap-1 shadow-sm transition-all hover:scale-105 active:scale-95"
+                            title="WhatsApp ಮೂಲಕ ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ ಕಳುಹಿಸಿ (1-Click WhatsApp Share)"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>WhatsApp</span>
+                          </button>
+
+                          {/* 1-Click Gmail Share Button */}
+                          <button
+                            type="button"
+                            onClick={() => window.open(generateGmailComposeUrl({
+                              title: not.titleKn || not.titleEn,
+                              type: not.type,
+                              category: not.categoryKn || not.categoryEn,
+                              link: not.fileUrl,
+                              description: not.descriptionKn || not.descriptionEn
+                            }), '_blank')}
+                            className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold flex items-center gap-1 shadow-sm transition-all hover:scale-105 active:scale-95"
+                            title="Gmail ಮೂಲಕ ಎಲ್ಲಾ ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ ಇಮೇಲ್ ಮಾಡಿ (1-Click Gmail Share)"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Gmail</span>
+                          </button>
+
+                          {/* 1-Click Duplicate / Copy Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateNotice(not)}
+                            className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold flex items-center gap-1 shadow-sm transition-all hover:scale-105 active:scale-95"
+                            title="ಈ ಪ್ರಕಟಣೆಯನ್ನು ನಕಲಿಸಿ / ಡ್ಯೂಪ್ಲಿಕೇಟ್ ಮಾಡಿ (1-Click Duplicate Notice)"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>ನಕಲು (Copy)</span>
+                          </button>
+
+                          {/* Open Resource URL Button */}
+                          {not.fileUrl && (
+                            <a
+                              href={not.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-sm"
+                              title="ಫೈಲ್/ಲಿಂಕ್ ವೀಕ್ಷಿಸಿ (Open Resource URL)"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+
+                          {/* Edit Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleEditNoticeAdmin(not)}
+                            className="p-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-sm"
+                            title="ಪ್ರಕಟಣೆ ತಿದ್ದುಪಡಿ (Edit Notice)"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Delete Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteNoticeAdmin(not.id)}
+                            className="p-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/50 shadow-sm"
+                            title="ಪ್ರಕಟಣೆ ಅಳಿಸಿ (Delete Notice)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        );
+      })()}
+
+      {/* TAB 8: BROADCAST & EMAIL AUTOMATION STUDIO */}
+      {activeTab === 'broadcast' && (
+        <div className="space-y-6">
+          
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 p-6 sm:p-8 rounded-3xl text-white shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-xs font-bold backdrop-blur-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>WhatsApp & Gmail Multi-Channel Broadcast</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black">
+                  📢 ವಾಟ್ಸಾಪ್ & ಇಮೇಲ್ ಸ್ವಯಂಚಾಲಿತ ರವಾನೆ ಸ್ಟುಡಿಯೋ
+                </h2>
+                <p className="text-xs text-emerald-100 max-w-2xl leading-relaxed">
+                  ಹೊಸ ಪ್ರಕಟಣೆ, ಪರೀಕ್ಷಾ ಟೆಸ್ಟ್ ಅಥವಾ ನೋಟ್ಸ್ ಪ್ರಕಟಿಸಿದಾಗ ಪ್ರತಿಯೊಬ್ಬ ವಿದ್ಯಾರ್ಥಿಯ Gmail ಗೆ ಆಟೋಮ್ಯಾಟಿಕ್ ಇಮೇಲ್ ಹಾಗೂ WhatsApp ಗ್ರೂಪ್‌ಗಳಿಗೆ 1-ಕ್ಲಿಕ್‌ನಲ್ಲಿ ಸಂದೇಶ ರವಾನಿಸಿ.
+                </p>
+              </div>
+
+              {/* Stats Counters */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center">
+                  <p className="text-[11px] text-emerald-200">ವಿದ್ಯಾರ್ಥಿಗಳು</p>
+                  <p className="text-lg font-black">{profiles.length}</p>
+                </div>
+                <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center">
+                  <p className="text-[11px] text-emerald-200">ಪ್ರಕಟಣೆಗಳು</p>
+                  <p className="text-lg font-black">{notices.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left Col: Email Automation API Settings */}
+            <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 flex items-center justify-center font-bold">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                    📧 ಸ್ವಯಂಚಾಲಿತ ಇಮೇಲ್ ಸೇವೆ (Email Automation API)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    EmailJS / Resend ಉಚಿತ ಬ್ಯಾಕ್‌ಗ್ರೌಂಡ್ ಆಟೋ-ಮೇಲರ್
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 text-xs text-indigo-900 dark:text-indigo-200 space-y-1.5">
+                <p className="font-bold flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-indigo-600" />
+                  EmailJS ಉಚಿತ ಖಾತೆ ವಿವರ (100% Free):
+                </p>
+                <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">EmailJS.com</a> ನಲ್ಲಿ ಉಚಿತ ಸೈನ್-ಅಪ್ ಮಾಡಿ ಪ್ರತಿ ತಿಂಗಳು ಸಾವಿರಾರು ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ ಯಾವುದೇ ಬ್ಯಾಕೆಂಡ್ ಸರ್ವರ್ ಇಲ್ಲದೆ ನೇರವಾಗಿ ಆಟೋಮ್ಯಾಟಿಕ್ ಇಮೇಲ್ ಕಳುಹಿಸಬಹುದು!
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveEmailSettings} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                    EmailJS Service ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. service_adhyayana"
+                    value={emailForm.serviceId || ''}
+                    onChange={(e) => setEmailForm({ ...emailForm, serviceId: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                    EmailJS Template ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. template_notice_alert"
+                    value={emailForm.templateId || ''}
+                    onChange={(e) => setEmailForm({ ...emailForm, templateId: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                    EmailJS Public Key (User ID)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. user_xxxxxxxxx"
+                    value={emailForm.publicKey || ''}
+                    onChange={(e) => setEmailForm({ ...emailForm, publicKey: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                    Resend API Key (Optional Alternative)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="re_xxxxxxxxxxxxxx"
+                    value={emailForm.resendApiKey || ''}
+                    onChange={(e) => setEmailForm({ ...emailForm, resendApiKey: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none font-mono"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                      ಕಳುಹಿಸುವವರ ಹೆಸರು (Sender Name)
+                    </label>
+                    <input
+                      type="text"
+                      value={emailForm.senderName || 'ಅಧ್ಯಯನ (ADHYAYANA)'}
+                      onChange={(e) => setEmailForm({ ...emailForm, senderName: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                      ಕಳುಹಿಸುವವರ ಇಮೇಲ್ (Sender Email)
+                    </label>
+                    <input
+                      type="email"
+                      value={emailForm.senderEmail || 'merilinprabhugk@gmail.com'}
+                      onChange={(e) => setEmailForm({ ...emailForm, senderEmail: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Auto Dispatch Toggles */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <p className="font-bold text-[11px] text-slate-700 dark:text-slate-300">
+                    ⚡ ಸ್ವಯಂಚಾಲಿತ ಇಮೇಲ್ ನಿಯಮಗಳು (Auto-Trigger Rules):
+                  </p>
+                  
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={!!emailForm.autoSendOnNotice}
+                      onChange={(e) => setEmailForm({ ...emailForm, autoSendOnNotice: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded"
+                    />
+                    <span>ಹೊಸ ನೋಟಿಸ್ ಪ್ರಕಟಿಸಿದಾಗ ಆಟೋ ಇಮೇಲ್ ಕಳುಹಿಸಿ (On Notice)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={!!emailForm.autoSendOnTest}
+                      onChange={(e) => setEmailForm({ ...emailForm, autoSendOnTest: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded"
+                    />
+                    <span>ಹೊಸ ಟೆಸ್ಟ್ ಸೇರಿಸಿದಾಗ ಆಟೋ ಇಮೇಲ್ ಕಳುಹಿಸಿ (On Test)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={!!emailForm.autoSendOnNote}
+                      onChange={(e) => setEmailForm({ ...emailForm, autoSendOnNote: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded"
+                    />
+                    <span>ಹೊಸ ನೋಟ್ಸ್ ಸೇರಿಸಿದಾಗ ಆಟೋ ಇಮೇಲ್ ಕಳುಹಿಸಿ (On Note)</span>
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>ಸೆಟ್ಟಿಂಗ್ಸ್ ಉಳಿಸಿ (Save Email Config)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleTriggerTestEmail}
+                    disabled={isSendingEmail}
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl font-bold border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-1.5"
+                  >
+                    <Send className={`w-3.5 h-3.5 ${isSendingEmail ? 'animate-spin' : ''}`} />
+                    <span>{isSendingEmail ? 'ರವಾನೆಯಾಗುತ್ತಿದೆ...' : 'ಟೆಸ್ಟ್ ಇಮೇಲ್'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Right Col: Instant Custom Broadcast Studio */}
+            <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center font-bold">
+                  <MessageCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                    🚀 ತ್ವರಿತ ಪ್ರಕಟಣಾ ರವಾನೆ (Instant Custom Broadcast)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    ಯಾವುದೇ ಹೊಸ ಸಂದೇಶವನ್ನು 1-ಕ್ಲಿಕ್‌ನಲ್ಲಿ ಎಲ್ಲರಿಗೂ ಕಳುಹಿಸಿ
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3.5 text-xs">
+                <div>
+                  <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                    ಪ್ರಕಟಣೆ ಶೀರ್ಷಿಕೆ (Broadcast Title) *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ಉದಾ: HSTR / GPSTR ಹೊಸ ಪರೀಕ್ಷಾ ದಿನಾಂಕ ಪ್ರಕಟ!"
+                    value={customBroadcast.title}
+                    onChange={(e) => setCustomBroadcast({ ...customBroadcast, title: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 font-bold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                      ವಿಭಾಗ (Category)
+                    </label>
+                    <input
+                      type="text"
+                      value={customBroadcast.category}
+                      onChange={(e) => setCustomBroadcast({ ...customBroadcast, category: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                      ಸಂಪನ್ಮೂಲ ಲಿಂಕ್ (Resource / Action Link)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://... ಅಥವಾ ಖಾಲಿ ಬಿಡಿ"
+                      value={customBroadcast.link}
+                      onChange={(e) => setCustomBroadcast({ ...customBroadcast, link: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold block text-slate-700 dark:text-slate-300 mb-1">
+                    ವಿವರವಾದ ಸಂದೇಶ (Message Description)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ ತಿಳಿಸಬೇಕಾದ ಪೂರ್ಣ ಮಾಹಿತಿ ಇಲ್ಲಿ ಬರೆಯಿರಿ..."
+                    value={customBroadcast.description}
+                    onChange={(e) => setCustomBroadcast({ ...customBroadcast, description: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {/* 3 Major Broadcast Buttons */}
+                <div className="space-y-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!customBroadcast.title) {
+                        alert('ದಯವಿಟ್ಟು ಶೀರ್ಷಿಕೆ ನಮೂದಿಸಿ');
+                        return;
+                      }
+                      window.open(generateWhatsAppBroadcastUrl({
+                        title: customBroadcast.title,
+                        type: 'circular',
+                        category: customBroadcast.category,
+                        link: customBroadcast.link,
+                        description: customBroadcast.description
+                      }), '_blank');
+                    }}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>🟢 1-ಕ್ಲಿಕ್ WhatsApp ನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ (Share to WhatsApp Groups)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!customBroadcast.title) {
+                        alert('ದಯವಿಟ್ಟು ಶೀರ್ಷಿಕೆ ನಮೂದಿಸಿ');
+                        return;
+                      }
+                      window.open(generateGmailComposeUrl({
+                        title: customBroadcast.title,
+                        type: 'circular',
+                        category: customBroadcast.category,
+                        link: customBroadcast.link,
+                        description: customBroadcast.description
+                      }), '_blank');
+                    }}
+                    className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>✉️ 1-ಕ್ಲಿಕ್ Gmail ಮೂಲಕ ಕಳುಹಿಸಿ (BCC to {profiles.length} Students)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!customBroadcast.title) {
+                        alert('ದಯವಿಟ್ಟು ಶೀರ್ಷಿಕೆ ನಮೂದಿಸಿ');
+                        return;
+                      }
+                      setIsSendingEmail(true);
+                      const res = await sendBackgroundEmail({
+                        subject: `[ಅಧ್ಯಯನ ADHYAYANA] ${customBroadcast.title}`,
+                        title: customBroadcast.title,
+                        category: customBroadcast.category,
+                        link: customBroadcast.link,
+                        description: customBroadcast.description
+                      });
+                      setIsSendingEmail(false);
+                      if (res.success) {
+                        showToast(`🎉 ಇಮೇಲ್ ಯಶಸ್ವಿಯಾಗಿ ಕಳುಹಿಸಲಾಗಿದೆ! (${res.count} ವಿದ್ಯಾರ್ಥಿಗಳು)`);
+                      } else {
+                        alert(`ಆಟೋ ಇಮೇಲ್ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: ${res.message || res.error}\nದಯವಿಟ್ಟು ಮೇಲಿನ 1-Click Gmail ಬಟನ್ ಬಳಸಿ.`);
+                      }
+                    }}
+                    className="w-full py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-black text-white rounded-xl font-bold border border-slate-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Send className="w-4 h-4 text-emerald-400" />
+                    <span>⚡ ಆಟೋಮ್ಯಾಟಿಕ್ ಬ್ಯಾಕ್‌ಗ್ರೌಂಡ್ ಇಮೇಲ್ ಕಳುಹಿಸಿ (Background Dispatch)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Quick Dispatch from Active Items */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                  ⚡ ಇತ್ತೀಚಿನ ಪ್ರಕಟಣೆಗಳು & ಪರೀಕ್ಷೆಗಳ ತ್ವರಿತ ರವಾನೆ (Quick 1-Click Dispatch List)
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  ಈಗಾಗಲೇ ಇರುವ ಯಾವುದೇ ಐಟಂ ಅನ್ನು 1-ಕ್ಲಿಕ್‌ನಲ್ಲಿ ವಾಟ್ಸಾಪ್ ಅಥವಾ ಜಿಮೇಲ್‌ಗೆ ಕಳುಹಿಸಿ
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {notices.slice(0, 6).map((not) => (
+                <div key={not.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-2.5">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-amber-600 font-bold">
+                      <span>📢 ಪ್ರಕಟಣೆ</span>
+                      <span>•</span>
+                      <span>{not.date}</span>
+                    </div>
+                    <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 line-clamp-1 mt-0.5">
+                      {not.titleKn || not.titleEn}
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200 dark:border-slate-700 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => window.open(generateWhatsAppBroadcastUrl({
+                        title: not.titleKn || not.titleEn,
+                        type: not.type,
+                        category: not.categoryKn,
+                        link: not.fileUrl,
+                        description: not.descriptionKn
+                      }), '_blank')}
+                      className="flex-1 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-center gap-1 hover:bg-emerald-200"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.open(generateGmailComposeUrl({
+                        title: not.titleKn || not.titleEn,
+                        type: not.type,
+                        category: not.categoryKn,
+                        link: not.fileUrl,
+                        description: not.descriptionKn
+                      }), '_blank')}
+                      className="flex-1 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold flex items-center justify-center gap-1 hover:bg-rose-200"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Gmail</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* Celebratory Instant Broadcast Popup Modal */}
+      {broadcastModalItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto text-xl shadow-inner font-bold">
+                🎉
+              </div>
+              <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
+                ಯಶಸ್ವಿಯಾಗಿ ಪ್ರಕಟಿಸಲಾಗಿದೆ!
+              </h3>
+              <p className="text-xs text-slate-500">
+                "{broadcastModalItem.title}" ಅನ್ನು ಈಗಲೇ ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ ತಲುಪಿಸಲು ಕೆಳಗಿನ ಬಟನ್ ಬಳಸಿ:
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+              <p className="font-bold text-slate-800 dark:text-slate-200">{broadcastModalItem.title}</p>
+              <p className="text-slate-500 text-[11px]">{broadcastModalItem.category} • {broadcastModalItem.description}</p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(generateWhatsAppBroadcastUrl({
+                    title: broadcastModalItem.title,
+                    type: broadcastModalItem.type,
+                    category: broadcastModalItem.category,
+                    link: broadcastModalItem.link,
+                    description: broadcastModalItem.description
+                  }), '_blank');
+                  setBroadcastModalItem(null);
+                }}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>📲 1-ಕ್ಲಿಕ್ WhatsApp ನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(generateGmailComposeUrl({
+                    title: broadcastModalItem.title,
+                    type: broadcastModalItem.type,
+                    category: broadcastModalItem.category,
+                    link: broadcastModalItem.link,
+                    description: broadcastModalItem.description
+                  }), '_blank');
+                  setBroadcastModalItem(null);
+                }}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                <span>✉️ 1-ಕ್ಲಿಕ್ Gmail ಮೂಲಕ ಇಮೇಲ್ ಕಳುಹಿಸಿ</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBroadcastModalItem(null)}
+                className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-400 rounded-xl font-bold text-xs"
+              >
+                ಈಗ ಬೇಡ, ನಂತರ ಕಳುಹಿಸಿ (Dismiss)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -19,7 +19,10 @@ import {
   Play,
   Pause,
   Square,
-  Sparkles
+  Sparkles,
+  Sun,
+  Moon,
+  Eye
 } from 'lucide-react';
 
 export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
@@ -27,6 +30,7 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
   const { lang, exams, checkHasAccess } = useData();
 
   const [fontSize, setFontSize] = useState(16); // px
+  const [readingTheme, setReadingTheme] = useState('sepia'); // 'light' | 'sepia' | 'dark'
   const [isSaved, setIsSaved] = useState(false);
 
   // Audio Voice Reader (TTS) State
@@ -216,22 +220,53 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
             </div>
           )}
 
+          {/* Eye-Care Reading Mode Theme Switcher */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+            <button
+              onClick={() => setReadingTheme('light')}
+              className={`p-1.5 rounded-lg transition-all ${
+                readingTheme === 'light' ? 'bg-white shadow text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Light Mode (White)"
+            >
+              <Sun className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setReadingTheme('sepia')}
+              className={`p-1.5 rounded-lg transition-all ${
+                readingTheme === 'sepia' ? 'bg-[#ebd7b2] text-[#553c21] font-bold shadow' : 'text-slate-500 hover:text-amber-800'
+              }`}
+              title="Eye-Care Sepia Mode (ಪುಸ್ತಕದ ಹಾಳೆ ಬಣ್ಣ)"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setReadingTheme('dark')}
+              className={`p-1.5 rounded-lg transition-all ${
+                readingTheme === 'dark' ? 'bg-slate-900 text-slate-100 font-bold shadow' : 'text-slate-500 hover:text-white'
+              }`}
+              title="Night Dark Mode"
+            >
+              <Moon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* Zoom Buttons */}
           <div className="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
               onClick={() => setFontSize(prev => Math.max(12, prev - 2))}
-              className="p-1 text-slate-600 dark:text-slate-300 hover:text-emerald-600"
+              className="px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600"
               title="Decrease Font Size"
             >
-              <ZoomOut className="w-4 h-4" />
+              A-
             </button>
-            <span className="text-xs font-mono px-1 text-slate-500">{fontSize}px</span>
+            <span className="text-[11px] font-mono px-1 text-slate-500">{fontSize}px</span>
             <button
-              onClick={() => setFontSize(prev => Math.min(24, prev + 2))}
-              className="p-1 text-slate-600 dark:text-slate-300 hover:text-emerald-600"
+              onClick={() => setFontSize(prev => Math.min(26, prev + 2))}
+              className="px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600"
               title="Increase Font Size"
             >
-              <ZoomIn className="w-4 h-4" />
+              A+
             </button>
           </div>
 
@@ -250,7 +285,9 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
       </header>
 
       {/* Main Document Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <div className={`max-w-4xl mx-auto px-4 sm:px-6 py-8 transition-colors ${
+        readingTheme === 'sepia' ? 'text-[#382b19]' : readingTheme === 'dark' ? 'text-slate-100' : 'text-slate-900'
+      }`}>
         
         {/* Security Notice Banner */}
         <div className="mb-6 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200">
@@ -265,8 +302,14 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
           <span className="text-[10px] font-mono opacity-70">UID: {user?.uid?.slice(0, 8)}</span>
         </div>
 
-        {/* Content Viewer Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+        {/* Content Viewer Card with Eye-Care Background Mode */}
+        <div className={`rounded-3xl p-6 sm:p-10 border transition-all relative overflow-hidden shadow-sm ${
+          readingTheme === 'sepia'
+            ? 'bg-[#fdfaf3] border-[#e8d7ba] shadow-amber-900/5 text-[#3b2d1c]'
+            : readingTheme === 'dark'
+            ? 'bg-slate-900 border-slate-800 text-slate-100'
+            : 'bg-white border-slate-200 text-slate-900'
+        }`}>
           
           {!hasAccess ? (
             /* LOCKED PAYWALL OVERLAY FOR PAID NOTES */
@@ -343,23 +386,29 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
             /* Rich Text / Markdown Viewer */
             <div 
               style={{ fontSize: `${fontSize}px` }} 
-              className="prose dark:prose-invert max-w-none space-y-4 text-slate-800 dark:text-slate-200 leading-relaxed font-sans"
+              className={`max-w-none space-y-4 leading-relaxed font-sans ${
+                readingTheme === 'sepia'
+                  ? 'text-[#382b19]'
+                  : readingTheme === 'dark'
+                  ? 'text-slate-200'
+                  : 'text-slate-800'
+              }`}
             >
               {note.content.split('\n\n').map((para, i) => {
                 if (para.startsWith('# ')) {
-                  return <h1 key={i} className="text-2xl font-black text-slate-900 dark:text-slate-100 border-b pb-2 border-slate-200 dark:border-slate-800">{para.replace('# ', '')}</h1>;
+                  return <h1 key={i} className="text-2xl font-black border-b pb-2 border-slate-200 dark:border-slate-800">{para.replace('# ', '')}</h1>;
                 }
                 if (para.startsWith('## ')) {
                   return <h2 key={i} className="text-xl font-bold text-emerald-700 dark:text-emerald-400 mt-4">{para.replace('## ', '')}</h2>;
                 }
                 if (para.startsWith('### ')) {
-                  return <h3 key={i} className="text-lg font-bold text-slate-800 dark:text-slate-200 mt-3">{para.replace('### ', '')}</h3>;
+                  return <h3 key={i} className="text-lg font-bold mt-3">{para.replace('### ', '')}</h3>;
                 }
                 if (para.startsWith('- ')) {
                   return (
                     <ul key={i} className="list-disc pl-5 space-y-1">
                       {para.split('\n').map((line, j) => (
-                        <li key={j} className="text-slate-700 dark:text-slate-300">{line.replace(/^- /, '')}</li>
+                        <li key={j}>{line.replace(/^- /, '')}</li>
                       ))}
                     </ul>
                   );
@@ -367,7 +416,7 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
                 if (para.startsWith('---')) {
                   return <hr key={i} className="my-6 border-slate-200 dark:border-slate-800" />;
                 }
-                return <p key={i} className="text-slate-700 dark:text-slate-300">{para}</p>;
+                return <p key={i}>{para}</p>;
               })}
             </div>
           )}

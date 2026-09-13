@@ -31,7 +31,16 @@ import {
   RotateCcw,
   Edit3,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Image as ImageIcon,
+  CheckCircle,
+  TrendingUp,
+  Flame,
+  ArrowLeft,
+  ChevronRight,
+  Star,
+  Trophy,
+  Filter
 } from 'lucide-react';
 
 // Icon Renderer Helper
@@ -77,20 +86,35 @@ const AVAILABLE_ICONS = [
   { id: 'Zap', label: 'Mental Ability / ಸಾಮರ್ಥ್ಯ', icon: Zap },
 ];
 
-export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenCheckout, onNavigate }) => {
+const PRESET_SUBJECT_COVERS = [
+  { label: 'ಇತಿಹಾಸ / History', url: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=600&auto=format&fit=crop&q=80' },
+  { label: 'ಸಂವಿಧಾನ / Polity', url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80' },
+  { label: 'ಭೂಗೋಳ / Geography', url: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&auto=format&fit=crop&q=80' },
+  { label: 'ವಿಜ್ಞಾನ / Science', url: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=600&auto=format&fit=crop&q=80' },
+  { label: 'ಸಾಹಿತ್ಯ & ವ್ಯಾಕರಣ / Literature', url: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=600&auto=format&fit=crop&q=80' },
+  { label: 'ಗಣಿತ & ಸಾಮರ್ಥ್ಯ / Mental Ability', url: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&auto=format&fit=crop&q=80' },
+  { label: 'ಪ್ರಚಲಿತ ಘಟನೆಗಳು / Current Affairs', url: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&auto=format&fit=crop&q=80' },
+  { label: 'ಶಿಕ್ಷಣ / Pedagogy & TET', url: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&auto=format&fit=crop&q=80' },
+];
+
+export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, onSelectTest, onOpenAuth, onOpenCheckout, onNavigate }) => {
   const { isAuthenticated, isEnrolled, isDeveloper } = useAuth();
   const { 
     lang, 
+    exams,
     notes, 
     tests, 
     subjects, 
+    attempts,
+    readNoteIds,
+    markNoteAsRead,
     addSubject, 
     updateSubject,
     deleteSubject, 
     addNote, 
     updateNote,
     deleteNote,
-    addTest,
+    addTest, 
     updateTest,
     deleteTest,
     restoreInitialData,
@@ -103,7 +127,30 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('ALL');
+  const [mainCatalogTab, setMainCatalogTab] = useState(initialTab || 'all'); // 'all' | 'exams' | 'subjects'
+  const [selectedExamCategory, setSelectedExamCategory] = useState('All');
+  const [examPriceFilter, setExamPriceFilter] = useState('all'); // 'all' | 'free' | 'paid'
   const [activeTab, setActiveTab] = useState('notes'); // 'notes' | 'tests'
+
+  const examCategories = ['All', 'State Civil Services', 'State Recruitment', 'Police Services', 'Teaching', 'Banking & SSC'];
+
+  // Filtered Exams
+  const filteredExams = (exams || []).filter(exam => {
+    const matchesSearch = 
+      !searchQuery.trim() ||
+      exam.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (exam.description && exam.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (exam.shortName && exam.shortName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesCategory = selectedExamCategory === 'All' || exam.category === selectedExamCategory;
+
+    const matchesPrice = 
+      examPriceFilter === 'all' ||
+      (examPriceFilter === 'free' && (exam.isFree || Number(exam.price) === 0)) ||
+      (examPriceFilter === 'paid' && !exam.isFree && Number(exam.price) > 0);
+
+    return matchesSearch && matchesCategory && matchesPrice;
+  });
 
   // Modals for Creation
   const [isNewSubjectModalOpen, setIsNewSubjectModalOpen] = useState(false);
@@ -127,6 +174,7 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
   const [newSubjNameKn, setNewSubjNameKn] = useState('');
   const [newSubjDesc, setNewSubjDesc] = useState('');
   const [newSubjIcon, setNewSubjIcon] = useState('BookOpen');
+  const [newSubjImage, setNewSubjImage] = useState('');
 
   // New Note Form State
   const [newNoteTitle, setNewNoteTitle] = useState('');
@@ -187,6 +235,9 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
       onOpenAuth();
       return;
     }
+    if (note?.id && markNoteAsRead) {
+      markNoteAsRead(note.id);
+    }
     onSelectNote(note);
   };
 
@@ -210,11 +261,13 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
       nameKn: newSubjNameKn.trim() || newSubjName.trim(),
       description: newSubjDesc.trim(),
       icon: newSubjIcon,
+      imageUrl: newSubjImage.trim()
     });
 
     setNewSubjName('');
     setNewSubjNameKn('');
     setNewSubjDesc('');
+    setNewSubjImage('');
     setIsNewSubjectModalOpen(false);
     if (created?.id) setSelectedSubjectId(created.id);
   };
@@ -226,7 +279,8 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
       name: subj.name || '',
       nameKn: subj.nameKn || subj.name || '',
       description: subj.description || '',
-      icon: subj.icon || 'BookOpen'
+      icon: subj.icon || 'BookOpen',
+      imageUrl: subj.imageUrl || subj.image_url || ''
     });
     setIsEditSubjectModalOpen(true);
   };
@@ -238,7 +292,8 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
       name: editingSubject.name.trim(),
       nameKn: editingSubject.nameKn?.trim() || editingSubject.name.trim(),
       description: editingSubject.description?.trim() || '',
-      icon: editingSubject.icon || 'BookOpen'
+      icon: editingSubject.icon || 'BookOpen',
+      imageUrl: editingSubject.imageUrl?.trim() || ''
     });
     setIsEditSubjectModalOpen(false);
     setEditingSubject(null);
@@ -446,16 +501,16 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold mb-2">
-            <Layers className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{lang === 'kn' ? 'ವಿಷಯವಾರು ಕೇಂದ್ರ & ಅಧ್ಯಯನ ಸಾಮಗ್ರಿ' : 'Direct Subject Modules & Study Hub'}</span>
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{lang === 'kn' ? 'ಸಮಗ್ರ ಡಿಜಿಟಲ್ ಲರ್ನಿಂಗ್ ಹಬ್' : 'Unified All-in-One Learning Hub'}</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-            {lang === 'kn' ? 'ವಿಷಯವಾರು ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ & ಟೆಸ್ಟ್‌ಗಳು' : 'Subject Hub: Notes & Mock Tests'}
+            {lang === 'kn' ? 'ಪರೀಕ್ಷಾ ಸರಣಿಗಳು, ವಿಷಯಗಳು & ಟೆಸ್ಟ್‌ಗಳು' : 'Exam Series, Subjects & Tests Hub'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
             {lang === 'kn'
-              ? 'ವಿಷಯಗಳನ್ನು ರಚಿಸಿ ಮತ್ತು ನೇರವಾಗಿ ಆ ವಿಷಯಕ್ಕೆ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಹಾಗೂ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳನ್ನು ಸೇರಿಸಿ.'
-              : 'Create subjects, and add digital notes and mock tests directly inside each subject.'}
+              ? 'ಕರ್ನಾಟಕದ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ಕೋರ್ಸ್‌ಗಳು, ವಿಷಯವಾರು ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ರಿಯಲ್-ಟೈಮ್ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು ಒಂದೇ ಕಡೆ.'
+              : 'Access targeted exam courses, topic-wise digital notes, and real-time live mock tests in one clean place.'}
           </p>
         </div>
 
@@ -517,452 +572,1185 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
         )}
       </div>
 
-      {/* 2. Subject Selector Grid */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-emerald-600" />
-            <span>{lang === 'kn' ? 'ವಿಷಯ ವಿಭಾಗಗಳು (Subject Sections)' : 'Subject Sections'}</span>
-          </h2>
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-            {subjects.length} {lang === 'kn' ? 'ವಿಷಯಗಳು' : 'Subjects'}
-          </span>
+      {/* Primary Section Switcher Tabs (Only shown when looking at overall hub) */}
+      {selectedSubjectId === 'ALL' && (
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => setMainCatalogTab('exams')}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
+              mainCatalogTab === 'exams'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 scale-[1.02]'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            <span>{lang === 'kn' ? `🏆 ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ಸರಣಿಗಳು (${(exams || []).length})` : `🏆 Exam Series (${(exams || []).length})`}</span>
+          </button>
+
+          <button
+            onClick={() => setMainCatalogTab('subjects')}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
+              mainCatalogTab === 'subjects'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 scale-[1.02]'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>{lang === 'kn' ? `📚 ವಿಷಯವಾರು ಮಾಡ್ಯೂಲ್‌ಗಳು (${subjects.length})` : `📚 Subject Modules (${subjects.length})`}</span>
+          </button>
+
+          <button
+            onClick={() => setMainCatalogTab('all')}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
+              mainCatalogTab === 'all'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 scale-[1.02]'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{lang === 'kn' ? '🌟 ಸಮಗ್ರ ಅಧ್ಯಯನ (All Hub)' : '🌟 All Hub'}</span>
+          </button>
         </div>
+      )}
 
-        {subjects.length === 0 ? (
-          <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-4">
-            <FolderPlus className="w-12 h-12 text-slate-400 mx-auto" />
-            <div>
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-                {lang === 'kn' ? 'ಯಾವುದೇ ವಿಷಯ ವಿಭಾಗಗಳಿಲ್ಲ' : 'No Subjects Loaded'}
-              </h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                {lang === 'kn'
-                  ? 'ಕೆಳಗಿನ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ಕರ್ನಾಟಕ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ಸಿಲಬಸ್, ಮಾಕ್ ಟೆಸ್ಟ್ ಮತ್ತು ನೋಟ್ಸ್‌ಗಳನ್ನು ತಕ್ಷಣ ಮರುಸ್ಥಾಪಿಸಿ.'
-                  : 'Click below to restore default syllabus subjects, mock tests, and notes or sync from Cloud.'}
-              </p>
-            </div>
+      {/* 2. CONDITIONAL VIEW: IF ALL SUBJECTS SELECTED */}
+      {selectedSubjectId === 'ALL' ? (
+        <div className="space-y-12 animate-in fade-in duration-200">
 
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <button
-                onClick={restoreInitialData}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-emerald-600/20"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>{lang === 'kn' ? '⚡ ಸಿಲಬಸ್ & ಟೆಸ್ಟ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ (Restore Default Data)' : 'Restore Default Syllabus & Tests'}</span>
-              </button>
+          {/* EXAM SERIES SECTION */}
+          {(mainCatalogTab === 'exams' || mainCatalogTab === 'all') && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-500" />
+                    <span>{lang === 'kn' ? 'ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ಸರಣಿಗಳು (Competitive Exam Courses)' : 'Competitive Exam Series & Courses'}</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {lang === 'kn'
+                      ? 'ಕರ್ನಾಟಕದ ಪ್ರಮುಖ ಪರೀಕ್ಷೆಗಳಿಗೆ ವಿಶೇಷವಾಗಿ ಸಿದ್ಧಪಡಿಸಲಾದ ಸಂಪೂರ್ಣ ಪರೀಕ್ಷಾ ಪ್ಯಾಕ್‌ಗಳು.'
+                      : 'Comprehensive syllabus packs tailored for KPSC KAS, FDA, SDA, PSI, Group-C and Karnataka competitive exams.'}
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1 rounded-full w-fit">
+                  {filteredExams.length} {lang === 'kn' ? 'ಪರೀಕ್ಷಾ ಪ್ಯಾಕ್‌ಗಳು' : 'Exam Packs'}
+                </span>
+              </div>
 
-              <button
-                onClick={syncFromSupabase}
-                disabled={isCloudSyncing}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-blue-600/20 disabled:opacity-50"
-              >
-                <Cloud className="w-4 h-4" />
-                <span>{isCloudSyncing ? 'ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...' : (lang === 'kn' ? '☁️ Supabase ಕ್ಲೌಡ್‌ನಿಂದ ಸಿಂಕ್ ಮಾಡಿ' : 'Sync from Cloud')}</span>
-              </button>
+              {/* Filter and Search Bar for Exams */}
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <div className="flex flex-col md:flex-row gap-3">
+                  {/* Search Box */}
+                  <div className="relative flex-grow">
+                    <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder={lang === 'kn' ? 'ಪರೀಕ್ಷೆ ಅಥವಾ ವಿಷಯ ಹುಡುಕಿ (e.g. KAS, FDA, PSI)...' : 'Search exam or course (e.g. KAS, FDA, Police)...'}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
 
-              {isDeveloper && (
-                <button
-                  onClick={() => setIsNewSubjectModalOpen(true)}
-                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-purple-600/20"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{lang === 'kn' ? '+ ಹೊಸ ವಿಷಯ ರಚಿಸಿ' : '+ Create Subject'}</span>
-                </button>
+                  {/* Price Filter */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setExamPriceFilter('all')}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        examPriceFilter === 'all'
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {lang === 'kn' ? 'ಎಲ್ಲಾ' : 'All Types'}
+                    </button>
+                    <button
+                      onClick={() => setExamPriceFilter('free')}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        examPriceFilter === 'free'
+                          ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/20'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {lang === 'kn' ? 'ಉಚಿತ (Free)' : 'Free Packs'}
+                    </button>
+                    <button
+                      onClick={() => setExamPriceFilter('paid')}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        examPriceFilter === 'paid'
+                          ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/20'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {lang === 'kn' ? 'ಪ್ರೀಮಿಯಂ' : 'Premium'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Category Chips */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-medium no-scrollbar">
+                  {examCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedExamCategory(cat)}
+                      className={`px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all ${
+                        selectedExamCategory === cat
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800 shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Exam Cards Grid */}
+              {filteredExams.length === 0 ? (
+                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <Trophy className="w-12 h-12 text-slate-300 mx-auto" />
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    {lang === 'kn' ? 'ಯಾವುದೇ ಪರೀಕ್ಷಾ ಸರಣಿಗಳು ಕಂಡುಬಂದಿಲ್ಲ.' : 'No exam series found matching your criteria.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredExams.map((exam) => {
+                    const userHasAccess = isDeveloper || isEnrolled(exam.id) || exam.isFree || Number(exam.price) === 0;
+
+                    return (
+                      <div
+                        key={exam.id}
+                        className="group bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="relative h-44 overflow-hidden bg-slate-900">
+                            <img
+                              src={exam.banner}
+                              alt={exam.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent"></div>
+                            
+                            <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow">
+                              {exam.badge || 'Verified'}
+                            </span>
+
+                            <span className="absolute bottom-3 left-3 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-900/80 text-emerald-300 backdrop-blur">
+                              {exam.category}
+                            </span>
+                          </div>
+
+                          <div className="p-5 space-y-3">
+                            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                              {exam.title}
+                            </h3>
+                            
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                              {lang === 'kn' ? exam.descriptionKn || exam.description : exam.description}
+                            </p>
+
+                            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-1">
+                              <span className="flex items-center gap-1 font-medium">
+                                <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                                {exam.testsCount || tests.filter(t => t.examId === exam.id).length || 0} Mock Tests
+                              </span>
+                              <span className="flex items-center gap-1 font-medium">
+                                <BookOpen className="w-3.5 h-3.5 text-teal-600" />
+                                {exam.notesCount || notes.filter(n => n.examId === exam.id).length || 0} Digital Notes
+                              </span>
+                            </div>
+
+                            {/* Syllabus Pills */}
+                            {exam.syllabus && exam.syllabus.length > 0 && (
+                              <div className="pt-1 flex flex-wrap gap-1">
+                                {exam.syllabus.slice(0, 2).map((s, idx) => (
+                                  <span key={idx} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 truncate max-w-[200px]">
+                                    • {s}
+                                  </span>
+                                ))}
+                                {exam.syllabus.length > 2 && (
+                                  <span className="text-[10px] text-slate-400">+{exam.syllabus.length - 2} more</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p-5 pt-0 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-3">
+                          <div>
+                            <span className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
+                              {exam.isFree || Number(exam.price) === 0 ? 'FREE' : `₹${exam.price}`}
+                            </span>
+                            {!exam.isFree && exam.originalPrice && (
+                              <span className="text-xs text-slate-400 line-through ml-2">₹{exam.originalPrice}</span>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              if (onSelectExam) {
+                                onSelectExam(exam);
+                              }
+                            }}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 ${
+                              userHasAccess
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                : 'bg-slate-900 hover:bg-emerald-600 text-white dark:bg-slate-800 dark:hover:bg-emerald-600'
+                            }`}
+                          >
+                            <span>{userHasAccess ? (lang === 'kn' ? 'ತೆರೆಯಿರಿ' : 'Open Pack') : (lang === 'kn' ? 'ವಿವರ ವೀಕ್ಷಿಸಿ' : 'View Details')}</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
+          )}
+
+          {/* SUBJECT MODULES & DIGITAL NOTES/TESTS */}
+          {(mainCatalogTab === 'subjects' || mainCatalogTab === 'all') && (
+            <div className="space-y-8 pt-4 border-t border-slate-200 dark:border-slate-800">
+              {/* Subject Selector Grid */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-emerald-600" />
+                    <span>{lang === 'kn' ? 'ವಿಷಯವಾರು ಮಾಡ್ಯೂಲ್‌ಗಳು (Subject Modules)' : 'Subject Modules'}</span>
+                  </h2>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                    {subjects.length} {lang === 'kn' ? 'ವಿಷಯಗಳು' : 'Subjects'}
+                  </span>
+                </div>
+
+            {subjects.length === 0 ? (
+              <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-4">
+                <FolderPlus className="w-12 h-12 text-slate-400 mx-auto" />
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                    {lang === 'kn' ? 'ಯಾವುದೇ ವಿಷಯ ವಿಭಾಗಗಳಿಲ್ಲ' : 'No Subjects Loaded'}
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                    {lang === 'kn'
+                      ? 'ಕೆಳಗಿನ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ಕರ್ನಾಟಕ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ಸಿಲಬಸ್, ಮಾಕ್ ಟೆಸ್ಟ್ ಮತ್ತು ನೋಟ್ಸ್‌ಗಳನ್ನು ತಕ್ಷಣ ಮರುಸ್ಥಾಪಿಸಿ.'
+                      : 'Click below to restore default syllabus subjects, mock tests, and notes or sync from Cloud.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={restoreInitialData}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-emerald-600/20"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{lang === 'kn' ? '⚡ ಸಿಲಬಸ್ & ಟೆಸ್ಟ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ (Restore Default Data)' : 'Restore Default Syllabus & Tests'}</span>
+                  </button>
+
+                  <button
+                    onClick={syncFromSupabase}
+                    disabled={isCloudSyncing}
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-blue-600/20 disabled:opacity-50"
+                  >
+                    <Cloud className="w-4 h-4" />
+                    <span>{isCloudSyncing ? 'ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...' : (lang === 'kn' ? '☁️ Supabase ಕ್ಲೌಡ್‌ನಿಂದ ಸಿಂಕ್ ಮಾಡಿ' : 'Sync from Cloud')}</span>
+                  </button>
+
+                  {isDeveloper && (
+                    <button
+                      onClick={() => setIsNewSubjectModalOpen(true)}
+                      className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-purple-600/20"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{lang === 'kn' ? '+ ಹೊಸ ವಿಷಯ ರಚಿಸಿ' : '+ Create Subject'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                {/* Dynamic Subject Cards with Image/Logo & Badges */}
+                {subjects.map((subj) => {
+                  const subjNotes = notes.filter(n => n.subjectId === subj.id || n.category === subj.name);
+                  const subjTests = tests.filter(t => t.subjectId === subj.id || t.subjectName === subj.name);
+                  const subjNotesCount = subjNotes.length;
+                  const subjTestsCount = subjTests.length;
+                  const subjReadNotes = subjNotes.filter(n => (readNoteIds || []).includes(n.id)).length;
+                  const subjAttemptedTests = subjTests.filter(t => (attempts || []).some(a => a.testId === t.id || (a.testTitle && a.testTitle.toLowerCase() === (t.title || '').toLowerCase()))).length;
+                  const totalSubjItems = subjNotesCount + subjTestsCount;
+                  const completedSubjItems = subjReadNotes + subjAttemptedTests;
+                  const prepPercentage = totalSubjItems > 0 ? Math.round((completedSubjItems / totalSubjItems) * 100) : 0;
+                  const hasImage = Boolean(subj.imageUrl || subj.image_url);
+
+                  return (
+                    <div
+                      key={subj.id}
+                      className="group relative cursor-pointer rounded-2xl border transition-all text-left flex flex-col justify-between select-none overflow-hidden hover:shadow-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-800 dark:text-slate-100 hover:scale-[1.02]"
+                      onClick={() => setSelectedSubjectId(subj.id)}
+                    >
+                      {/* Card Thumbnail / Header */}
+                      {hasImage ? (
+                        <div className="relative h-24 w-full overflow-hidden bg-slate-800">
+                          <img 
+                            src={subj.imageUrl || subj.image_url} 
+                            alt={subj.name} 
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
+                          <div className="absolute bottom-2 left-2.5 p-1.5 rounded-lg bg-white/95 dark:bg-slate-900/95 shadow backdrop-blur-sm">
+                            {renderSubjectIcon(subj.icon)}
+                          </div>
+                          {prepPercentage > 0 ? (
+                            <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-600 text-white shadow">
+                              ✓ {prepPercentage}% {lang === 'kn' ? 'ಮುಗಿದಿದೆ' : 'Done'}
+                            </span>
+                          ) : (
+                            <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-600 text-white shadow">
+                              OPEN →
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="h-14 bg-gradient-to-r from-emerald-600/20 via-teal-600/10 to-transparent p-3 flex items-center justify-between">
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                            {renderSubjectIcon(subj.icon)}
+                          </div>
+                          {prepPercentage > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              ✓ {prepPercentage}%
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              OPEN →
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="p-3.5 flex flex-col justify-between flex-1">
+                        <div className="flex items-start justify-between gap-1">
+                          <p className="font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            {lang === 'kn' ? subj.nameKn || subj.name : subj.name}
+                          </p>
+
+                          {/* Developer Subject Edit & Delete Buttons */}
+                          {isDeveloper && (
+                            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity z-10 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEditSubject(subj);
+                                }}
+                                className="p-1 hover:bg-emerald-500 hover:text-white rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 transition-all shadow"
+                                title="Edit Subject"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm(`Delete subject "${subj.name}" and all its notes/tests?`)) {
+                                    deleteSubject(subj.id);
+                                    if (selectedSubjectId === subj.id) setSelectedSubjectId('ALL');
+                                  }
+                                }}
+                                className="p-1 hover:bg-red-500 hover:text-white rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 transition-all shadow"
+                                title="Delete Subject"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Progress Bar if student has started */}
+                        {prepPercentage > 0 && (
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2">
+                            <div className="bg-emerald-500 h-full rounded-full transition-all" style={{ width: `${prepPercentage}%` }} />
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1.5 mt-2.5">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                            📖 {subjNotesCount} Notes
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/40">
+                            📝 {subjTestsCount} Tests
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            
-            {/* 'All Subjects' Card */}
-            <div
-              onClick={() => setSelectedSubjectId('ALL')}
-              className={`cursor-pointer p-4 rounded-2xl border transition-all text-left flex flex-col justify-between select-none ${
-                selectedSubjectId === 'ALL'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-600/25'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-800 dark:text-slate-100'
-              }`}
-            >
-              <div className="text-2xl mb-1">📚</div>
-              <div>
-                <p className="font-bold text-xs sm:text-sm truncate">
-                  {lang === 'kn' ? 'ಎಲ್ಲಾ ವಿಷಯಗಳು' : 'All Subjects'}
-                </p>
-                <p className={`text-[10px] mt-0.5 ${selectedSubjectId === 'ALL' ? 'text-emerald-100' : 'text-slate-400'}`}>
-                  {notes.length} Notes • {tests.length} Tests
-                </p>
+
+          {/* Search & All Content Tabs */}
+          <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+            {/* Search */}
+            <div className="relative w-full sm:w-80 md:w-96">
+              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder={lang === 'kn' ? 'ಎಲ್ಲಾ ನೋಟ್ಸ್ ಅಥವಾ ಟೆಸ್ಟ್ ಹುಡುಕಿ...' : 'Search all notes or tests...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Content Type Switcher */}
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl sm:rounded-2xl w-full sm:w-auto justify-center">
+              <button
+                onClick={() => setActiveTab('notes')}
+                className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg sm:rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  activeTab === 'notes'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{lang === 'kn' ? `ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ (${filteredNotes.length})` : `Digital Notes (${filteredNotes.length})`}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('tests')}
+                className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg sm:rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  activeTab === 'tests'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <PlayCircle className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{lang === 'kn' ? `ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು (${filteredTests.length})` : `Mock Tests (${filteredTests.length})`}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ALL DIGITAL NOTES */}
+          {activeTab === 'notes' && (
+            <div>
+              {filteredNotes.length === 0 ? (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    {lang === 'kn' ? 'ಯಾವುದೇ ನೋಟ್ಸ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ.' : 'No notes available yet.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredNotes.map((note) => {
+                    const isRead = (readNoteIds || []).includes(note.id);
+                    return (
+                      <div
+                        key={note.id}
+                        className={`bg-white dark:bg-slate-900 rounded-3xl border transition-all p-6 flex flex-col justify-between space-y-4 ${
+                          isRead
+                            ? 'border-slate-200 dark:border-slate-800 hover:border-emerald-500 shadow-sm'
+                            : 'border-emerald-300/80 dark:border-emerald-700/60 shadow-md shadow-emerald-500/5 ring-1 ring-emerald-500/20'
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                {note.subjectName || note.category || 'Study Material'}
+                              </span>
+                              {isRead ? (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                                  <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                  <span>{lang === 'kn' ? 'ಓದಲಾಗಿದೆ' : 'Read'}</span>
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-black animate-pulse">
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                  </span>
+                                  <span>⚡ ಹೊಸತು (NEW)</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-slate-400">
+                                📖 {note.readTimeMinutes || 10} Mins
+                              </span>
+                              
+                              {/* Developer Edit & Delete Note */}
+                              {isDeveloper && (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleOpenEditNote(note)}
+                                    className="p-1 text-slate-400 hover:text-emerald-600 rounded transition-colors"
+                                    title="Edit Note"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`Delete note "${note.title}"?`)) {
+                                        deleteNote(note.id);
+                                      }
+                                    }}
+                                    className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                                    title="Delete Note"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 line-clamp-2">
+                            {lang === 'kn' ? note.titleKn || note.title : note.title}
+                          </h3>
+
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                            {note.content ? note.content.substring(0, 160) : 'Google Drive PDF revision note.'}...
+                          </p>
+
+                          {/* Reading Progress Indicator */}
+                          {isRead && (
+                            <div className="space-y-1 pt-1">
+                              <div className="flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                <span>✓ {lang === 'kn' ? 'ಅಧ್ಯಯನ ಪೂರ್ಣಗೊಂಡಿದೆ' : 'Completed'}</span>
+                                <span>100%</span>
+                              </div>
+                              <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 rounded-full w-full" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded w-fit ${
+                            note.isFree || note.price === 0
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                          }`}>
+                            {note.isFree || note.price === 0 ? 'FREE ACCESS' : `₹${note.price || 29}`}
+                          </span>
+
+                          <button
+                            onClick={() => handleReadNote(note)}
+                            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 active:scale-95"
+                          >
+                            <BookOpen className="w-4 h-4" />
+                            <span>{isRead ? (lang === 'kn' ? 'ಮತ್ತೆ ಓದಿ' : 'Re-read Note') : (lang === 'kn' ? 'ನೋಟ್ಸ್ ಓದಿ' : 'Read Note')}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ALL MOCK TESTS */}
+          {activeTab === 'tests' && (
+            <div>
+              {filteredTests.length === 0 ? (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <PlayCircle className="w-12 h-12 text-slate-300 mx-auto" />
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    {lang === 'kn' ? 'ಯಾವುದೇ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ.' : 'No mock tests available yet.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredTests.map((test) => {
+                    const userAttempt = (attempts || []).find(a => 
+                      a.testId === test.id || 
+                      (a.testTitle && a.testTitle.toLowerCase() === (test.title || '').toLowerCase())
+                    );
+                    const hasAttempted = Boolean(userAttempt);
+                    const totalMarks = Number(test.totalMarks) || (test.questions?.length * 2) || 50;
+                    const score = Number(userAttempt?.score) || 0;
+                    const scorePercentage = Math.min(100, Math.max(0, Math.round((score / totalMarks) * 100)));
+
+                    return (
+                      <div
+                        key={test.id}
+                        className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all flex flex-col justify-between space-y-4 shadow-sm ${
+                          hasAttempted
+                            ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-500'
+                            : 'bg-gradient-to-br from-white via-rose-50/20 to-white dark:from-slate-900 dark:via-rose-950/10 dark:to-slate-900 border-rose-200/80 dark:border-rose-900/50 hover:border-rose-500 shadow-md shadow-rose-500/5'
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              {hasAttempted ? (
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                  <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                  <span>{lang === 'kn' ? 'ಬರೆದ ಪರೀಕ್ಷೆ' : 'Attempted'}</span>
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-black animate-pulse">
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                  </span>
+                                  <span>⚡ ಹೊಸತು (NEW)</span>
+                                </div>
+                              )}
+                              <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {test.durationMinutes} Mins
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                test.isFree || test.price === 0
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                  : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                              }`}>
+                                {test.isFree || test.price === 0 ? 'FREE' : `₹${test.price || 49}`}
+                              </span>
+                              
+                              {/* Developer Edit & Delete Test */}
+                              {isDeveloper && (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleOpenEditTest(test)}
+                                    className="p-1 text-slate-400 hover:text-teal-600 rounded transition-colors"
+                                    title="Edit Test"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`Delete test "${test.title}"?`)) {
+                                        deleteTest(test.id);
+                                      }
+                                    }}
+                                    className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                                    title="Delete Test"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+                            {lang === 'kn' ? test.titleKn || test.title : test.title}
+                          </h3>
+                          
+                          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                            <span>📄 {test.questions?.length || 0} Questions</span>
+                            <span>🎯 {totalMarks} Marks</span>
+                          </div>
+
+                          {/* Attempt Progress Meter if Attempted */}
+                          {hasAttempted && (
+                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                                  {lang === 'kn' ? 'ನಿಮ್ಮ ಅಂಕ:' : 'Score:'}
+                                </span>
+                                <span className="font-black text-slate-900 dark:text-slate-100">
+                                  {score} / {totalMarks} ({scorePercentage}%)
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full ${
+                                    scorePercentage >= 70 ? 'bg-emerald-500' : scorePercentage >= 40 ? 'bg-amber-500' : 'bg-rose-500'
+                                  }`}
+                                  style={{ width: `${scorePercentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                          <span className="text-[11px] text-slate-400">
+                            {test.subjectName || 'General Module'}
+                          </span>
+
+                          <button
+                            onClick={() => handleStartTest(test)}
+                            className={`w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 ${
+                              hasAttempted
+                                ? 'bg-slate-800 hover:bg-slate-900 text-white'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                            }`}
+                          >
+                            <PlayCircle className="w-4 h-4" />
+                            <span>
+                              {hasAttempted
+                                ? (lang === 'kn' ? 'ಮರು-ಪ್ರಯತ್ನಿಸಿ' : 'Retake Test')
+                                : (lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Start Mock Test')}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* 3. DEDICATED SUBJECT PAGE VIEW (When a specific subject is clicked) */
+        currentSubject && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            {/* Top Back Navigation Bar */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <button
+                onClick={() => setSelectedSubjectId('ALL')}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold transition-all hover:scale-105 shadow-sm"
+              >
+                <ArrowLeft className="w-4 h-4 text-emerald-600" />
+                <span>{lang === 'kn' ? '← ವಿಷಯಗಳ ಪಟ್ಟಿಗೆ ಹಿಂತಿರುಗಿ (Back to Subjects)' : '← Back to All Subjects'}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  {filteredNotes.length} Notes • {filteredTests.length} Tests
+                </span>
               </div>
             </div>
 
-            {/* Dynamic Subject Cards */}
-            {subjects.map((subj) => {
-              const isSelected = selectedSubjectId === subj.id;
-              const subjNotesCount = notes.filter(n => n.subjectId === subj.id || n.category === subj.name).length;
-              const subjTestsCount = tests.filter(t => t.subjectId === subj.id || t.subjectName === subj.name).length;
+            {/* Subject Hero Header Banner */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 text-white border border-emerald-800/50 shadow-2xl p-6 sm:p-8">
+              {Boolean(currentSubject.imageUrl || currentSubject.image_url) && (
+                <img 
+                  src={currentSubject.imageUrl || currentSubject.image_url} 
+                  alt="" 
+                  className="absolute right-0 top-0 w-1/2 h-full object-cover opacity-25 pointer-events-none"
+                />
+              )}
+              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="space-y-3 max-w-2xl">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>{lang === 'kn' ? 'ವಿಷಯ ಅಧ್ಯಯನ ಕೇಂದ್ರ' : 'Dedicated Subject Hub'}</span>
+                  </div>
 
-              return (
-                <div
-                  key={subj.id}
-                  className={`relative group cursor-pointer p-4 rounded-2xl border transition-all text-left flex flex-col justify-between select-none ${
-                    isSelected
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-600/25'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-800 dark:text-slate-100'
-                  }`}
-                  onClick={() => setSelectedSubjectId(subj.id)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-sm">
-                      {renderSubjectIcon(subj.icon)}
+                  <div className="flex items-center gap-3.5">
+                    <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-inner">
+                      {renderSubjectIcon(currentSubject.icon)}
                     </div>
-                    
-                    {/* Developer Subject Edit & Delete Buttons */}
+                    <div>
+                      <h1 className="text-2xl sm:text-3xl font-black text-white">
+                        {lang === 'kn' ? currentSubject.nameKn || currentSubject.name : currentSubject.name}
+                      </h1>
+                      <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                        {currentSubject.description || 'Complete chapterwise digital revision notes and full mock test series.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dev Quick Actions */}
+                {isDeveloper && (
+                  <div className="flex flex-wrap items-center gap-2 bg-slate-900/90 p-2.5 rounded-2xl border border-emerald-800/40">
+                    <button
+                      onClick={() => {
+                        setTargetSubjectForNote(currentSubject.id);
+                        setIsNewNoteModalOpen(true);
+                      }}
+                      className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all hover:scale-105"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{lang === 'kn' ? '+ ನೋಟ್ಸ್ ಸೇರಿಸಿ' : '+ Add Note'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setTargetSubjectForTest(currentSubject.id);
+                        setIsNewTestModalOpen(true);
+                      }}
+                      className="px-3.5 py-2 bg-teal-400 hover:bg-teal-500 text-slate-950 font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-teal-400/20 transition-all hover:scale-105"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{lang === 'kn' ? '+ ಟೆಸ್ಟ್ ಸೇರಿಸಿ' : '+ Add Test'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Search Filter for Current Subject */}
+            <div className="relative max-w-md">
+              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder={lang === 'kn' ? 'ಈ ವಿಷಯದ ನೋಟ್ಸ್ ಅಥವಾ ಟೆಸ್ಟ್ ಹುಡುಕಿ...' : 'Search within this subject...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+              />
+            </div>
+
+            {/* 2-COLUMN DEDICATED WORKSPACE: Column 1 = Notes, Column 2 = Tests */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+              
+              {/* COLUMN 1: DIGITAL NOTES & STUDY MATERIALS */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                      <BookOpen className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
+                        {lang === 'kn' ? '📚 ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ & ಅಧ್ಯಯನ ಪಿಡಿಎಫ್' : '📚 Digital Notes & Study PDFs'}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {lang === 'kn' ? 'ಪುನರಾವರ್ತನೆ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ಪಿಡಿಎಫ್‌ಗಳು' : 'High-yield revision notes & drive PDFs'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    {filteredNotes.length} {lang === 'kn' ? 'ನೋಟ್ಸ್‌ಗಳು' : 'Notes'}
+                  </span>
+                </div>
+
+                {filteredNotes.length === 0 ? (
+                  <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+                    <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                      {lang === 'kn' ? 'ಈ ವಿಷಯಕ್ಕೆ ಇನ್ನೂ ಯಾವುದೇ ನೋಟ್ಸ್‌ಗಳು ಸೇರಿಸಲಾಗಿಲ್ಲ.' : 'No notes added for this subject yet.'}
+                    </p>
                     {isDeveloper && (
-                      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEditSubject(subj);
-                          }}
-                          className="p-1.5 hover:bg-emerald-500 hover:text-white rounded-lg text-slate-400 transition-all shadow"
-                          title="Edit Subject"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`Delete subject "${subj.name}" and all its notes/tests?`)) {
-                              deleteSubject(subj.id);
-                              if (selectedSubjectId === subj.id) setSelectedSubjectId('ALL');
-                            }
-                          }}
-                          className="p-1.5 hover:bg-red-500 hover:text-white rounded-lg text-slate-400 transition-all shadow"
-                          title="Delete Subject"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setTargetSubjectForNote(currentSubject.id);
+                          setIsNewNoteModalOpen(true);
+                        }}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-md"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{lang === 'kn' ? '+ ನೋಟ್ಸ್ ಸೇರಿಸಿ' : '+ Add Note'}</span>
+                      </button>
                     )}
                   </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredNotes.map((note) => {
+                      const isRead = (readNoteIds || []).includes(note.id);
 
-                  <div className="mt-3">
-                    <p className="font-bold text-xs sm:text-sm truncate">
-                      {lang === 'kn' ? subj.nameKn || subj.name : subj.name}
-                    </p>
-                    <p className={`text-[10px] mt-0.5 truncate ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
-                      {subjNotesCount} Notes • {subjTestsCount} Tests
-                    </p>
+                      return (
+                        <div
+                          key={note.id}
+                          className={`bg-white dark:bg-slate-900 rounded-2xl border transition-all p-5 flex flex-col justify-between space-y-3 group shadow-sm ${
+                            isRead
+                              ? 'border-slate-200 dark:border-slate-800 hover:border-emerald-500'
+                              : 'border-emerald-300/80 dark:border-emerald-700/60 shadow-md shadow-emerald-500/5 ring-1 ring-emerald-500/20'
+                          }`}
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                                  {note.category || currentSubject.name}
+                                </span>
+                                {isRead ? (
+                                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                                    <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                    <span>{lang === 'kn' ? 'ಓದಲಾಗಿದೆ' : 'Read'}</span>
+                                  </span>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-black animate-pulse">
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                    </span>
+                                    <span>⚡ ಹೊಸತು (NEW)</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" /> {note.readTimeMinutes || 10} Mins
+                                </span>
+                                
+                                {/* Developer Edit & Delete */}
+                                {isDeveloper && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => handleOpenEditNote(note)}
+                                      className="p-1 text-slate-400 hover:text-emerald-600 rounded transition-colors"
+                                      title="Edit Note"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Delete note "${note.title}"?`)) {
+                                          deleteNote(note.id);
+                                        }
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                                      title="Delete Note"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <h4 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 leading-snug">
+                              {lang === 'kn' ? note.titleKn || note.title : note.title}
+                            </h4>
+
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                              {note.content ? note.content.substring(0, 140) : 'Google Drive PDF revision note.'}...
+                            </p>
+
+                            {/* Reading Progress Bar */}
+                            {isRead && (
+                              <div className="space-y-1 pt-1">
+                                <div className="flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                  <span>✓ {lang === 'kn' ? 'ಓದು ಪೂರ್ಣಗೊಂಡಿದೆ' : 'Completed'}</span>
+                                  <span>100%</span>
+                                </div>
+                                <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                  <div className="h-full bg-emerald-500 rounded-full w-full" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${
+                              note.isFree || note.price === 0
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            }`}>
+                              {note.isFree || note.price === 0 ? 'FREE ACCESS' : `₹${note.price || 29}`}
+                            </span>
+
+                            <button
+                              onClick={() => handleReadNote(note)}
+                              className="px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 active:scale-95"
+                            >
+                              <BookOpen className="w-3.5 h-3.5" />
+                              <span>{isRead ? (lang === 'kn' ? 'ಮತ್ತೆ ಓದಿ' : 'Re-read Note') : (lang === 'kn' ? 'ನೋಟ್ಸ್ ಓದಿ' : 'Read Note')}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              );
-            })}
-
-          </div>
-        )}
-      </div>
-
-      {/* 3. Active Subject Action Hub Banner (When specific subject is selected) */}
-      {currentSubject && (
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 text-white border border-emerald-800/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {renderSubjectIcon(currentSubject.icon)}
-              </span>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black">
-                  {lang === 'kn' ? currentSubject.nameKn || currentSubject.name : currentSubject.name}
-                </h2>
-                <p className="text-xs text-emerald-300">
-                  {currentSubject.description || 'Subject module with digital revision notes and mock tests.'}
-                </p>
+                )}
               </div>
+
+              {/* COLUMN 2: MOCK TESTS WITH PROGRESS BAR & FLASHING NEW BADGE */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300">
+                      <PlayCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
+                        {lang === 'kn' ? '📝 ಆನ್‌ಲೈನ್ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು & ಪ್ರಗತಿ' : '📝 Mock Tests & Score Progress'}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {lang === 'kn' ? 'ಅಣಕು ಪರೀಕ್ಷೆಗಳು, ಅಂಕಗಳು ಮತ್ತು ಫಲಿತಾಂಶ' : 'Subject tests with live score tracking'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                    {filteredTests.length} {lang === 'kn' ? 'ಟೆಸ್ಟ್‌ಗಳು' : 'Tests'}
+                  </span>
+                </div>
+
+                {filteredTests.length === 0 ? (
+                  <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+                    <PlayCircle className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                      {lang === 'kn' ? 'ಈ ವಿಷಯಕ್ಕೆ ಇನ್ನೂ ಯಾವುದೇ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು ಸೇರಿಸಲಾಗಿಲ್ಲ.' : 'No mock tests added for this subject yet.'}
+                    </p>
+                    {isDeveloper && (
+                      <button
+                        onClick={() => {
+                          setTargetSubjectForTest(currentSubject.id);
+                          setIsNewTestModalOpen(true);
+                        }}
+                        className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-md"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{lang === 'kn' ? '+ ಟೆಸ್ಟ್ ಸೇರಿಸಿ' : '+ Add Test'}</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredTests.map((test) => {
+                      const userAttempt = (attempts || []).find(a => 
+                        a.testId === test.id || 
+                        (a.testTitle && a.testTitle.toLowerCase() === (test.title || '').toLowerCase())
+                      );
+                      const hasAttempted = Boolean(userAttempt);
+                      const totalMarks = Number(test.totalMarks) || (test.questions?.length * 2) || 50;
+                      const score = Number(userAttempt?.score) || 0;
+                      const scorePercentage = Math.min(100, Math.max(0, Math.round((score / totalMarks) * 100)));
+
+                      return (
+                        <div
+                          key={test.id}
+                          className={`rounded-2xl border transition-all p-5 flex flex-col justify-between space-y-4 group shadow-sm ${
+                            hasAttempted
+                              ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-500'
+                              : 'bg-gradient-to-br from-white via-rose-50/20 to-white dark:from-slate-900 dark:via-rose-950/10 dark:to-slate-900 border-rose-200/80 dark:border-rose-900/50 hover:border-rose-500 shadow-md shadow-rose-500/5'
+                          }`}
+                        >
+                          <div className="space-y-3">
+                            {/* Top Tag Row */}
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              {hasAttempted ? (
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-[10px] font-extrabold">
+                                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>{lang === 'kn' ? 'ಬರೆದ ಪರೀಕ್ಷೆ (Attempted)' : 'Attempted'}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/15 dark:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/40 text-[10px] font-black animate-pulse shadow-sm">
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                  </span>
+                                  <span>⚡ ಹೊಸತು (NEW)</span>
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                                  test.isFree || test.price === 0
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                    : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                                }`}>
+                                  {test.isFree || test.price === 0 ? 'FREE' : `₹${test.price || 49}`}
+                                </span>
+
+                                {/* Developer Edit & Delete */}
+                                {isDeveloper && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => handleOpenEditTest(test)}
+                                      className="p-1 text-slate-400 hover:text-teal-600 rounded transition-colors"
+                                      title="Edit Test"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Delete test "${test.title}"?`)) {
+                                          deleteTest(test.id);
+                                        }
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                                      title="Delete Test"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Test Title */}
+                            <h4 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 leading-snug">
+                              {lang === 'kn' ? test.titleKn || test.title : test.title}
+                            </h4>
+
+                            {/* Meta */}
+                            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                              <span className="flex items-center gap-1">
+                                📄 {test.questions?.length || 0} Questions
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {test.durationMinutes || 30} Mins
+                              </span>
+                              <span>🎯 {totalMarks} Marks</span>
+                            </div>
+
+                            {/* ATTEMPT PROGRESS BAR */}
+                            {hasAttempted && (
+                              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 space-y-2">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                    <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                                    {lang === 'kn' ? 'ನಿಮ್ಮ ಕೊನೆಯ ಅಂಕ:' : 'Your Last Score:'}
+                                  </span>
+                                  <span className="font-black text-slate-900 dark:text-slate-100">
+                                    {score} / {totalMarks} ({scorePercentage}%)
+                                  </span>
+                                </div>
+
+                                {/* Visual Progress Bar */}
+                                <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      scorePercentage >= 70 
+                                        ? 'bg-gradient-to-r from-emerald-500 to-green-400' 
+                                        : scorePercentage >= 40 
+                                        ? 'bg-gradient-to-r from-amber-500 to-yellow-400' 
+                                        : 'bg-gradient-to-r from-rose-500 to-orange-400'
+                                    }`}
+                                    style={{ width: `${scorePercentage}%` }}
+                                  />
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                                  <span>⚡ {lang === 'kn' ? `ನಿಖರತೆ: ${userAttempt.accuracy || 0}%` : `Accuracy: ${userAttempt.accuracy || 0}%`}</span>
+                                  {userAttempt.date && (
+                                    <span>📅 {new Date(userAttempt.date).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action Button */}
+                          <div className="pt-2 flex items-center justify-end">
+                            <button
+                              onClick={() => handleStartTest(test)}
+                              className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 ${
+                                hasAttempted
+                                  ? 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white'
+                                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-600/20'
+                              }`}
+                            >
+                              <PlayCircle className="w-4 h-4" />
+                              <span>
+                                {hasAttempted
+                                  ? (lang === 'kn' ? '🔄 ಮರು-ಪ್ರಯತ್ನಿಸಿ (Retake Test)' : '🔄 Retake Mock Test')
+                                  : (lang === 'kn' ? '🚀 ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ (Start Test)' : '🚀 Start Mock Test')}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
-
-          {/* Quick Add Buttons for this specific subject */}
-          {isDeveloper && (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => {
-                  setTargetSubjectForNote(currentSubject.id);
-                  setIsNewNoteModalOpen(true);
-                }}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{lang === 'kn' ? '+ ಈ ವಿಷಯಕ್ಕೆ ನೋಟ್ಸ್ ಸೇರಿಸಿ' : '+ Add Note Here'}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setTargetSubjectForTest(currentSubject.id);
-                  setIsNewTestModalOpen(true);
-                }}
-                className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-teal-500/20"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{lang === 'kn' ? '+ ಈ ವಿಷಯಕ್ಕೆ ಟೆಸ್ಟ್ ಸೇರಿಸಿ' : '+ Add Test Here'}</span>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 4. Search & Tab Filter */}
-      <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
-        
-        {/* Search */}
-        <div className="relative w-full sm:w-80 md:w-96">
-          <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder={lang === 'kn' ? 'ನೋಟ್ಸ್ ಅಥವಾ ಟೆಸ್ಟ್ ಹುಡುಕಿ...' : 'Search notes or mock tests...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-
-        {/* Content Type Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl sm:rounded-2xl w-full sm:w-auto justify-center">
-          <button
-            onClick={() => setActiveTab('notes')}
-            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-              activeTab === 'notes'
-                ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{lang === 'kn' ? `ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ (${filteredNotes.length})` : `Digital Notes (${filteredNotes.length})`}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('tests')}
-            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-              activeTab === 'tests'
-                ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            <PlayCircle className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{lang === 'kn' ? `ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು (${filteredTests.length})` : `Mock Tests (${filteredTests.length})`}</span>
-          </button>
-        </div>
-
-      </div>
-
-      {/* 5. Content Grid */}
-      
-      {/* 5A. DIGITAL NOTES */}
-      {activeTab === 'notes' && (
-        <div>
-          {filteredNotes.length === 0 ? (
-            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
-              <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                {lang === 'kn' ? 'ಯಾವುದೇ ನೋಟ್ಸ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ.' : 'No notes available yet.'}
-              </p>
-              {isDeveloper && (
-                <button
-                  onClick={() => {
-                    setTargetSubjectForNote(selectedSubjectId !== 'ALL' ? selectedSubjectId : (subjects[0]?.id || ''));
-                    setIsNewNoteModalOpen(true);
-                  }}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{lang === 'kn' ? '+ ಈ ವಿಷಯಕ್ಕೆ ನೋಟ್ಸ್ ಸೇರಿಸಿ' : '+ Add Note to this Subject'}</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredNotes.map((note) => (
-                <div
-                  key={note.id}
-                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 shadow-sm transition-all p-6 flex flex-col justify-between space-y-4"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                        {note.subjectName || note.category || 'Study Material'}
-                      </span>
-                      
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-400">
-                          📖 {note.readTimeMinutes || 10} Mins
-                        </span>
-                        
-                        {/* Developer Edit & Delete Note */}
-                        {isDeveloper && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleOpenEditNote(note)}
-                              className="p-1 text-slate-400 hover:text-emerald-600 rounded transition-colors"
-                              title="Edit Note"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Delete note "${note.title}"?`)) {
-                                  deleteNote(note.id);
-                                }
-                              }}
-                              className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
-                              title="Delete Note"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 line-clamp-2">
-                      {lang === 'kn' ? note.titleKn || note.title : note.title}
-                    </h3>
-
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
-                      {note.content ? note.content.substring(0, 160) : 'Google Drive PDF revision note.'}...
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded w-fit ${
-                      note.isFree || note.price === 0
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                        : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                    }`}>
-                      {note.isFree || note.price === 0 ? 'FREE ACCESS' : `₹${note.price || 29}`}
-                    </span>
-
-                    <button
-                      onClick={() => handleReadNote(note)}
-                      className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 active:scale-95"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      <span>{lang === 'kn' ? 'ನೋಟ್ಸ್ ಓದಿ' : 'Read Note'}</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 5B. SUBJECT MOCK TESTS */}
-      {activeTab === 'tests' && (
-        <div>
-          {filteredTests.length === 0 ? (
-            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
-              <PlayCircle className="w-12 h-12 text-slate-300 mx-auto" />
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                {lang === 'kn' ? 'ಯಾವುದೇ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ.' : 'No mock tests available yet.'}
-              </p>
-              {isDeveloper && (
-                <button
-                  onClick={() => {
-                    setTargetSubjectForTest(selectedSubjectId !== 'ALL' ? selectedSubjectId : (subjects[0]?.id || ''));
-                    setIsNewTestModalOpen(true);
-                  }}
-                  className="px-4 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{lang === 'kn' ? '+ ಈ ವಿಷಯಕ್ಕೆ ಟೆಸ್ಟ್ ಸೇರಿಸಿ' : '+ Add Test to this Subject'}</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredTests.map((test) => (
-                <div
-                  key={test.id}
-                  className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all flex flex-col justify-between space-y-4 shadow-sm"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          {test.questions?.length || 0} Questions
-                        </span>
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {test.durationMinutes} Mins
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-wrap justify-end">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          test.isFree || test.price === 0
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
-                        }`}>
-                          {test.isFree || test.price === 0 ? 'FREE' : `₹${test.price || 49}`}
-                        </span>
-                        {!test.isFree && test.price > 0 && test.freeQuestionsCount > 0 && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                            {test.freeQuestionsCount} Qs Free Preview
-                          </span>
-                        )}
-                        
-                        {/* Developer Edit & Delete Test */}
-                        {isDeveloper && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleOpenEditTest(test)}
-                              className="p-1 text-slate-400 hover:text-teal-600 rounded transition-colors"
-                              title="Edit Test"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Delete test "${test.title}"?`)) {
-                                  deleteTest(test.id);
-                                }
-                              }}
-                              className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
-                              title="Delete Test"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
-                      {lang === 'kn' ? test.titleKn || test.title : test.title}
-                    </h3>
-                    
-                    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 pt-1">
-                      <span>🎯 Total Marks: {test.totalMarks}</span>
-                      <span>⚠️ Negative: {test.negativeMarking ? `-${test.negativeMarking}` : '0.00'}</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <span className="text-[11px] text-slate-400">
-                      {test.subjectName || 'General Module'}
-                    </span>
-
-                    <button
-                      onClick={() => handleStartTest(test)}
-                      className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 active:scale-95"
-                    >
-                      <PlayCircle className="w-4 h-4" />
-                      <span>{lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Start Mock Test'}</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )
       )}
 
       {/* 6. MODAL: CREATE SUBJECT */}
@@ -1035,6 +1823,57 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Subject Cover Image / Thumbnail (Optional)
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/... or paste image URL"
+                    value={newSubjImage}
+                    onChange={(e) => setNewSubjImage(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono"
+                  />
+
+                  {/* Preset Covers Selector */}
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                      Choose Preset HD Cover Image:
+                    </span>
+                    <div className="grid grid-cols-4 gap-1.5 max-h-28 overflow-y-auto p-1 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/60">
+                      {PRESET_SUBJECT_COVERS.map((cov, idx) => (
+                        <button
+                          type="button"
+                          key={idx}
+                          onClick={() => setNewSubjImage(cov.url)}
+                          className={`relative rounded-lg overflow-hidden border text-left p-1 group transition-all ${
+                            newSubjImage === cov.url 
+                              ? 'border-purple-600 ring-2 ring-purple-600' 
+                              : 'border-slate-300 dark:border-slate-700 hover:border-purple-400'
+                          }`}
+                        >
+                          <img src={cov.url} alt="" className="h-10 w-full object-cover rounded" />
+                          <span className="text-[9px] font-bold text-slate-700 dark:text-slate-300 block truncate mt-0.5">
+                            {cov.label.split('/')[0]}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Live Preview */}
+                  {newSubjImage && (
+                    <div className="relative h-20 rounded-xl overflow-hidden border border-purple-300 dark:border-purple-700 bg-slate-900">
+                      <img src={newSubjImage} alt="Preview" className="w-full h-full object-cover opacity-80" onError={(e) => { e.target.style.display = 'none'; }} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent flex items-end p-2">
+                        <span className="text-white text-xs font-bold">✓ Cover Image Preview</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1489,6 +2328,57 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Subject Cover Image / Thumbnail (Optional)
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/... or paste image URL"
+                    value={editingSubject.imageUrl || ''}
+                    onChange={(e) => setEditingSubject({ ...editingSubject, imageUrl: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono"
+                  />
+
+                  {/* Preset Covers Selector */}
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                      Choose Preset HD Cover Image:
+                    </span>
+                    <div className="grid grid-cols-4 gap-1.5 max-h-28 overflow-y-auto p-1 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/60">
+                      {PRESET_SUBJECT_COVERS.map((cov, idx) => (
+                        <button
+                          type="button"
+                          key={idx}
+                          onClick={() => setEditingSubject({ ...editingSubject, imageUrl: cov.url })}
+                          className={`relative rounded-lg overflow-hidden border text-left p-1 group transition-all ${
+                            editingSubject.imageUrl === cov.url 
+                              ? 'border-emerald-600 ring-2 ring-emerald-600' 
+                              : 'border-slate-300 dark:border-slate-700 hover:border-emerald-400'
+                          }`}
+                        >
+                          <img src={cov.url} alt="" className="h-10 w-full object-cover rounded" />
+                          <span className="text-[9px] font-bold text-slate-700 dark:text-slate-300 block truncate mt-0.5">
+                            {cov.label.split('/')[0]}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Live Preview */}
+                  {editingSubject.imageUrl && (
+                    <div className="relative h-20 rounded-xl overflow-hidden border border-emerald-300 dark:border-emerald-700 bg-slate-900">
+                      <img src={editingSubject.imageUrl} alt="Preview" className="w-full h-full object-cover opacity-80" onError={(e) => { e.target.style.display = 'none'; }} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent flex items-end p-2">
+                        <span className="text-white text-xs font-bold">✓ Cover Image Preview</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
