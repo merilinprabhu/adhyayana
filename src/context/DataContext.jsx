@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   ATTEMPTS: 'adhyayana_attempts_v2',
   BOOKMARKS: 'adhyayana_bookmarks_v2',
   PURCHASES: 'adhyayana_purchases_v2',
+  PROFILES: 'adhyayana_profiles_v2',
   LANGUAGE: 'adhyayana_lang_v2',
   RAZORPAY_KEY: 'adhyayana_rzp_key_v2',
   DEV_UPI_ID: 'adhyayana_dev_upi_id_v2',
@@ -27,6 +28,16 @@ export const DataProvider = ({ children }) => {
   // Language state: 'kn' (Kannada) or 'en' (English)
   const [lang, setLang] = useState(() => {
     return localStorage.getItem(STORAGE_KEYS.LANGUAGE) || 'kn';
+  });
+
+  // Registered User Profiles (from Supabase Cloud)
+  const [profiles, setProfiles] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.PROFILES);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
   // Razorpay Key ID
@@ -310,19 +321,48 @@ export const DataProvider = ({ children }) => {
         console.warn('App settings sync notice:', settingsErr);
       }
 
-      // 7. Fetch User Attempts if logged in
-      if (user?.email) {
-        const { data: dbAttempts } = await supabase
-          .from('user_attempts')
-          .select('*')
-          .eq('user_email', user.email)
-          .order('timestamp', { ascending: false });
+      // 7. Fetch Registered User Profiles (All Users across system)
+      try {
+        const { data: dbProfiles, error: profErr } = await supabase.from('profiles').select('*');
+        if (!profErr && dbProfiles && dbProfiles.length > 0) {
+          const formattedProfiles = dbProfiles.map(p => ({
+            id: p.id,
+            email: (p.email || '').toLowerCase().trim(),
+            name: p.name || (p.email ? p.email.split('@')[0] : 'Student'),
+            role: p.role || 'student',
+            targetExam: p.target_exam || p.targetExam || 'KPSC KAS',
+            status: p.status || 'ACTIVE',
+            lastLogin: p.last_login || p.lastLogin || p.created_at || new Date().toISOString(),
+            createdAt: p.created_at || p.createdAt || new Date().toISOString()
+          }));
 
-        if (dbAttempts && dbAttempts.length > 0) {
+          setProfiles(prev => {
+            const map = new Map(formattedProfiles.map(item => [item.email, item]));
+            prev.forEach(localP => {
+              if (!map.has(localP.email)) map.set(localP.email, localP);
+            });
+            return Array.from(map.values());
+          });
+        }
+      } catch (profErr) {
+        console.warn('Supabase profiles fetch notice:', profErr);
+      }
+
+      // 8. Fetch User Attempts (Global if Developer, or Student specific)
+      try {
+        let attemptsQuery = supabase.from('user_attempts').select('*').order('timestamp', { ascending: false });
+        if (user?.role !== 'developer' && user?.email) {
+          attemptsQuery = attemptsQuery.eq('user_email', user.email.toLowerCase().trim());
+        }
+
+        const { data: dbAttempts, error: attErr } = await attemptsQuery;
+
+        if (!attErr && dbAttempts && dbAttempts.length > 0) {
           const formattedAttempts = dbAttempts.map(a => ({
             id: a.id,
             userId: a.user_id || a.userId,
-            userEmail: a.user_email || a.userEmail,
+            userEmail: (a.user_email || a.userEmail || '').toLowerCase().trim(),
+            userName: a.user_name || a.userName || '',
             testId: a.test_id || a.testId,
             testTitle: a.test_title || a.testTitle,
             score: Number(a.score) || 0,
@@ -337,11 +377,15 @@ export const DataProvider = ({ children }) => {
           }));
 
           setAttempts(prev => {
-            const combined = [...formattedAttempts, ...prev];
-            const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-            return unique;
+            const map = new Map(formattedAttempts.map(item => [item.id, item]));
+            prev.forEach(localItem => {
+              if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+            });
+            return Array.from(map.values());
           });
         }
+      } catch (attErr) {
+        console.warn('Supabase attempts fetch notice:', attErr);
       }
     } catch (e) {
       console.warn('Supabase initial fetch info:', e);
@@ -1182,14 +1226,107 @@ export const DataProvider = ({ children }) => {
     const cleanEmail = (studentEmail || '').trim().toLowerCase();
     if (!cleanEmail) return;
 
+    setProfiles(prev => prev.filter(p => p.email !== cleanEmail));
     setPurchases(prev => prev.filter(p => p.userEmail !== cleanEmail));
     setAttempts(prev => prev.filter(a => a.userEmail !== cleanEmail));
     setBookmarks(prev => prev.filter(b => b.userEmail !== cleanEmail));
 
     try {
+      await supabase.from('profiles').delete().eq('email', cleanEmail);
       await supabase.from('purchases').delete().eq('user_email', cleanEmail);
       await supabase.from('user_attempts').delete().eq('user_email', cleanEmail);
     } catch (e) {}
+  };
+
+  // Suspend User Account (Blocks Access)
+  const suspendAccount = async (studentEmail) => {
+    const cleanEmail = (studentEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return;
+
+    setProfiles(prev => prev.map(p => p.email === cleanEmail ? { ...p, status: 'SUSPENDED' } : p));
+    setPurchases(prev => prev.map(p => p.userEmail === cleanEmail ? { ...p, status: 'DEACTIVATED' } : p));
+
+    try {
+      await supabase.from('profiles').update({ status: 'SUSPENDED' }).eq('email', cleanEmail);
+      await supabase.from('purchases').update({ status: 'DEACTIVATED' }).eq('user_email', cleanEmail);
+    } catch (e) {
+      console.warn('Suspend account supabase sync error:', e);
+    }
+  };
+
+  // Activate / Restore User Account
+  const activateAccount = async (studentEmail) => {
+    const cleanEmail = (studentEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return;
+
+    setProfiles(prev => prev.map(p => p.email === cleanEmail ? { ...p, status: 'ACTIVE' } : p));
+    setPurchases(prev => prev.map(p => p.userEmail === cleanEmail && p.status === 'DEACTIVATED' ? { ...p, status: 'ACTIVE' } : p));
+
+    try {
+      await supabase.from('profiles').update({ status: 'ACTIVE' }).eq('email', cleanEmail);
+      await supabase.from('purchases').update({ status: 'ACTIVE' }).eq('user_email', cleanEmail).eq('status', 'DEACTIVATED');
+    } catch (e) {
+      console.warn('Activate account supabase sync error:', e);
+    }
+  };
+
+  // Set / Change Exact Validity on a specific Test or Note or Course
+  const setPurchaseValidity = async (purchaseId, validityDaysOrDuration) => {
+    let newValidUntil = 'LIFETIME';
+    if (validityDaysOrDuration !== 'LIFETIME') {
+      const days = Number(validityDaysOrDuration) || 30;
+      newValidUntil = new Date(Date.now() + days * 86400000).toISOString();
+    }
+
+    setPurchases(prev => {
+      const updated = prev.map(p => {
+        if (p.id === purchaseId) {
+          return {
+            ...p,
+            validUntil: newValidUntil,
+            status: 'ACTIVE'
+          };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.PURCHASES, JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Storage sync error:', err);
+      }
+      return updated;
+    });
+
+    try {
+      const { error } = await supabase.from('purchases').update({
+        valid_until: newValidUntil,
+        status: 'ACTIVE'
+      }).eq('id', purchaseId);
+
+      if (error) {
+        console.warn('Set purchase validity Supabase error:', error);
+      }
+    } catch (e) {
+      console.warn('Set purchase validity error:', e);
+    }
+  };
+
+  // Set Purchase Status (ACTIVE, DEACTIVATED / DENIED, REJECTED, PENDING_APPROVAL)
+  const setPurchaseStatus = async (purchaseId, status) => {
+    setPurchases(prev =>
+      prev.map(p => {
+        if (p.id === purchaseId) {
+          return { ...p, status };
+        }
+        return p;
+      })
+    );
+
+    try {
+      await supabase.from('purchases').update({ status }).eq('id', purchaseId);
+    } catch (e) {
+      console.warn('Set purchase status error:', e);
+    }
   };
 
   // Helper: Check if user has active purchase or admin grant with valid duration
@@ -1203,7 +1340,7 @@ export const DataProvider = ({ children }) => {
       if ((p.userEmail || '').trim().toLowerCase() !== userEmail) return false;
       
       // Active status check
-      if (p.status === 'PENDING_APPROVAL' || p.status === 'REJECTED' || p.status === 'DEACTIVATED') {
+      if (p.status === 'PENDING_APPROVAL' || p.status === 'REJECTED' || p.status === 'DEACTIVATED' || p.status === 'SUSPENDED') {
         return false;
       }
       
@@ -1251,6 +1388,7 @@ export const DataProvider = ({ children }) => {
         subjects,
         tests,
         notes,
+        profiles,
         attempts: userAttempts,
         allAttempts: attempts,
         bookmarks: bookmarks.filter(b => b.userEmail === user?.email),
@@ -1293,6 +1431,10 @@ export const DataProvider = ({ children }) => {
         grantStudentAccess,
         revokeStudentAccess,
         removeUserRecord,
+        suspendAccount,
+        activateAccount,
+        setPurchaseValidity,
+        setPurchaseStatus,
         checkHasAccess,
         toggleBookmark,
         isBookmarked,
@@ -1310,4 +1452,5 @@ export const useData = () => {
   }
   return context;
 };
+
 

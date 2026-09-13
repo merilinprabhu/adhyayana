@@ -83,6 +83,19 @@ export const AuthProvider = ({ children }) => {
       enrolledExams: user?.enrolledExams || [],
     };
 
+    // Auto sync user to profiles table so Developer Admin can manage all registered users
+    try {
+      supabase.from('profiles').upsert({
+        id: activeUser.uid,
+        email: activeUser.email,
+        name: activeUser.name,
+        role: activeUser.role,
+        target_exam: activeUser.targetExam,
+        last_login: activeUser.lastLogin,
+        status: 'ACTIVE'
+      }).then(() => {}).catch(e => console.warn('Profile sync notice:', e));
+    } catch (e) {}
+
     setUser(activeUser);
     setIsAuthModalOpen(false);
     setIsAuthenticating(false);

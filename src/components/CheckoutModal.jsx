@@ -14,7 +14,10 @@ import {
   MessageCircle,
   Clock,
   BookOpen,
-  PlayCircle
+  PlayCircle,
+  Smartphone,
+  Zap,
+  ExternalLink
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -69,10 +72,18 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
   const originalPrice = item.price !== undefined ? Number(item.price) : 49;
   const discountedPrice = Math.max(0, Math.round(originalPrice * (1 - discountPercent / 100)));
 
-  // Dynamic UPI Payment String for PhonePe/GPay/Paytm/BHIM
+  // Dynamic UPI Payment Strings for 1-Click Launchers (PhonePe/GPay/Paytm/BHIM)
   const upiId = developerUpiId || '6360433316@ybl';
   const merchantName = developerName || 'ADHYAYANA (ಅಧ್ಯಯನ)';
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${discountedPrice}&cu=INR`;
+  const cleanTitle = encodeURIComponent((item?.title || 'Study Material').substring(0, 30));
+  const encodedUpiId = encodeURIComponent(upiId);
+  const encodedName = encodeURIComponent(merchantName);
+
+  const upiUrl = `upi://pay?pa=${encodedUpiId}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+  const phonePeUrl = `phonepe://pay?pa=${encodedUpiId}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+  const gpayUrl = `gpay://upi/pay?pa=${encodedUpiId}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+  const paytmUrl = `paytmmp://pay?pa=${encodedUpiId}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+
   const qrCodeImageUrl = developerUpiQrImage || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiUrl)}&margin=10`;
 
   const copyToClipboard = (text, type) => {
@@ -89,7 +100,7 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
   // WhatsApp prefilled support message
   const whatsappNumber = (developerPhone || '6360433316').replace(/\D/g, '');
   const whatsappText = encodeURIComponent(
-    `ನಮಸ್ಕಾರ, ನಾನು ADHYAYANA ವೆಬ್‌ಸೈಟ್‌ನಲ್ಲಿ "${item.title}" (₹${discountedPrice}) ಗಾಗಿ ಪಾವತಿ ಮಾಡಿದ್ದೇನೆ.\nನನ್ನ ಇಮೇಲ್: ${user?.email || 'N/A'}\nದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
+    `ನಮಸ್ಕಾರ, ನಾನು ADHYAYANA ವೆಬ್‌ಸೈಟ್‌ನಲ್ಲಿ "${item.title}" (₹${discountedPrice}) ಗಾಗಿ ಪಾವತಿ ಮಾಡಿದ್ದೇನೆ.\nನನ್ನ ಇಮೇಲ್: ${user?.email || 'N/A'}\nUTR/Ref: ${utrNumber || 'ಪಾವತಿಸಲಾಗಿದೆ'}\nದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
   );
   const whatsappUrl = `https://wa.me/91${whatsappNumber}?text=${whatsappText}`;
 
@@ -430,33 +441,80 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
             ) : (
               /* DIRECT UPI / QR CODE (PHONEPE / GPAY / PAYTM) */
               <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-800/50">
-                <div className="text-center space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full inline-block">
-                    ⚡ {lang === 'kn' ? 'PhonePe / GPay / Paytm ನೇರ ಪಾವತಿ' : 'Direct PhonePe / GPay / Paytm QR'}
-                  </span>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    {lang === 'kn'
-                      ? `ಕೆಳಗಿನ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ UPI ಗೆ ನಿಖರವಾಗಿ ₹${discountedPrice} ಪಾವತಿಸಿ UTR ನಮೂದಿಸಿ.`
-                      : `Scan QR code or send exactly ₹${discountedPrice} via PhonePe/GPay and submit 12-digit UTR.`}
-                  </p>
+                
+                {/* 1-CLICK MOBILE APP LAUNCHERS */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <Smartphone className="w-4 h-4 text-purple-600" />
+                      <span>{lang === 'kn' ? '📱 ಮೊಬೈಲ್ 1-ಕ್ಲಿಕ್ ಪಾವತಿ (Open in App):' : '📱 1-Click Pay in App:'}</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
+                      ⚡ ಮೊತ್ತ: ₹{discountedPrice}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {/* PhonePe */}
+                    <a
+                      href={phonePeUrl}
+                      className="p-2.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
+                    >
+                      <span className="w-7 h-7 rounded-full bg-white text-purple-600 font-black text-sm flex items-center justify-center shadow-inner">
+                        Pe
+                      </span>
+                      <span className="text-[11px] font-bold">PhonePe</span>
+                    </a>
+
+                    {/* Google Pay */}
+                    <a
+                      href={gpayUrl}
+                      className="p-2.5 bg-slate-900 hover:bg-black active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm border border-slate-700 transition-all text-center"
+                    >
+                      <span className="w-7 h-7 rounded-full bg-white text-blue-600 font-black text-sm flex items-center justify-center shadow-inner">
+                        G
+                      </span>
+                      <span className="text-[11px] font-bold">Google Pay</span>
+                    </a>
+
+                    {/* Paytm */}
+                    <a
+                      href={paytmUrl}
+                      className="p-2.5 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
+                    >
+                      <span className="w-7 h-7 rounded-full bg-white text-sky-600 font-black text-xs flex items-center justify-center shadow-inner">
+                        Pay
+                      </span>
+                      <span className="text-[11px] font-bold">Paytm</span>
+                    </a>
+
+                    {/* Any UPI / BHIM */}
+                    <a
+                      href={upiUrl}
+                      className="p-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
+                    >
+                      <Zap className="w-6 h-6 text-amber-300" />
+                      <span className="text-[11px] font-bold">{lang === 'kn' ? 'ಎಲ್ಲಾ UPI' : 'Other UPI'}</span>
+                    </a>
+                  </div>
                 </div>
 
-                {/* QR Code & Payee Details */}
+                {/* DESKTOP QR CODE & PAYEE DETAILS */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                   <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-inner text-center">
                     <img
                       src={qrCodeImageUrl}
                       alt="UPI Payment QR Code"
-                      className="w-40 h-40 object-contain mx-auto rounded-lg"
+                      className="w-36 h-36 object-contain mx-auto rounded-lg"
                     />
                     <span className="text-[10px] font-bold text-emerald-700 block mt-1">
-                      ನಿಖರ ಮೊತ್ತ: ₹{discountedPrice}
+                      {lang === 'kn' ? 'ಕಂಪ್ಯೂಟರ್‌ನಲ್ಲಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ' : 'Scan via Any App'}
                     </span>
                   </div>
 
                   <div className="space-y-2.5 text-left w-full sm:w-auto">
                     <div className="text-xs">
-                      <span className="text-slate-400 text-[10px] block font-medium">ಸ್ವೀಕರಿಸುವವರ ಹೆಸರು:</span>
+                      <span className="text-slate-400 text-[10px] block font-medium">ಸ್ವೀಕರಿಸುವವರ ಹೆಸರು (Payee):</span>
                       <span className="font-bold text-slate-800 dark:text-slate-100 text-xs truncate max-w-[190px] block">
                         {merchantName}
                       </span>
@@ -502,36 +560,11 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                   </div>
                 </div>
 
-                {/* 3-Step PhonePe / GPay Instructions */}
-                <div className="bg-emerald-50/80 dark:bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1.5">
-                  <p className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
-                    <span>📲</span>
-                    <span>{lang === 'kn' ? 'ಪಾವತಿಸುವ ಸರಳ 3 ಹಂತಗಳು:' : 'Simple 3 Steps to Pay:'}</span>
-                  </p>
-                  <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-700 dark:text-slate-300">
-                    <li>
-                      {lang === 'kn' 
-                        ? 'ನಿಮ್ಮ ಮೊಬೈಲ್‌ನಲ್ಲಿ PhonePe, Google Pay ಅಥವಾ Paytm ಆಪ್ ತೆರೆಯಿರಿ.' 
-                        : 'Open PhonePe, Google Pay or Paytm app on your phone.'}
-                    </li>
-                    <li>
-                      {lang === 'kn'
-                        ? `ಮೇಲಿನ QR Code ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ₹${discountedPrice} ಕಳುಹಿಸಿ (ಅಥವಾ UPI ID ಗೆ ಕಳುಹಿಸಿ).`
-                        : `Scan the QR code above or pay ₹${discountedPrice} to the UPI ID.`}
-                    </li>
-                    <li>
-                      {lang === 'kn'
-                        ? 'ಪಾವತಿಯಾದ ನಂತರ ರಸೀದಿಯಲ್ಲಿರುವ 12-ಅಂಕಿಯ UPI Ref / UTR ಸಂಖ್ಯೆಯನ್ನು ಕೆಳಗೆ ಹಾಕಿ ತಕ್ಷಣ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.'
-                        : 'Enter the 12-digit UTR from your bank receipt below to unlock instantly.'}
-                    </li>
-                  </ol>
-                </div>
-
-                {/* UTR / Reference ID Submission Form */}
+                {/* SUBMIT UTR & NOTIFY DEVELOPER */}
                 <form onSubmit={handleConfirmUpiPayment} className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700/60">
                   <div>
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                      {lang === 'kn' ? 'ಪಾವತಿಯ 12-ಅಂಕಿಯ UPI Ref / UTR ಸಂಖ್ಯೆ ನಮೂದಿಸಿ:' : 'Enter 12-digit UPI UTR / Transaction Ref ID:'} *
+                      {lang === 'kn' ? 'ಹಂತ 2: ಪಾವತಿಯ ನಂತರ 12-ಅಂಕಿಯ UTR / Ref ಸಂಖ್ಯೆ ನಮೂದಿಸಿ:' : 'Step 2: Enter 12-digit UTR / Ref Number after payment:'} *
                     </label>
                     <div className="relative">
                       <input
@@ -549,37 +582,36 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                     </div>
                     <p className="text-[10px] text-slate-400 mt-1">
                       {lang === 'kn'
-                        ? 'PhonePe / Google Pay / Paytm ರಸೀದಿಯಲ್ಲಿ "UPI Ref No / UTR" ಅನ್ನು ನೋಡಿ ನಮೂದಿಸಿ.'
-                        : 'Found in PhonePe / Google Pay / Paytm receipt as "UPI Transaction ID / UTR".'}
+                        ? 'ಪಾವತಿಯಾದ ನಂತರ PhonePe/GPay ರಸೀದಿಯಲ್ಲಿ "UPI Ref No / UTR" ನೋಡಿ ಹಾಕಿ.'
+                        : 'Look for 12-digit UPI Ref / UTR number in your PhonePe/GPay receipt.'}
                     </p>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isProcessing || (discountedPrice > 0 && utrNumber.length < 12)}
-                    className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-[0.99]"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>
-                      {isProcessing
-                        ? 'ಖಚಿತಪಡಿಸಲಾಗುತ್ತಿದೆ...'
-                        : (lang === 'kn' ? `₹${discountedPrice} ಪಾವತಿ ಖಚಿತಪಡಿಸಿ & ತಕ್ಷಣ ಅನ್‌ಲಾಕ್ ಮಾಡಿ` : `Confirm ₹${discountedPrice} Payment & Instant Unlock`)}
-                    </span>
-                  </button>
-                </form>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="submit"
+                      disabled={isProcessing || (discountedPrice > 0 && utrNumber.length < 12)}
+                      className="py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 active:scale-[0.99]"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>
+                        {isProcessing
+                          ? 'ಸಲ್ಲಿಸಲಾಗುತ್ತಿದೆ...'
+                          : (lang === 'kn' ? '✓ ಪರಿಶೀಲನೆಗೆ ಸಲ್ಲಿಸಿ (Submit)' : '✓ Submit for Approval')}
+                      </span>
+                    </button>
 
-                {/* WhatsApp Help Button */}
-                <div className="text-center pt-1">
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{lang === 'kn' ? '💬 ಪಾವತಿಯಲ್ಲಿ ಸಹಾಯ ಬೇಕೇ? WhatsApp ನಲ್ಲಿ ಸಂಪರ್ಕಿಸಿ' : '💬 Need help with payment? Contact on WhatsApp'}</span>
-                  </a>
-                </div>
+                    <a
+                      href={whatsappUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all active:scale-[0.99]"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>{lang === 'kn' ? '📲 WhatsApp ನಲ್ಲಿ ತಿಳಿಸಿ' : '📲 Notify on WhatsApp'}</span>
+                    </a>
+                  </div>
+                </form>
 
               </div>
             )}
