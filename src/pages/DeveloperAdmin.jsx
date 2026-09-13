@@ -1875,15 +1875,29 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                   <span>Parsed {parsedPreview.count} Questions Successfully</span>
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
                 </div>
-                <div className="max-h-40 overflow-y-auto space-y-1.5 text-[11px] text-slate-700 dark:text-slate-300">
-                  {parsedPreview.questions.slice(0, 3).map((q, idx) => (
-                    <div key={idx} className="p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                <div className="max-h-60 overflow-y-auto space-y-2 text-[11px] text-slate-700 dark:text-slate-300">
+                  {parsedPreview.questions.slice(0, 5).map((q, idx) => (
+                    <div key={idx} className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
                       <p className="font-bold text-slate-800 dark:text-slate-100">Q{idx + 1}: {q.question || q.questionKn}</p>
-                      <p className="text-[10px] text-emerald-600">Answer: Option {String.fromCharCode(65 + q.correctAnswer)}</p>
+                      <div className="flex items-center gap-2 flex-wrap text-[10px]">
+                        <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-1.5 py-0.5 rounded">
+                          Key: Option {String.fromCharCode(65 + q.correctAnswer)}
+                        </span>
+                        {q.subject && (
+                          <span className="text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                            {q.subject}
+                          </span>
+                        )}
+                      </div>
+                      {q.explanation && (
+                        <p className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 p-1.5 rounded-lg border border-purple-100 dark:border-purple-900/40 leading-normal">
+                          💡 <strong>Explanation:</strong> {q.explanation}
+                        </p>
+                      )}
                     </div>
                   ))}
-                  {parsedPreview.questions.length > 3 && (
-                    <p className="text-slate-500 italic">+ {parsedPreview.questions.length - 3} more questions ready.</p>
+                  {parsedPreview.questions.length > 5 && (
+                    <p className="text-slate-500 italic text-center py-1 font-semibold">+ {parsedPreview.questions.length - 5} more questions with complete explanations ready to publish.</p>
                   )}
                 </div>
               </div>

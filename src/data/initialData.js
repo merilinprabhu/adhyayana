@@ -380,14 +380,6 @@ export const INITIAL_COMBOS = [
   }
 ];
 
-// State-Level Benchmark Leaderboard
-export const INITIAL_LEADERBOARD = [
-  { rank: 1, name: 'ಮಂಜುನಾಥ್ ಕೆ. (Manjunath K.)', district: 'ಶಿವಮೊಗ್ಗ (Shivamogga)', score: 48.5, accuracy: 98, timeMins: 14, avatarSeed: 'Manjunath' },
-  { rank: 2, name: 'ಪ್ರಿಯಾಂಕಾ ಎನ್. (Priyanka N.)', district: 'ಮೈಸೂರು (Mysuru)', score: 47.25, accuracy: 96, timeMins: 16, avatarSeed: 'Priyanka' },
-  { rank: 3, name: 'ರಾಘವೇಂದ್ರ ಬಿ. (Raghavendra B.)', district: 'ಬೆಳಗಾವಿ (Belagavi)', score: 46.0, accuracy: 94, timeMins: 15, avatarSeed: 'Raghavendra' },
-  { rank: 4, name: 'ಅನಿತಾ ಎಸ್. (Anitha S.)', district: 'ಬೆಂಗಳೂರು (Bengaluru)', score: 45.0, accuracy: 92, timeMins: 18, avatarSeed: 'Anitha' },
-  { rank: 5, name: 'ಬಸವರಾಜ್ ಪಾಟೀಲ್ (Basavaraj Patil)', district: 'ಕಲಬುರಗಿ (Kalaburagi)', score: 44.5, accuracy: 90, timeMins: 19, avatarSeed: 'Basavaraj' },
-  { rank: 6, name: 'ದಿವ್ಯಾ ಕುಮಾರಿ (Divya Kumari)', district: 'ದಾವಣಗೆರೆ (Davanagere)', score: 43.75, accuracy: 88, timeMins: 20, avatarSeed: 'Divya' },
-  { rank: 7, name: 'ಚೇತನ್ ಕುಮಾರ್ (Chetan Kumar)', district: 'ಹಾಸನ (Hassan)', score: 42.5, accuracy: 86, timeMins: 21, avatarSeed: 'Chetan' }
-];
+// State-Level Genuine Leaderboard (Computed dynamically from real candidate test attempts)
+export const INITIAL_LEADERBOARD = [];
 

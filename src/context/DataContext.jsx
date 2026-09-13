@@ -411,23 +411,21 @@ export const DataProvider = ({ children }) => {
         console.warn('Supabase profiles fetch notice:', profErr);
       }
 
-      // 8. Fetch User Attempts (Global if Developer, or Student specific)
+      // 8. Fetch User Attempts (Global attempt feed for live genuine leaderboard and student scores)
       try {
-        let attemptsQuery = supabase.from('user_attempts').select('*').order('timestamp', { ascending: false });
-        if (user?.role !== 'developer' && user?.email) {
-          attemptsQuery = attemptsQuery.eq('user_email', user.email.toLowerCase().trim());
-        }
-
-        const { data: dbAttempts, error: attErr } = await attemptsQuery;
+        const { data: dbAttempts, error: attErr } = await supabase
+          .from('user_attempts')
+          .select('*')
+          .order('timestamp', { ascending: false });
 
         if (!attErr && dbAttempts && dbAttempts.length > 0) {
           const formattedAttempts = dbAttempts.map(a => ({
             id: a.id,
-            userId: a.user_id || a.userId,
+            userId: a.user_id || a.userId || 'student',
             userEmail: (a.user_email || a.userEmail || '').toLowerCase().trim(),
-            userName: a.user_name || a.userName || '',
+            userName: a.user_name || a.userName || (a.user_email ? a.user_email.split('@')[0] : 'Aspirant'),
             testId: a.test_id || a.testId,
-            testTitle: a.test_title || a.testTitle,
+            testTitle: a.test_title || a.testTitle || 'Mock Test',
             score: Number(a.score) || 0,
             totalMarks: Number(a.total_marks) || 0,
             totalQuestions: Number(a.total_questions) || 0,
@@ -950,13 +948,20 @@ export const DataProvider = ({ children }) => {
     }
 
     const trimmed = csvText.trim();
-    // Detect delimiter: tab (\t) or comma (,)
+    // Detect delimiter: tab (\t) or comma (,) or semicolon (;)
     const firstLine = trimmed.split(/\r?\n/)[0] || '';
     const tabCount = (firstLine.match(/\t/g) || []).length;
     const commaCount = (firstLine.match(/,/g) || []).length;
-    const delimiter = tabCount > 0 && tabCount >= commaCount ? '\t' : ',';
+    const semicolonCount = (firstLine.match(/;/g) || []).length;
+    
+    let delimiter = ',';
+    if (tabCount > 0 && tabCount >= commaCount) {
+      delimiter = '\t';
+    } else if (semicolonCount > commaCount && semicolonCount > tabCount) {
+      delimiter = ';';
+    }
 
-    // Parse all rows and columns with quotes and newline support
+    // Parse all rows and columns with quotes, apostrophes, and newline support
     const rows = [];
     let currentRow = [];
     let currentField = '';
@@ -969,7 +974,7 @@ export const DataProvider = ({ children }) => {
       if (char === '"') {
         if (insideQuotes && nextChar === '"') {
           currentField += '"';
-          i++; // Skip escaped quote
+          i++; // Skip escaped double quote
         } else {
           insideQuotes = !insideQuotes;
         }
@@ -981,7 +986,7 @@ export const DataProvider = ({ children }) => {
           i++;
         }
         currentRow.push(currentField.trim().replace(/^"|"$/g, '').trim());
-        if (currentRow.some(c => c.length > 0)) {
+        if (currentRow.some(c => c && c.length > 0)) {
           rows.push(currentRow);
         }
         currentRow = [];
@@ -993,7 +998,7 @@ export const DataProvider = ({ children }) => {
 
     if (currentField.length > 0 || currentRow.length > 0) {
       currentRow.push(currentField.trim().replace(/^"|"$/g, '').trim());
-      if (currentRow.some(c => c.length > 0)) {
+      if (currentRow.some(c => c && c.length > 0)) {
         rows.push(currentRow);
       }
     }
@@ -1010,19 +1015,54 @@ export const DataProvider = ({ children }) => {
     let optCCol = 3;
     let optDCol = 4;
     let ansCol = 5;
-    let expCol = 6;
-    let subjCol = 7;
+    let expCol = 6; // Column G (Index 6)
+    let subjCol = 7; // Column H (Index 7)
 
     let hasHeader = false;
     headerRow.forEach((colName, idx) => {
-      if (colName.includes('question') || colName.includes('ಪ್ರಶ್ನೆ')) { qCol = idx; hasHeader = true; }
-      else if (colName.includes('option a') || colName.includes('opt a') || colName === 'a' || colName.includes('ಆಯ್ಕೆ a') || colName.includes('ಆಯ್ಕೆ ೧') || colName.includes('ಆಯ್ಕೆ-1')) { optACol = idx; hasHeader = true; }
-      else if (colName.includes('option b') || colName.includes('opt b') || colName === 'b' || colName.includes('ಆಯ್ಕೆ b') || colName.includes('ಆಯ್ಕೆ ೨') || colName.includes('ಆಯ್ಕೆ-2')) { optBCol = idx; hasHeader = true; }
-      else if (colName.includes('option c') || colName.includes('opt c') || colName === 'c' || colName.includes('ಆಯ್ಕೆ c') || colName.includes('ಆಯ್ಕೆ ೩') || colName.includes('ಆಯ್ಕೆ-3')) { optCCol = idx; hasHeader = true; }
-      else if (colName.includes('option d') || colName.includes('opt d') || colName === 'd' || colName.includes('ಆಯ್ಕೆ d') || colName.includes('ಆಯ್ಕೆ ೪') || colName.includes('ಆಯ್ಕೆ-4')) { optDCol = idx; hasHeader = true; }
-      else if (colName.includes('correct') || colName.includes('answer') || colName.includes('key') || colName.includes('ಸರಿ ಉತ್ತರ') || colName.includes('ಉತ್ತರ')) { ansCol = idx; hasHeader = true; }
-      else if (colName.includes('explanation') || colName.includes('solution') || colName.includes('ವಿವರಣೆ') || colName.includes('ಟಿಪ್ಪಣಿ')) { expCol = idx; hasHeader = true; }
-      else if (colName.includes('subject') || colName.includes('topic') || colName.includes('ವಿಷಯ') || colName.includes('category')) { subjCol = idx; hasHeader = true; }
+      const cleanCol = colName.replace(/[^a-z0-9\u0C80-\u0CFF\s]/gi, '').trim();
+      
+      if (cleanCol.includes('question') || cleanCol.includes('ಪ್ರಶ್ನೆ') || cleanCol === 'q' || cleanCol.startsWith('q ')) {
+        qCol = idx;
+        hasHeader = true;
+      } else if (cleanCol.includes('option a') || cleanCol.includes('opt a') || cleanCol === 'a' || cleanCol.includes('ಆಯ್ಕೆ a') || cleanCol.includes('ಆಯ್ಕೆ ೧') || cleanCol.includes('ಆಯ್ಕೆ-1') || cleanCol === 'option 1' || cleanCol === 'opt 1') {
+        optACol = idx;
+        hasHeader = true;
+      } else if (cleanCol.includes('option b') || cleanCol.includes('opt b') || cleanCol === 'b' || cleanCol.includes('ಆಯ್ಕೆ b') || cleanCol.includes('ಆಯ್ಕೆ ೨') || cleanCol.includes('ಆಯ್ಕೆ-2') || cleanCol === 'option 2' || cleanCol === 'opt 2') {
+        optBCol = idx;
+        hasHeader = true;
+      } else if (cleanCol.includes('option c') || cleanCol.includes('opt c') || cleanCol === 'c' || cleanCol.includes('ಆಯ್ಕೆ c') || cleanCol.includes('ಆಯ್ಕೆ ೩') || cleanCol.includes('ಆಯ್ಕೆ-3') || cleanCol === 'option 3' || cleanCol === 'opt 3') {
+        optCCol = idx;
+        hasHeader = true;
+      } else if (cleanCol.includes('option d') || cleanCol.includes('opt d') || cleanCol === 'd' || cleanCol.includes('ಆಯ್ಕೆ d') || cleanCol.includes('ಆಯ್ಕೆ ೪') || cleanCol.includes('ಆಯ್ಕೆ-4') || cleanCol === 'option 4' || cleanCol === 'opt 4') {
+        optDCol = idx;
+        hasHeader = true;
+      } else if (cleanCol.includes('correct') || cleanCol.includes('answer') || cleanCol.includes('key') || cleanCol.includes('ans') || cleanCol.includes('ಸರಿ ಉತ್ತರ') || cleanCol.includes('ಉತ್ತರ')) {
+        ansCol = idx;
+        hasHeader = true;
+      } else if (
+        cleanCol.includes('explain') || 
+        cleanCol.includes('explan') || 
+        cleanCol.includes('solution') || 
+        cleanCol.includes('sol') || 
+        cleanCol.includes('ವಿವರಣೆ') || 
+        cleanCol.includes('ವಿವರ') || 
+        cleanCol.includes('ಟಿಪ್ಪಣಿ') || 
+        cleanCol.includes('reason') || 
+        cleanCol.includes('rationale') || 
+        cleanCol.includes('details') || 
+        cleanCol.includes('desc') || 
+        cleanCol.includes('notes') || 
+        cleanCol === 'g' || 
+        cleanCol.includes('col g') || 
+        cleanCol.includes('column g')
+      ) {
+        expCol = idx;
+        hasHeader = true;
+      } else if (cleanCol.includes('subject') || cleanCol.includes('topic') || cleanCol.includes('ವಿಷಯ') || cleanCol.includes('category') || cleanCol.includes('section')) {
+        subjCol = idx;
+        hasHeader = true;
+      }
     });
 
     const startRowIdx = hasHeader ? 1 : 0;
@@ -1058,13 +1098,21 @@ export const DataProvider = ({ children }) => {
 
       const correctIdx = parseAnswerIndex(row[ansCol]);
       
-      // Fallback or exact explanation
+      // Extract Explanation: Check assigned expCol, or fallback to Column G (index 6), or scan any text column
       let explanation = (row[expCol] || '').trim();
-      if (!explanation) {
-        // Check if there are other columns beyond standard 7
-        for (let c = 6; c < row.length; c++) {
+      
+      // Fallback: If explanation is empty or too short, check Column 6 (G) or any unused column
+      if (!explanation || explanation.length === 0) {
+        if (row[6] && row[6].trim().length > 0 && 6 !== qCol && 6 !== optACol && 6 !== optBCol && 6 !== optCCol && 6 !== optDCol && 6 !== ansCol) {
+          explanation = row[6].trim();
+        }
+      }
+
+      if (!explanation || explanation.length === 0) {
+        // Search remaining columns for explanation text
+        for (let c = 5; c < row.length; c++) {
           if (c !== qCol && c !== optACol && c !== optBCol && c !== optCCol && c !== optDCol && c !== ansCol && c !== subjCol) {
-            if (row[c] && row[c].trim().length > 5) {
+            if (row[c] && row[c].trim().length > 3) {
               explanation = row[c].trim();
               break;
             }
@@ -1072,8 +1120,11 @@ export const DataProvider = ({ children }) => {
         }
       }
 
+      // Format fallback only if completely missing
       if (!explanation) {
-        explanation = 'ಸರಿಯಾದ ಉತ್ತರ ಆಯ್ಕೆ ' + ['A', 'B', 'C', 'D'][correctIdx] + '.';
+        const correctLetter = ['A', 'B', 'C', 'D'][correctIdx] || 'A';
+        const correctOptText = [optA, optB, optC, optD][correctIdx] || '';
+        explanation = `ಸರಿಯಾದ ಉತ್ತರ: ಆಯ್ಕೆ ${correctLetter} - ${correctOptText}.`;
       }
 
       const subject = (row[subjCol] || 'General Studies').trim();
@@ -1097,17 +1148,70 @@ export const DataProvider = ({ children }) => {
     return { success: true, questions, count: questions.length };
   };
 
+  // Dynamic Genuine Leaderboard Generator (Calculated exclusively from real test submissions)
+  const computeLeaderboardFromAttempts = (attemptsList) => {
+    if (!Array.isArray(attemptsList) || attemptsList.length === 0) return [];
+
+    const userBestMap = new Map();
+    attemptsList.forEach(att => {
+      const email = (att.userEmail || '').toLowerCase().trim();
+      if (!email) return;
+      const name = att.userName || (email.startsWith('guest') ? 'Aspirant' : email.split('@')[0]);
+      const score = Number(att.score) || 0;
+      const accuracy = Number(att.accuracy) || 0;
+      const timeMins = Math.max(1, Math.round((Number(att.timeSpentSeconds) || 60) / 60));
+      const testTitle = att.testTitle || 'Mock Test';
+      const existing = userBestMap.get(email);
+
+      if (!existing || score > existing.score || (score === existing.score && accuracy > existing.accuracy)) {
+        userBestMap.set(email, {
+          email,
+          name,
+          district: 'ಕರ್ನಾಟಕ (Karnataka)',
+          score,
+          accuracy,
+          timeMins,
+          testTitle,
+          avatarSeed: name || email,
+          timestamp: att.timestamp
+        });
+      }
+    });
+
+    const sorted = Array.from(userBestMap.values()).sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      return a.timeMins - b.timeMins;
+    });
+
+    return sorted.map((cand, idx) => ({
+      ...cand,
+      rank: idx + 1,
+      isCurrentUser: user?.email && cand.email === user.email.toLowerCase().trim()
+    }));
+  };
+
   // Test Attempt Submissions
   const recordTestAttempt = async (attemptData) => {
+    const userEmail = (user?.email || 'guest@adhyayana.com').toLowerCase().trim();
+    const userName = user?.name || (userEmail.startsWith('guest') ? 'Aspirant' : userEmail.split('@')[0]);
+
     const fullAttempt = {
       ...attemptData,
-      id: 'attempt_' + Date.now(),
-      userEmail: user?.email || 'guest@adhyayana.com',
+      id: attemptData.id || 'attempt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      userEmail: userEmail,
+      userName: userName,
       userId: user?.uid || 'guest',
       timestamp: new Date().toISOString(),
     };
 
-    setAttempts(prev => [fullAttempt, ...prev]);
+    setAttempts(prev => {
+      const updated = [fullAttempt, ...prev.filter(a => a.id !== fullAttempt.id)];
+      try {
+        localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
 
     // Automatically collect wrong questions into Mistake Box
     if (Array.isArray(fullAttempt.questionResults)) {
@@ -1134,36 +1238,22 @@ export const DataProvider = ({ children }) => {
           wrongQuestions.forEach(wq => {
             map.set(wq.id || wq.question, wq);
           });
-          return Array.from(map.values());
+          const updatedMistakes = Array.from(map.values());
+          try {
+            localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(updatedMistakes));
+          } catch (e) {}
+          return updatedMistakes;
         });
       }
     }
 
-    // Dynamic State Leaderboard Rank Predictor
-    const userDisplayName = user?.name || user?.email?.split('@')[0] || 'Aspirant (ನೀವು)';
-    const newEntry = {
-      rank: 1,
-      name: userDisplayName,
-      district: 'ಕರ್ನಾಟಕ (Karnataka)',
-      score: fullAttempt.score,
-      accuracy: fullAttempt.accuracy,
-      timeMins: Math.round(fullAttempt.timeSpentSeconds / 60) || 1,
-      avatarSeed: user?.email || 'User',
-      isCurrentUser: true
-    };
-
-    setLeaderboard(prev => {
-      const filtered = prev.filter(p => !p.isCurrentUser && p.name !== userDisplayName);
-      const combined = [...filtered, newEntry].sort((a, b) => b.score - a.score || b.accuracy - a.accuracy);
-      return combined.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
-    });
-
-    // Push to Supabase user_attempts
+    // Push to Supabase user_attempts table
     try {
       await supabase.from('user_attempts').upsert({
         id: fullAttempt.id,
         user_id: fullAttempt.userId,
         user_email: fullAttempt.userEmail,
+        user_name: fullAttempt.userName,
         test_id: fullAttempt.testId,
         test_title: fullAttempt.testTitle,
         score: fullAttempt.score,
@@ -1647,8 +1737,19 @@ export const DataProvider = ({ children }) => {
     });
   };
 
-  // User-specific attempts
-  const userAttempts = attempts.filter(a => a.userEmail === user?.email);
+  // User-specific attempts (case-insensitive and guest friendly)
+  const userAttempts = useMemo(() => {
+    if (!user?.email) {
+      return attempts.filter(a => a.userEmail === 'guest@adhyayana.com' || a.userId === 'guest' || !a.userEmail);
+    }
+    const cleanUserEmail = user.email.toLowerCase().trim();
+    return attempts.filter(a => (a.userEmail || '').toLowerCase().trim() === cleanUserEmail);
+  }, [attempts, user?.email]);
+
+  // Dynamic Genuine Leaderboard from real candidate attempts
+  const dynamicLeaderboard = useMemo(() => {
+    return computeLeaderboardFromAttempts(attempts);
+  }, [attempts, user?.email]);
 
   // Bookmarks
   const toggleBookmark = async (item) => {
@@ -1731,7 +1832,7 @@ export const DataProvider = ({ children }) => {
         mistakes,
         removeMistake,
         clearMistakes,
-        leaderboard,
+        leaderboard: dynamicLeaderboard,
         referrals,
         trackReferral
       }}

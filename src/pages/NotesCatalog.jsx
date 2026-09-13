@@ -385,9 +385,13 @@ export const NotesCatalog = ({ onSelectNote, onSelectTest, onOpenAuth, onOpenChe
       setIsFetchingSheet(true);
       setSheetFetchStatus('Fetching questions from Google Sheet CSV...');
       try {
-        const csvText = await fetchLiveGoogleSheetCSV(newTestGsheetUrl.trim());
-        parsedQuestions = parseGoogleSheetCSV(csvText);
-        setSheetFetchStatus(`✓ Successfully extracted ${parsedQuestions.length} questions!`);
+        const res = await fetchLiveGoogleSheetCSV(newTestGsheetUrl.trim());
+        if (res && res.success && Array.isArray(res.questions)) {
+          parsedQuestions = res.questions;
+          setSheetFetchStatus(`✓ Successfully extracted ${parsedQuestions.length} questions!`);
+        } else {
+          setSheetFetchStatus(`⚠️ ${res?.error || 'Could not parse sheet, created with standard sample question.'}`);
+        }
       } catch (err) {
         console.error('Sheet fetch error:', err);
         setSheetFetchStatus('⚠️ Could not parse sheet, created with standard sample question.');

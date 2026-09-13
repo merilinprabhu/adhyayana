@@ -456,43 +456,78 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {userVisibleTests.map(t => (
-                <div
-                  key={t.id}
-                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-5 shadow-sm space-y-4 flex flex-col justify-between transition-all"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                        {t.subjectName || 'Mock Test'}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        t.isFree || Number(t.price) === 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
-                      }`}>
-                        {t.isFree || Number(t.price) === 0 ? 'FREE' : `₹${t.price}`}
-                      </span>
-                    </div>
+              {userVisibleTests.map(t => {
+                const testAttempts = attempts.filter(a => a.testId === t.id);
+                const latestAttempt = testAttempts[0];
 
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2">
-                      {lang === 'kn' && t.titleKn ? t.titleKn : t.title}
-                    </h4>
-
-                    <div className="flex items-center gap-4 text-xs text-slate-400">
-                      <span>⏱️ {t.durationMinutes || 30} Mins</span>
-                      <span>❓ {t.questions?.length || 0} Questions</span>
-                      <span>🎯 {t.totalMarks || 50} Marks</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => onSelectTest(t)}
-                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all"
+                return (
+                  <div
+                    key={t.id}
+                    className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-5 shadow-sm space-y-4 flex flex-col justify-between transition-all"
                   >
-                    <PlayCircle className="w-4 h-4" />
-                    <span>{lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Start Test'}</span>
-                  </button>
-                </div>
-              ))}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                          {t.subjectName || 'Mock Test'}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          t.isFree || Number(t.price) === 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                        }`}>
+                          {t.isFree || Number(t.price) === 0 ? 'FREE' : `₹${t.price}`}
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2">
+                        {lang === 'kn' && t.titleKn ? t.titleKn : t.title}
+                      </h4>
+
+                      <div className="flex items-center gap-4 text-xs text-slate-400 flex-wrap">
+                        <span>⏱️ {t.durationMinutes || 30} Mins</span>
+                        <span>❓ {t.questions?.length || 0} Questions</span>
+                        <span>🎯 {t.totalMarks || 50} Marks</span>
+                      </div>
+
+                      {/* Previous Attempt Score Badge */}
+                      {latestAttempt && (
+                        <div className="p-2.5 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-xs flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] text-slate-400 block font-semibold">
+                              {lang === 'kn' ? 'ನಿಮ್ಮ ಕೊನೆಯ ಸ್ಕೋರ್:' : 'Your Last Score:'}
+                            </span>
+                            <span className="font-extrabold text-emerald-700 dark:text-emerald-300 text-sm">
+                              {latestAttempt.score} / {t.totalMarks || 50}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              latestAttempt.accuracy >= 50
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                            }`}>
+                              {latestAttempt.accuracy}% Acc
+                            </span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                              {new Date(latestAttempt.timestamp).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => onSelectTest(t)}
+                      className={`w-full py-2.5 px-4 ${
+                        latestAttempt
+                          ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      } rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition-all`}
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                      <span>{latestAttempt ? (lang === 'kn' ? '🔄 ಮರು-ಪರೀಕ್ಷೆ ಬರೆಯಿರಿ (Retake)' : '🔄 Retake Test') : (lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Start Test')}</span>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -843,68 +878,87 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="grid grid-cols-12 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 py-2 border-b border-slate-100 dark:border-slate-800">
-              <span className="col-span-2">Rank</span>
-              <span className="col-span-5">Candidate & District</span>
-              <span className="col-span-2 text-center">Score</span>
-              <span className="col-span-3 text-right">Accuracy / Time</span>
-            </div>
-
-            {leaderboard.map((cand, idx) => (
-              <div
-                key={idx}
-                className={`grid grid-cols-12 items-center p-3.5 sm:p-4 rounded-2xl border transition-all text-xs font-semibold ${
-                  cand.isCurrentUser
-                    ? 'bg-emerald-500/15 border-emerald-500 ring-2 ring-emerald-500/30'
-                    : idx === 0
-                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-950 dark:text-amber-200'
-                    : idx === 1
-                    ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700'
-                    : idx === 2
-                    ? 'bg-orange-500/10 border-orange-500/30'
-                    : 'bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
-                }`}
+          {leaderboard.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 text-xs space-y-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+              <Trophy className="w-12 h-12 text-amber-400 mx-auto" />
+              <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                {lang === 'kn' ? 'ಇನ್ನೂ ಯಾವುದೇ ಪರೀಕ್ಷಾ ಶ್ರೇಯಾಂಕ ದಾಖಲಾಗಿಲ್ಲ.' : 'No candidate test attempts recorded yet.'}
+              </p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {lang === 'kn' ? 'ಮೊದಲ ಪರೀಕ್ಷೆ ಬರೆದು ರಾಜ್ಯ ಮಟ್ಟದ ಲೀಡರ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ಅಗ್ರ ಸ್ಥಾನ (#1 Rank) ಪಡೆಯಿರಿ!' : 'Take your first mock test to claim the #1 State Rank!'}
+              </p>
+              <button
+                onClick={() => setActiveTab('tests')}
+                className="mt-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
               >
-                <div className="col-span-2 flex items-center gap-2">
-                  <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs ${
-                    idx === 0
-                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
-                      : idx === 1
-                      ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
-                      : idx === 2
-                      ? 'bg-orange-400 text-slate-950'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}>
-                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${cand.rank}`}
-                  </span>
-                </div>
+                <PlayCircle className="w-4 h-4" />
+                <span>{lang === 'kn' ? 'ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Take a Mock Test'}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-12 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+                <span className="col-span-2">Rank</span>
+                <span className="col-span-5">Candidate & District</span>
+                <span className="col-span-2 text-center">Score</span>
+                <span className="col-span-3 text-right">Accuracy / Time</span>
+              </div>
 
-                <div className="col-span-5 flex items-center gap-2.5">
-                  <img
-                    src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cand.avatarSeed || cand.name)}`}
-                    alt={cand.name}
-                    className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700"
-                  />
-                  <div className="truncate">
-                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
-                      {cand.name} {cand.isCurrentUser && <span className="text-[10px] text-emerald-600 font-bold">(ನೀವು)</span>}
-                    </p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{cand.district}</p>
+              {leaderboard.map((cand, idx) => (
+                <div
+                  key={idx}
+                  className={`grid grid-cols-12 items-center p-3.5 sm:p-4 rounded-2xl border transition-all text-xs font-semibold ${
+                    cand.isCurrentUser
+                      ? 'bg-emerald-500/15 border-emerald-500 ring-2 ring-emerald-500/30'
+                      : idx === 0
+                      ? 'bg-amber-500/10 border-amber-500/40 text-amber-950 dark:text-amber-200'
+                      : idx === 1
+                      ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700'
+                      : idx === 2
+                      ? 'bg-orange-500/10 border-orange-500/30'
+                      : 'bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
+                  }`}
+                >
+                  <div className="col-span-2 flex items-center gap-2">
+                    <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs ${
+                      idx === 0
+                        ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                        : idx === 1
+                        ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
+                        : idx === 2
+                        ? 'bg-orange-400 text-slate-950'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    }`}>
+                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${cand.rank}`}
+                    </span>
+                  </div>
+
+                  <div className="col-span-5 flex items-center gap-2.5">
+                    <img
+                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cand.avatarSeed || cand.name)}`}
+                      alt={cand.name}
+                      className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700"
+                    />
+                    <div className="truncate">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                        {cand.name} {cand.isCurrentUser && <span className="text-[10px] text-emerald-600 font-bold">(ನೀವು)</span>}
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{cand.district}</p>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                    {cand.score} pts
+                  </div>
+
+                  <div className="col-span-3 text-right">
+                    <span className="font-mono text-xs text-slate-800 dark:text-slate-200 font-bold">{cand.accuracy}%</span>
+                    <span className="text-[10px] text-slate-400 block">{cand.timeMins} mins</span>
                   </div>
                 </div>
-
-                <div className="col-span-2 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                  {cand.score} pts
-                </div>
-
-                <div className="col-span-3 text-right">
-                  <span className="font-mono text-xs text-slate-800 dark:text-slate-200 font-bold">{cand.accuracy}%</span>
-                  <span className="text-[10px] text-slate-400 block">{cand.timeMins} mins</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

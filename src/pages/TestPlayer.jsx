@@ -477,21 +477,37 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                       })}
                     </div>
 
-                    {/* Explanation Box */}
-                    <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 text-xs space-y-1.5">
+                    {/* Explanation & Solution Box */}
+                    <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
                       <p className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
                         <HelpCircle className="w-4 h-4 text-emerald-600" />
                         <span>{lang === 'kn' ? 'ವಿವರಣೆ & ಕೀ ಉತ್ತರ (Explanation & Key):' : 'Detailed Solution & Explanation:'}</span>
                       </p>
-                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
-                        {(lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation) && (lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation) !== 'No detailed explanation provided.'
-                          ? (lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation)
-                          : (q.options && q.options[q.correctAnswer]
-                              ? (lang === 'kn'
-                                  ? `ಸರಿಯಾದ ಉತ್ತರ: ಆಯ್ಕೆ ${String.fromCharCode(65 + q.correctAnswer)} - ${q.options[q.correctAnswer]}.`
-                                  : `Correct Answer: Option ${String.fromCharCode(65 + q.correctAnswer)} - ${q.options[q.correctAnswer]}.`)
-                              : (lang === 'kn' ? 'ವಿವರಣೆಯನ್ನು ನೀಡಲಾಗಿಲ್ಲ.' : 'No detailed explanation available.'))}
-                      </p>
+                      
+                      {/* 1. Correct Answer Key line */}
+                      {q.options && q.options[q.correctAnswer] && (
+                        <p className="font-bold text-emerald-900 dark:text-emerald-200 text-xs">
+                          {lang === 'kn' ? 'ಸರಿಯಾದ ಉತ್ತರ:' : 'Correct Answer:'}{' '}
+                          <span className="bg-emerald-200/60 dark:bg-emerald-900/60 px-2 py-0.5 rounded text-emerald-900 dark:text-emerald-100">
+                            ಆಯ್ಕೆ {String.fromCharCode(65 + q.correctAnswer)} - {q.options[q.correctAnswer]}
+                          </span>
+                        </p>
+                      )}
+
+                      {/* 2. Detailed Rationale / Solution text */}
+                      {(() => {
+                        const rawExp = (lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation) || q.explanation || q.explanationKn || '';
+                        const isGenericFallback = !rawExp || rawExp === 'No detailed explanation provided.' || rawExp.startsWith('ಸರಿಯಾದ ಉತ್ತರ: ಆಯ್ಕೆ') || rawExp.startsWith('Correct Answer: Option');
+                        
+                        if (!isGenericFallback && rawExp.trim().length > 0) {
+                          return (
+                            <div className="mt-1 pt-2 border-t border-emerald-200/80 dark:border-emerald-800/60 text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                              <p className="text-xs">{rawExp}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                   </div>
