@@ -4261,23 +4261,6 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
 
                         {/* Fast Action Buttons Toolbar */}
                         <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-wrap">
-                          
-                          {/* 1-Click WhatsApp Share Button */}
-                          <button
-                            type="button"
-                            onClick={() => window.open(generateWhatsAppBroadcastUrl({
-                              title: not.titleKn || not.titleEn,
-                              type: not.type,
-                              category: not.categoryKn || not.categoryEn,
-                              link: not.fileUrl,
-                              description: not.descriptionKn || not.descriptionEn
-                            }), '_blank')}
-                            className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center gap-1 shadow-sm transition-all hover:scale-105 active:scale-95"
-                            title="WhatsApp ಮೂಲಕ ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ ಕಳುಹಿಸಿ (1-Click WhatsApp Share)"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>WhatsApp</span>
-                          </button>
 
                           {/* 1-Click Gmail Share Button */}
                           <button

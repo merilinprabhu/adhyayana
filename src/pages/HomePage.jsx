@@ -2272,27 +2272,12 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-950/40">
-              <button
-                type="button"
-                onClick={() => window.open(generateWhatsAppBroadcastUrl({
-                  title: lang === 'kn' ? (selectedNoticeForModal.titleKn || selectedNoticeForModal.titleEn) : (selectedNoticeForModal.titleEn || selectedNoticeForModal.titleKn),
-                  type: selectedNoticeForModal.type,
-                  category: lang === 'kn' ? (selectedNoticeForModal.categoryKn || selectedNoticeForModal.categoryEn) : (selectedNoticeForModal.categoryEn || selectedNoticeForModal.categoryKn),
-                  link: selectedNoticeForModal.fileUrl,
-                  description: lang === 'kn' ? selectedNoticeForModal.descriptionKn : selectedNoticeForModal.descriptionEn
-                }), '_blank')}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>WhatsApp ನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ</span>
-              </button>
-
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 bg-slate-50 dark:bg-slate-950/40">
               <button
                 onClick={() => setSelectedNoticeForModal(null)}
-                className="px-5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+                className="px-6 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
               >
-                ಮುಚ್ಚಿ (Close)
+                {lang === 'kn' ? 'ಮುಚ್ಚಿ (Close)' : 'Close'}
               </button>
             </div>
 
