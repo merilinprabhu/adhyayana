@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export const Footer = ({ onNavigate }) => {
-  const { lang, footerConfig, updateFooterConfig } = useData();
+  const { lang, footerConfig, updateFooterConfig, developerPhone } = useData();
   const { isDeveloper } = useAuth();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -36,6 +36,9 @@ export const Footer = ({ onNavigate }) => {
     setIsEditModalOpen(false);
   };
 
+  const activeEmail = footerConfig?.email || 'support@adhyayana.edu';
+  const activePhone = footerConfig?.phone || (developerPhone ? `+91 ${developerPhone}` : '+91 6360433316');
+  const activeWhatsapp = footerConfig?.whatsappNumber || developerPhone || '6360433316';
   const currentAbout = lang === 'kn' ? (footerConfig?.aboutKn || 'ಕರ್ನಾಟಕದ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾರ್ಥಿಗಳಿಗಾಗಿ ಅತ್ಯಾಧುನಿಕ, ಸುರಕ್ಷಿತ ಹಾಗೂ ಆಟೋಮ್ಯಾಟಿಕ್ ಟೆಸ್ಟ್ ಮತ್ತು ನೋಟ್ಸ್ ಪ್ಲಾಟ್‌ಫಾರ್ಮ್.') : (footerConfig?.aboutEn || 'Advanced, dynamic and secure exam readiness ecosystem for KPSC, Karnataka Police, Banking, TET, and State exams.');
   const currentAddress = lang === 'kn' ? (footerConfig?.addressKn || 'ಬೆಂಗಳೂರು, ಕರ್ನಾಟಕ - 560001') : (footerConfig?.addressEn || 'Bengaluru, Karnataka - 560001');
   const currentHours = lang === 'kn' ? (footerConfig?.workingHoursKn || 'ಸೋಮವಾರ - ಶನಿವಾರ: ಬೆಳಗ್ಗೆ 9 ರಿಂದ ಸಂಜೆ 7') : (footerConfig?.workingHoursEn || 'Mon - Sat: 9:00 AM - 7:00 PM');
@@ -168,35 +171,35 @@ export const Footer = ({ onNavigate }) => {
             </div>
 
             <div className="space-y-2.5 text-xs text-slate-400">
-              {footerConfig?.email && (
+              {activeEmail && (
                 <a 
-                  href={`mailto:${footerConfig.email}`}
+                  href={`mailto:${activeEmail}`}
                   className="flex items-center gap-2 hover:text-emerald-400 transition-colors"
                 >
                   <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{footerConfig.email}</span>
+                  <span>{activeEmail}</span>
                 </a>
               )}
 
-              {footerConfig?.phone && (
+              {activePhone && (
                 <a 
-                  href={`tel:${footerConfig.phone.replace(/[^0-9+]/g, '')}`}
+                  href={`tel:${activePhone.replace(/[^0-9+]/g, '')}`}
                   className="flex items-center gap-2 hover:text-emerald-400 transition-colors"
                 >
                   <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{footerConfig.phone}</span>
+                  <span>{activePhone}</span>
                 </a>
               )}
 
-              {footerConfig?.whatsappNumber && (
+              {activeWhatsapp && (
                 <a 
-                  href={`https://wa.me/91${footerConfig.whatsappNumber.replace(/[^0-9]/g, '')}?text=Hello%20Adhyayana%20Team`}
+                  href={`https://wa.me/91${activeWhatsapp.replace(/[^0-9]/g, '')}?text=Hello%20Adhyayana%20Team`}
                   target="_blank" 
                   rel="noreferrer"
                   className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-medium"
                 >
                   <MessageCircle className="w-4 h-4 shrink-0" />
-                  <span>WhatsApp: +91 {footerConfig.whatsappNumber}</span>
+                  <span>WhatsApp: +91 {activeWhatsapp}</span>
                 </a>
               )}
 

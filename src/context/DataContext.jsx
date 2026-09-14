@@ -1928,6 +1928,14 @@ export const DataProvider = ({ children }) => {
           updated_at: new Date().toISOString()
         });
         logs.push(`✓ Synced Home Page Layout & Custom Banners`);
+
+        const footerConfigToPush = footerConfig || INITIAL_FOOTER_CONFIG;
+        await supabase.from('app_settings').upsert({
+          key: 'footer_config',
+          value: footerConfigToPush,
+          updated_at: new Date().toISOString()
+        });
+        logs.push(`✓ Synced Footer & Contact Details to Cloud`);
       } catch (settingsErr) {
         console.warn('App settings sync notice:', settingsErr);
       }

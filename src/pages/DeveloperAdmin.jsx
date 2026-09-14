@@ -61,7 +61,8 @@ import {
   Share2,
   MessageCircle,
   Star,
-  MessageSquarePlus
+  MessageSquarePlus,
+  MapPin
 } from 'lucide-react';
 
 const SUPABASE_SCHEMA_SQL = `-- ADHYAYANA (ಅಧ್ಯಯನ) Complete Production Database Schema for Supabase
@@ -417,7 +418,9 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     deleteFeedback,
     studyRequests = [],
     updateStudyRequestStatus,
-    deleteStudyRequest
+    deleteStudyRequest,
+    footerConfig,
+    updateFooterConfig
   } = useData();
 
   const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | analytics | access | notices | broadcast | reviews | requests
@@ -482,6 +485,26 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
   const [devNameInput, setDevNameInput] = useState(developerName || 'Merilin Prabhu (ಅಧ್ಯಯನ)');
   const [devQrImageInput, setDevQrImageInput] = useState(developerUpiQrImage || '');
   const [rzpKeyInput, setRzpKeyInput] = useState(razorpayKeyId || '');
+
+  // Footer & Public Contact Information State
+  const [footerForm, setFooterForm] = useState(footerConfig || {
+    email: 'support@adhyayana.edu',
+    phone: '+91 (80) 4122-ADHYAYANA',
+    whatsappNumber: '6360433316',
+    addressKn: 'ಬೆಂಗಳೂರು, ಕರ್ನಾಟಕ - 560001',
+    addressEn: 'Bengaluru, Karnataka - 560001',
+    workingHoursKn: 'ಸೋಮವಾರ - ಶನಿವಾರ: ಬೆಳಗ್ಗೆ 9 ರಿಂದ ಸಂಜೆ 7',
+    workingHoursEn: 'Mon - Sat: 9:00 AM - 7:00 PM',
+    telegramUrl: 'https://t.me/adhyayana_karnataka',
+    aboutKn: 'ಕರ್ನಾಟಕದ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾರ್ಥಿಗಳಿಗಾಗಿ ಅತ್ಯಾಧುನಿಕ, ಸುರಕ್ಷಿತ ಹಾಗೂ ಆಟೋಮ್ಯಾಟಿಕ್ ಟೆಸ್ಟ್ ಮತ್ತು ನೋಟ್ಸ್ ಪ್ಲಾಟ್‌ಫಾರ್ಮ್.',
+    aboutEn: 'Advanced, dynamic and secure exam readiness ecosystem for KPSC, Karnataka Police, Banking, TET, and State exams.'
+  });
+
+  useEffect(() => {
+    if (footerConfig) {
+      setFooterForm(prev => ({ ...prev, ...footerConfig }));
+    }
+  }, [footerConfig]);
 
   // Student Access & Inspection Modal State
   const [selectedUserEmail, setSelectedUserEmail] = useState(null);
@@ -808,6 +831,13 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
       rzpKey: rzpKeyInput.trim()
     });
     showToast(lang === 'kn' ? 'ಪಾವತಿ & UPI QR ಸೆಟ್ಟಿಂಗ್ಸ್ ಮತ್ತು QR ಇಮೇಜ್ ಉಳಿಸಲಾಗಿದೆ!' : 'Direct Payment & UPI QR Settings Updated Successfully!');
+  };
+
+  // Handle Save Website Footer & Contact Details
+  const handleSaveFooterConfig = async (e) => {
+    e.preventDefault();
+    await updateFooterConfig(footerForm);
+    showToast(lang === 'kn' ? 'ವೆಬ್‌ಸೈಟ್ ಸಂಪರ್ಕ & ಫೂಟರ್ ವಿವರಗಳು ಕ್ಲೌಡ್‌ನಲ್ಲಿ ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ!' : 'Website Footer & Contact Details updated successfully in Supabase Cloud!');
   };
 
   // Handle Exam Edit Start
@@ -3308,6 +3338,161 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                 <p className="text-[10px] text-purple-300/80">
                   ⚡ ವಿದ್ಯಾರ್ಥಿಗಳು ಈ QR ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ UPI ID ಗೆ ಪಾವತಿಸಿ UTR ನಮೂದಿಸಿದ ತಕ್ಷಣ ಪ್ರವೇಶ ಪಡೆಯುತ್ತಾರೆ.
                 </p>
+              </div>
+            </form>
+          </div>
+
+          {/* Website Footer & Public Contact Information Editor */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-inner">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {lang === 'kn' ? 'ವೆಬ್‌ಸೈಟ್ ಸಂಪರ್ಕ & ಫೂಟರ್ ವಿವರಗಳು (Website Footer & Contact Details)' : 'Website Footer & Public Contact Details'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {lang === 'kn'
+                      ? 'ವೆಬ್‌ಸೈಟ್‌ನ ಕೆಳಭಾಗದಲ್ಲಿ (Bottom Footer) ಬಳಕೆದಾರರಿಗೆ ಕಾಣಿಸುವ Email, Phone, WhatsApp, ವಿಳಾಸ ಇತ್ಯಾದಿಗಳನ್ನು ಇಲ್ಲಿಂದ ತಕ್ಷಣ ಬದಲಾಯಿಸಿ.'
+                      : 'Change Support Email, Helpline Phone, WhatsApp, Address and Socials shown at the bottom of the user pages.'}
+                  </p>
+                </div>
+              </div>
+              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                Cloud Synced
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveFooterConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'ಸಹಾಯವಾಣಿ ಇಮೇಲ್ (Support Email)' : 'Support Email'} *
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={footerForm.email || ''}
+                    onChange={(e) => setFooterForm({ ...footerForm, email: e.target.value })}
+                    placeholder="support@adhyayana.edu"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'ಅಧಿಕೃತ ಫೋನ್ ಸಂಖ್ಯೆ (Phone Helpline)' : 'Helpline Phone Number'} *
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={footerForm.phone || ''}
+                    onChange={(e) => setFooterForm({ ...footerForm, phone: e.target.value })}
+                    placeholder="+91 6360433316"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'WhatsApp ಸಂಖ್ಯೆ (10 ಅಂಕೆ)' : 'Official WhatsApp Number'} *
+                </label>
+                <div className="relative">
+                  <MessageCircle className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={footerForm.whatsappNumber || ''}
+                    onChange={(e) => setFooterForm({ ...footerForm, whatsappNumber: e.target.value })}
+                    placeholder="6360433316"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'ಟೆಲಿಗ್ರಾಂ ಚಾನೆಲ್ ಲಿಂಕ್ (Telegram URL)' : 'Telegram Channel URL'}
+                </label>
+                <div className="relative">
+                  <Send className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    value={footerForm.telegramUrl || ''}
+                    onChange={(e) => setFooterForm({ ...footerForm, telegramUrl: e.target.value })}
+                    placeholder="https://t.me/adhyayana_karnataka"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'ಕಚೇರಿ ವಿಳಾಸ (ಕನ್ನಡದಲ್ಲಿ)' : 'Office Address (Kannada)'}
+                </label>
+                <input
+                  type="text"
+                  value={footerForm.addressKn || ''}
+                  onChange={(e) => setFooterForm({ ...footerForm, addressKn: e.target.value })}
+                  placeholder="ಬೆಂಗಳೂರು, ಕರ್ನಾಟಕ - 560001"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'ಕಚೇರಿ ವಿಳಾಸ (ಇಂಗ್ಲಿಷ್‌ನಲ್ಲಿ)' : 'Office Address (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={footerForm.addressEn || ''}
+                  onChange={(e) => setFooterForm({ ...footerForm, addressEn: e.target.value })}
+                  placeholder="Bengaluru, Karnataka - 560001"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'ಕಾರ್ಯನಿರ್ವಹಣಾ ಸಮಯ (Working Hours)' : 'Working Hours'}
+                </label>
+                <input
+                  type="text"
+                  value={footerForm.workingHoursKn || ''}
+                  onChange={(e) => setFooterForm({ ...footerForm, workingHoursKn: e.target.value })}
+                  placeholder="ಸೋಮವಾರ - ಶನಿವಾರ: ಬೆಳಗ್ಗೆ 9 ರಿಂದ ಸಂಜೆ 7"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'ಸಂಸ್ಥೆಯ ಕಿರು ಪರಿಚಯ (About Intro)' : 'About Intro'}
+                </label>
+                <input
+                  type="text"
+                  value={footerForm.aboutKn || ''}
+                  onChange={(e) => setFooterForm({ ...footerForm, aboutKn: e.target.value })}
+                  placeholder="ಕರ್ನಾಟಕದ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾರ್ಥಿಗಳಿಗಾಗಿ..."
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="md:col-span-2 pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{lang === 'kn' ? 'ವೆಬ್‌ಸೈಟ್ ಸಂಪರ್ಕ & ಫೂಟರ್ ವಿವರ ಉಳಿಸಿ (Save Footer & Contact Info)' : 'Save Website Footer & Contact Details to Cloud'}</span>
+                </button>
               </div>
             </form>
           </div>
