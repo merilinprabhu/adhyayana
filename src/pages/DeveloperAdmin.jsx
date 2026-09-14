@@ -59,7 +59,9 @@ import {
   Mail,
   Send,
   Share2,
-  MessageCircle
+  MessageCircle,
+  Star,
+  MessageSquarePlus
 } from 'lucide-react';
 
 const SUPABASE_SCHEMA_SQL = `-- ADHYAYANA (ಅಧ್ಯಯನ) Complete Production Database Schema for Supabase
@@ -269,6 +271,36 @@ ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS reject_reason TEXT;
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
 
+-- 9. Feedbacks & Star Ratings Table (ರೇಟಿಂಗ್ಸ್ & ರಿವ್ಯೂಸ್)
+CREATE TABLE IF NOT EXISTS public.feedbacks (
+  id TEXT PRIMARY KEY,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  target_title TEXT,
+  rating INT DEFAULT 5,
+  comment_kn TEXT,
+  comment TEXT,
+  user_name TEXT,
+  user_email TEXT,
+  user_district TEXT,
+  is_featured_on_home BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. Student Study Material Requests Table ("ASK WHAT YOU WANT")
+CREATE TABLE IF NOT EXISTS public.study_requests (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  category TEXT DEFAULT 'Other',
+  description TEXT,
+  requester_name TEXT,
+  requester_contact TEXT,
+  requester_email TEXT,
+  status TEXT DEFAULT 'pending',
+  admin_reply TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Grant schema and table permissions to anon and authenticated roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
@@ -286,6 +318,8 @@ ALTER TABLE public.user_attempts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notices DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feedbacks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.study_requests DISABLE ROW LEVEL SECURITY;
 `;
 
 // Helper: Calculate which select option matches the validUntil timestamp
@@ -377,10 +411,16 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     updateRazorpayKeyId,
     parseGoogleSheetCSV,
     fetchLiveGoogleSheetCSV,
-    generateAiDailyContent
+    generateAiDailyContent,
+    feedbacks = [],
+    togglePushFeedbackToHome,
+    deleteFeedback,
+    studyRequests = [],
+    updateStudyRequestStatus,
+    deleteStudyRequest
   } = useData();
 
-  const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | analytics | access | notices | broadcast
+  const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | analytics | access | notices | broadcast | reviews | requests
   const [notification, setNotification] = useState('');
   const [copiedSql, setCopiedSql] = useState(false);
   const [seedResult, setSeedResult] = useState('');
@@ -389,6 +429,12 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
   const [editingSubjectId, setEditingSubjectId] = useState(null);
   const [editingTestId, setEditingTestId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
+
+  // Ratings & Feedback Filter: 'all' | 'test' | 'note' | 'featured'
+  const [feedbackFilter, setFeedbackFilter] = useState('all');
+
+  // Study Material Requests Filter: 'all' | 'pending' | 'in_progress' | 'completed'
+  const [studyRequestFilter, setStudyRequestFilter] = useState('all');
 
   // Broadcast & Email Automation State
   const [emailForm, setEmailForm] = useState(emailConfig || {
@@ -1641,6 +1687,30 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
         >
           <Send className="w-4 h-4 shrink-0 text-emerald-500" />
           <span>8. Broadcast & Email Automation ✉️</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
+            activeTab === 'reviews'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <Star className="w-4 h-4 shrink-0 text-amber-400" />
+          <span>9. Ratings & Reviews ({(feedbacks || []).length}) ⭐</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('requests')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
+            activeTab === 'requests'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4 shrink-0 text-emerald-400" />
+          <span>10. Student Requests ({(studyRequests || []).length}) 💬</span>
         </button>
       </div>
 
@@ -5218,6 +5288,400 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* TAB 9: STUDENT RATINGS & REVIEWS (Moderation & Push to Home Page) */}
+      {activeTab === 'reviews' && (
+        <div className="space-y-6">
+          {/* Header & Stats */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
+                  <Star className="w-4 h-4 fill-current" />
+                  <span>{lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗಳ ರೇಟಿಂಗ್ & ವಿಮರ್ಶೆಗಳ ನಿರ್ವಹಣೆ' : 'Ratings & Reviews Management'}</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 mt-1">
+                  ⭐ {lang === 'kn' ? 'ಟೆಸ್ಟ್ & ನೋಟ್ಸ್ ರೇಟಿಂಗ್ಸ್ ಮತ್ತು ಮುಖಪುಟ ಕ್ಯುರೇಶನ್' : 'Test & Notes Ratings & Home Page Curation'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {lang === 'kn'
+                    ? 'ವಿದ್ಯಾರ್ಥಿಗಳು ನೀಡಿದ ನೈಜ ರೇಟಿಂಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ. ನೀವು ಆಯ್ಕೆ ಮಾಡಿದ ಅತ್ಯುತ್ತಮ ವಿಮರ್ಶೆಗಳನ್ನು ಮಾತ್ರ "Push to Home" ಬಟನ್ ಮೂಲಕ ಮುಖಪುಟದಲ್ಲಿ ಪ್ರದರ್ಶಿಸಿ.'
+                    : 'Review student ratings. Selectively push approved reviews to the public Home Page with one click.'}
+                </p>
+              </div>
+
+              {/* Action Hint */}
+              <span className="text-xs font-bold px-3 py-1.5 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-xl border border-amber-200 dark:border-amber-800">
+                ⭐ {feedbacks.filter(f => f.isFeaturedOnHome).length} {lang === 'kn' ? 'ಮುಖಪುಟದಲ್ಲಿ ಲೈವ್ ಇವೆ' : 'Featured on Home Page'}
+              </span>
+            </div>
+
+            {/* Metric Cards */}
+            {(() => {
+              const totalReviews = feedbacks.length;
+              const avgRating = totalReviews > 0
+                ? (feedbacks.reduce((acc, f) => acc + (f.rating || 5), 0) / totalReviews).toFixed(1)
+                : '5.0';
+              const liveOnHome = feedbacks.filter(f => f.isFeaturedOnHome).length;
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {lang === 'kn' ? 'ಒಟ್ಟು ವಿಮರ್ಶೆಗಳು' : 'Total Reviews'}
+                    </span>
+                    <p className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
+                      {totalReviews}
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                    <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+                      {lang === 'kn' ? 'ಸರಾಸರಿ ರೇಟಿಂಗ್' : 'Average Star Rating'}
+                    </span>
+                    <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1.5">
+                      <span>{avgRating}</span>
+                      <span className="text-base text-amber-500">★★★★★</span>
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                    <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+                      {lang === 'kn' ? 'ಮುಖಪುಟದಲ್ಲಿ ಪ್ರದರ್ಶಿತ' : 'Featured on Home'}
+                    </span>
+                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                      {liveOnHome}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
+              {[
+                { id: 'all', labelKn: `ಎಲ್ಲಾ (${feedbacks.length})`, labelEn: `All (${feedbacks.length})` },
+                { id: 'test', labelKn: `ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು (${feedbacks.filter(f => f.targetType === 'test').length})`, labelEn: `Tests (${feedbacks.filter(f => f.targetType === 'test').length})` },
+                { id: 'note', labelKn: `ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ (${feedbacks.filter(f => f.targetType === 'note').length})`, labelEn: `Notes (${feedbacks.filter(f => f.targetType === 'note').length})` },
+                { id: 'featured', labelKn: `🔥 ಮುಖಪುಟದಲ್ಲಿ ಲೈವ್ (${feedbacks.filter(f => f.isFeaturedOnHome).length})`, labelEn: `🔥 Live on Home (${feedbacks.filter(f => f.isFeaturedOnHome).length})` }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setFeedbackFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    feedbackFilter === tab.id
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {lang === 'kn' ? tab.labelKn : tab.labelEn}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Feedback Cards List */}
+          {(() => {
+            const filteredFeedbacks = feedbacks.filter(fb => {
+              if (feedbackFilter === 'test') return fb.targetType === 'test';
+              if (feedbackFilter === 'note') return fb.targetType === 'note';
+              if (feedbackFilter === 'featured') return fb.isFeaturedOnHome === true;
+              return true;
+            });
+
+            if (filteredFeedbacks.length === 0) {
+              return (
+                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  <Star className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700" />
+                  <p className="font-bold text-slate-600 dark:text-slate-400 text-sm">
+                    {lang === 'kn' ? 'ಯಾವುದೇ ವಿಮರ್ಶೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ' : 'No ratings found in this filter.'}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredFeedbacks.map((fb) => (
+                  <div
+                    key={fb.id}
+                    className={`p-5 rounded-3xl border shadow-sm transition-all space-y-3.5 flex flex-col justify-between ${
+                      fb.isFeaturedOnHome
+                        ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/30'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                    }`}
+                  >
+                    <div className="space-y-2.5">
+                      {/* Top Badges */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
+                          fb.targetType === 'test'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                        }`}>
+                          <span>{fb.targetType === 'test' ? '📝 Test' : '📖 Note'}</span>
+                          <span>•</span>
+                          <span className="truncate max-w-[150px]">{fb.targetTitle}</span>
+                        </span>
+
+                        <div className="flex items-center gap-1 text-amber-400">
+                          {[...Array(fb.rating || 5)].map((_, i) => (
+                            <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Review Comment */}
+                      <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed italic">
+                        "{fb.commentKn || fb.comment}"
+                      </p>
+
+                      {/* Reviewer Details */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+                        <div className="font-bold text-slate-700 dark:text-slate-300">
+                          <span>👤 {fb.userName || 'ಆಕಾಂಕ್ಷಿ'}</span>
+                          {fb.userDistrict && <span className="text-slate-400 font-normal"> ({fb.userDistrict})</span>}
+                        </div>
+                        <span>
+                          {fb.createdAt ? new Date(fb.createdAt).toLocaleDateString('en-IN') : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions: Push to Home & Delete */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          togglePushFeedbackToHome(fb.id);
+                          showToast(
+                            fb.isFeaturedOnHome
+                              ? (lang === 'kn' ? 'ಮುಖಪುಟದಿಂದ ತೆಗೆದುಹಾಕಲಾಗಿದೆ' : 'Removed from Home Page')
+                              : (lang === 'kn' ? '🚀 ಮುಖಪುಟಕ್ಕೆ ಯಶಸ್ವಿಯಾಗಿ ಪ್ರಕಟಿಸಲಾಗಿದೆ!' : '🚀 Pushed to Home Page!')
+                          );
+                        }}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm ${
+                          fb.isFeaturedOnHome
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            : 'bg-slate-900 hover:bg-black text-white dark:bg-slate-800 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>
+                          {fb.isFeaturedOnHome
+                            ? (lang === 'kn' ? '✓ ಮುಖಪುಟದಲ್ಲಿ ಲೈವ್ (ತೆಗೆಯಲು ಕ್ಲಿಕ್ ಮಾಡಿ)' : '✓ Live on Home (Click to Remove)')
+                            : (lang === 'kn' ? '🚀 ಮುಖಪುಟಕ್ಕೆ ಕಳುಹಿಸಿ (Push to Home)' : '🚀 Push to Home Page')}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(lang === 'kn' ? 'ಈ ವಿಮರ್ಶೆಯನ್ನು ಅಳಿಸಬೇಕೇ?' : 'Delete this review?')) {
+                            deleteFeedback(fb.id);
+                            showToast(lang === 'kn' ? 'ವಿಮರ್ಶೆ ಅಳಿಸಲಾಗಿದೆ.' : 'Review deleted.');
+                          }
+                        }}
+                        className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                        title="Delete Review"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* TAB 10: STUDENT REQUESTS ("ASK WHAT YOU WANT...") */}
+      {activeTab === 'requests' && (
+        <div className="space-y-6">
+          {/* Header & Stats */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                  <MessageSquare className="w-4 h-4" />
+                  <span>{lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗಳ ನೇರ ಬೇಡಿಕೆಗಳು' : 'Student Study Material Requests'}</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 mt-1">
+                  💬 {lang === 'kn' ? '"ASK WHAT YOU WANT" ವಿದ್ಯಾರ್ಥಿಗಳ ಕೋರಿಕೆಗಳು' : '"ASK WHAT YOU WANT" Inquiries & Requests'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {lang === 'kn'
+                    ? 'ವಿದ್ಯಾರ್ಥಿಗಳು ವೆಬ್‌ಸೈಟ್‌ನ ಮೇಲ್ಭಾಗದಲ್ಲಿ ಸಲ್ಲಿಸಿರುವ ನೋಟ್ಸ್, ಟೆಸ್ಟ್ ಅಥವಾ ಸಿಲಬಸ್ ಬೇಡಿಕೆಗಳು. ಇವುಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ಹೊಸ ವಿಷಯಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಿ.'
+                    : 'Study materials, previous papers and mock tests requested by students. Track status and prepare requested content.'}
+                </p>
+              </div>
+
+              {/* Status counter */}
+              <span className="text-xs font-bold px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                💬 {studyRequests.length} {lang === 'kn' ? 'ಒಟ್ಟು ಬೇಡಿಕೆಗಳು' : 'Total Inquiries'}
+              </span>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
+              {[
+                { id: 'all', labelKn: `ಎಲ್ಲಾ (${studyRequests.length})`, labelEn: `All (${studyRequests.length})` },
+                { id: 'pending', labelKn: `ಹೊಸತು (${studyRequests.filter(r => r.status === 'pending').length})`, labelEn: `Pending (${studyRequests.filter(r => r.status === 'pending').length})` },
+                { id: 'in_progress', labelKn: `ಸಿದ್ಧವಾಗುತ್ತಿದೆ (${studyRequests.filter(r => r.status === 'in_progress').length})`, labelEn: `In Progress (${studyRequests.filter(r => r.status === 'in_progress').length})` },
+                { id: 'completed', labelKn: `ಸೇರಿಸಲಾಗಿದೆ (${studyRequests.filter(r => r.status === 'completed').length})`, labelEn: `Completed (${studyRequests.filter(r => r.status === 'completed').length})` }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setStudyRequestFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    studyRequestFilter === tab.id
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {lang === 'kn' ? tab.labelKn : tab.labelEn}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Requests List */}
+          {(() => {
+            const filteredRequests = studyRequests.filter(r => {
+              if (studyRequestFilter === 'pending') return r.status === 'pending';
+              if (studyRequestFilter === 'in_progress') return r.status === 'in_progress';
+              if (studyRequestFilter === 'completed') return r.status === 'completed';
+              return true;
+            });
+
+            if (filteredRequests.length === 0) {
+              return (
+                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  <MessageSquare className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700" />
+                  <p className="font-bold text-slate-600 dark:text-slate-400 text-sm">
+                    {lang === 'kn' ? 'ಈ ವಿಭಾಗದಲ್ಲಿ ಯಾವುದೇ ಬೇಡಿಕೆಗಳಿಲ್ಲ' : 'No study requests found in this filter.'}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                {filteredRequests.map((req) => {
+                  const statusColors = {
+                    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300',
+                    in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300',
+                    completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300'
+                  };
+                  const statusLabel = {
+                    pending: lang === 'kn' ? '⏳ ಹೊಸ ಬೇಡಿಕೆ (Pending)' : '⏳ Pending',
+                    in_progress: lang === 'kn' ? '⚙️ ಸಿದ್ಧವಾಗುತ್ತಿದೆ (In Progress)' : '⚙️ In Progress',
+                    completed: lang === 'kn' ? '✓ ಸೇರಿಸಲಾಗಿದೆ (Completed)' : '✓ Completed / Added'
+                  };
+
+                  return (
+                    <div
+                      key={req.id}
+                      className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {req.category || 'Study Material'}
+                          </span>
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${statusColors[req.status] || statusColors.pending}`}>
+                            {statusLabel[req.status] || statusLabel.pending}
+                          </span>
+                        </div>
+
+                        <span className="text-[11px] text-slate-400">
+                          {req.createdAt ? new Date(req.createdAt).toLocaleString('en-IN') : ''}
+                        </span>
+                      </div>
+
+                      {/* Request Details */}
+                      <div className="space-y-1.5">
+                        <h4 className="text-base font-black text-slate-900 dark:text-slate-100">
+                          {req.title}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                          {req.description}
+                        </p>
+                      </div>
+
+                      {/* Requester Profile Info */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 pt-1">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">
+                            👤 {req.requesterName}
+                          </span>
+                          {req.requesterContact && (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-mono">
+                              📞 {req.requesterContact}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Status Change Buttons & Delete */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateStudyRequestStatus(req.id, { status: 'in_progress' });
+                              showToast('ಸ್ಥಿತಿ "ಸಿದ್ಧವಾಗುತ್ತಿದೆ (In Progress)" ಎಂದು ಬದಲಾಗಿದೆ.');
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
+                              req.status === 'in_progress'
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50'
+                            }`}
+                          >
+                            ⚙️ In Progress
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateStudyRequestStatus(req.id, { status: 'completed' });
+                              showToast('✓ ಸ್ಥಿತಿ "ಸೇರಿಸಲಾಗಿದೆ (Completed)" ಎಂದು ಬದಲಾಗಿದೆ!');
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
+                              req.status === 'completed'
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-50'
+                            }`}
+                          >
+                            ✓ Completed
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(lang === 'kn' ? 'ಈ ಬೇಡಿಕೆಯನ್ನು ಅಳಿಸಬೇಕೇ?' : 'Delete this request?')) {
+                                deleteStudyRequest(req.id);
+                                showToast(lang === 'kn' ? 'ಬೇಡಿಕೆ ಅಳಿಸಲಾಗಿದೆ.' : 'Request deleted.');
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors ml-1"
+                            title="Delete Request"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 

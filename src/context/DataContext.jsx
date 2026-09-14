@@ -199,6 +199,17 @@ export const DEFAULT_HOME_SECTIONS = [
     ]
   },
   {
+    id: 'student_reviews',
+    type: 'student_reviews',
+    isVisible: true,
+    badgeKn: 'ವಿದ್ಯಾರ್ಥಿಗಳ ಅನಿಸಿಕೆ & ರೇಟಿಂಗ್ಸ್',
+    badgeEn: 'Student Reviews & Star Ratings',
+    titleKn: '⭐ ರಾಜ್ಯದ ಸಾವಿರಾರು ವಿದ್ಯಾರ್ಥಿಗಳ ನೈಜ ಅನುಭವ & ರೇಟಿಂಗ್ಸ್',
+    titleEn: '⭐ Verified Aspirant Reviews & Test Ratings',
+    subtitleKn: 'ಅಧ್ಯಯನ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳ ಬಗ್ಗೆ ಕರ್ನಾಟಕದ ಆಕಾಂಕ್ಷಿಗಳು ನೀಡಿದ ನೈಜ ಪ್ರತಿಕ್ರಿಯೆಗಳು.',
+    subtitleEn: 'Authentic ratings and feedback from serious aspirants preparing across Karnataka.'
+  },
+  {
     id: 'cta_banner',
     type: 'cta_banner',
     isVisible: true,
@@ -794,6 +805,92 @@ export const INITIAL_LIVE_MOCK_TEST = {
   ]
 };
 
+export const INITIAL_FEEDBACKS = [
+  {
+    id: 'fb_1',
+    targetType: 'test',
+    targetId: 't1',
+    targetTitle: 'KPSC KAS Prelims Paper-1 GS Mock Test',
+    rating: 5,
+    commentKn: 'ಪ್ರಶ್ನೆಗಳ ಗುಣಮಟ್ಟ ಅದ್ಭುತವಾಗಿದೆ! ಪ್ರತಿಯೊಂದು ಪ್ರಶ್ನೆಗೂ ನೀಡಿರುವ ವಿವರಣೆ ಮತ್ತು ಕೀ ಉತ್ತರಗಳು ಪರೀಕ್ಷಾ ತಯಾರಿಗೆ ತುಂಬಾ ಸಹಾಯ ಮಾಡುತ್ತವೆ.',
+    comment: 'The quality of questions is outstanding! Detailed explanations and key answers for every question really helped my preparation.',
+    userName: 'ಮಂಜುನಾಥ್ ಬಿ.',
+    userEmail: 'manjunath.b@gmail.com',
+    userDistrict: 'ಬೆಂಗಳೂರು (Bengaluru)',
+    isFeaturedOnHome: true,
+    createdAt: '2026-09-12T10:30:00.000Z'
+  },
+  {
+    id: 'fb_2',
+    targetType: 'note',
+    targetId: 'n1',
+    targetTitle: 'ಸಂವಿಧಾನದ ಪ್ರಮುಖ ವಿಧಿಗಳು & ತಿದ್ದುಪಡಿಗಳು (Indian Polity)',
+    rating: 5,
+    commentKn: 'ಸಂಕ್ಷಿಪ್ತ ಹಾಗೂ ಸುಲಭವಾಗಿ ಅರ್ಥವಾಗುವಂತಹ ನೋಟ್ಸ್. ವಾಟರ್‌ಮಾರ್ಕ್ ರಕ್ಷಣೆಯೊಂದಿಗೆ ಓದಲು ತುಂಬಾ ಅನುಕೂಲಕರವಾಗಿದೆ.',
+    comment: 'Concise and crystal-clear notes. Very easy to revise and understand complex constitutional provisions.',
+    userName: 'ಪೂರ್ಣಿಮಾ ಹೆಗಡೆ',
+    userEmail: 'poornima.h@gmail.com',
+    userDistrict: 'ಶಿವಮೊಗ್ಗ (Shivamogga)',
+    isFeaturedOnHome: true,
+    createdAt: '2026-09-13T14:15:00.000Z'
+  },
+  {
+    id: 'fb_3',
+    targetType: 'test',
+    targetId: 't2',
+    targetTitle: 'KPSC FDA / SDA ಸಾಮಾನ್ಯ ಕನ್ನಡ ಮಾಕ್ ಟೆಸ್ಟ್',
+    rating: 5,
+    commentKn: 'ಕನ್ನಡ ವ್ಯಾಕರಣದ ಸಂಧಿ, ಸಮಾಸ ಮತ್ತು ಗಾದೆಗಳ ಪ್ರಶ್ನೆಗಳು ನಿಖರವಾಗಿವೆ. ಟೈಮರ್ ಹಾಗೂ ನೆಗೆಟಿವ್ ಮಾರ್ಕಿಂಗ್ ನೈಜ ಪರೀಕ್ಷೆಯ ಅನುಭವ ನೀಡುತ್ತದೆ.',
+    comment: 'Kannada grammar questions are precisely syllabus-aligned. Real countdown timer and negative marking simulate exact KPSC exam environment.',
+    userName: 'ಶಿವಕುಮಾರ್ ಎಸ್.',
+    userEmail: 'shivakumar.s@gmail.com',
+    userDistrict: 'ಧಾರವಾಡ (Dharwad)',
+    isFeaturedOnHome: true,
+    createdAt: '2026-09-14T09:00:00.000Z'
+  },
+  {
+    id: 'fb_4',
+    targetType: 'note',
+    targetId: 'n2',
+    targetTitle: 'ಕರ್ನಾಟಕ ಇತಿಹಾಸ & ಪ್ರಮುಖ ರಾಜವಂಶಗಳ ಸಮಗ್ರ ನೋಟ್ಸ್',
+    rating: 5,
+    commentKn: 'ರಾಷ್ಟ್ರಕೂಟರು, ಚಾಲುಕ್ಯರು ಮತ್ತು ವಿಜಯನಗರ ಸಾಮ್ರಾಜ್ಯದ ಇತಿಹಾಸವನ್ನು ಅತ್ಯಂತ ಸುಲಭವಾಗಿ ನೆನಪಿಡುವಂತೆ ಸಂಕ್ಷಿಪ್ತಗೊಳಿಸಲಾಗಿದೆ.',
+    comment: 'Excellent structured compilation of Karnataka history and dynasties. Highly recommended for KPSC aspirants.',
+    userName: 'ಚೇತನ್ ಕುಮಾರ್',
+    userEmail: 'chethan.k@gmail.com',
+    userDistrict: 'ಮೈಸೂರು (Mysuru)',
+    isFeaturedOnHome: true,
+    createdAt: '2026-09-14T11:20:00.000Z'
+  }
+];
+
+export const INITIAL_STUDY_REQUESTS = [
+  {
+    id: 'req_1',
+    title: 'HSTR 2026 Paper-2 Physical Science (ಭೌತಶಾಸ್ತ್ರ & ರಸಾಯನಶಾಸ್ತ್ರ) ನೋಟ್ಸ್',
+    category: 'Digital Study Notes',
+    description: 'ದಯವಿಟ್ಟು ಹೈಸ್ಕೂಲ್ ಶಿಕ್ಷಕರ ನೇಮಕಾತಿಯ (HSTR) ಭೌತಶಾಸ್ತ್ರ ಮತ್ತು ರಸಾಯನಶಾಸ್ತ್ರ ಪತ್ರಿಕೆಯ 100 ಅಂಕಗಳ ಸಿಲಬಸ್ ಆಧಾರಿತ ನೋಟ್ಸ್ ಸೇರಿಸಿ.',
+    requesterName: 'ರಮೇಶ್ ಗೌಡ',
+    requesterContact: '9845012345',
+    requesterEmail: 'ramesh.gowda@gmail.com',
+    status: 'in_progress',
+    adminReply: 'ಶಿಕ್ಷಣ ತಜ್ಞರಿಂದ ನೋಟ್ಸ್ ತಯಾರಾಗುತ್ತಿದ್ದು, ಶೀಘ್ರದಲ್ಲೇ ಅಪ್‌ಲೋಡ್ ಮಾಡಲಾಗುತ್ತದೆ.',
+    createdAt: '2026-09-13T16:00:00.000Z'
+  },
+  {
+    id: 'req_2',
+    title: 'KPSC Village Administrative Officer (VAO) ಹಿಂದಿನ ವರ್ಷದ ಪ್ರಶ್ನೋತ್ತರಗಳು',
+    category: 'Previous Year Papers & Tests',
+    description: 'VAO ಪರೀಕ್ಷೆಗೆ ಕಂಪ್ಯೂಟರ್ ಸಾಕ್ಷರತೆ ಮತ್ತು ಸಾಮಾನ್ಯ ಜ್ಞಾನದ 5 ವರ್ಷಗಳ ಹಿಂದಿನ ಪ್ರಶ್ನೆ ಪತ್ರಿಕೆಗಳ ಮಾಕ್ ಟೆಸ್ಟ್ ಸರಣಿ ಬೇಕಾಗಿದೆ.',
+    requesterName: 'ಸುನೀತಾ ಕೆ.',
+    requesterContact: 'sunitha.k@gmail.com',
+    requesterEmail: 'sunitha.k@gmail.com',
+    status: 'pending',
+    adminReply: '',
+    createdAt: '2026-09-14T08:45:00.000Z'
+  }
+];
+
 export const INITIAL_FOOTER_CONFIG = {
   aboutKn: 'ಕರ್ನಾಟಕದ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾರ್ಥಿಗಳಿಗಾಗಿ ಅತ್ಯಾಧುನಿಕ, ಸುರಕ್ಷಿತ ಹಾಗೂ ಆಟೋಮ್ಯಾಟಿಕ್ ಟೆಸ್ಟ್ ಮತ್ತು ನೋಟ್ಸ್ ಪ್ಲಾಟ್‌ಫಾರ್ಮ್.',
   aboutEn: 'Advanced, dynamic and secure exam readiness ecosystem for KPSC, Karnataka Police, Banking, TET, and State exams.',
@@ -830,7 +927,7 @@ const STORAGE_KEYS = {
   MISTAKES: 'adhyayana_mistakes_v2',
   LEADERBOARD: 'adhyayana_leaderboard_v2',
   REFERRALS: 'adhyayana_referrals_v2',
-  HOME_SECTIONS: 'adhyayana_home_sections_v10',
+  HOME_SECTIONS: 'adhyayana_home_sections_v12',
   READ_NOTES: 'adhyayana_read_notes_v3',
   NOTICES: 'adhyayana_notices_v3',
   READ_NOTICES: 'adhyayana_read_notices_v3',
@@ -841,7 +938,9 @@ const STORAGE_KEYS = {
   FLASHCARD_PROGRESS: 'adhyayana_fc_progress_v1',
   STUDY_STREAK: 'adhyayana_study_streak_v1',
   USER_HIGHLIGHTS: 'adhyayana_highlights_v1',
-  LIVE_MOCK_TEST: 'adhyayana_live_mock_v1'
+  LIVE_MOCK_TEST: 'adhyayana_live_mock_v1',
+  FEEDBACKS: 'adhyayana_feedbacks_v2',
+  STUDY_REQUESTS: 'adhyayana_study_requests_v2'
 };
 
 export const DataProvider = ({ children }) => {
@@ -1033,7 +1132,7 @@ export const DataProvider = ({ children }) => {
         
         const merged = parsed.map(sec => {
           const defaultSec = DEFAULT_HOME_SECTIONS.find(d => d.id === sec.id || d.type === sec.type);
-          const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'live_mock_test', 'notice_board', 'recent_updates'].includes(sec.type || sec.id);
+          const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'live_mock_test', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
           return {
             ...sec,
             isVisible: isCoreStudySec ? true : (sec.isVisible !== undefined ? sec.isVisible : true),
@@ -1200,6 +1299,28 @@ export const DataProvider = ({ children }) => {
       return (parsed && typeof parsed === 'object') ? parsed : INITIAL_LIVE_MOCK_TEST;
     } catch {
       return INITIAL_LIVE_MOCK_TEST;
+    }
+  });
+
+  // Student Ratings & Reviews for Tests and Notes
+  const [feedbacks, setFeedbacks] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.FEEDBACKS);
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_FEEDBACKS;
+    } catch {
+      return INITIAL_FEEDBACKS;
+    }
+  });
+
+  // Student Study Material Requests ("ASK WHAT YOU WANT...")
+  const [studyRequests, setStudyRequests] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.STUDY_REQUESTS);
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_STUDY_REQUESTS;
+    } catch {
+      return INITIAL_STUDY_REQUESTS;
     }
   });
 
@@ -1396,8 +1517,47 @@ export const DataProvider = ({ children }) => {
                 localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, s.value.rzpKey);
               }
             } else if (s.key === 'home_page_sections' && Array.isArray(s.value) && s.value.length > 0) {
-              setHomeSections(s.value);
-              localStorage.setItem(STORAGE_KEYS.HOME_SECTIONS, JSON.stringify(s.value));
+              const existingIds = new Set(s.value.map(item => item.id || item.type));
+              const missingDefaults = DEFAULT_HOME_SECTIONS.filter(d => !existingIds.has(d.id) && !existingIds.has(d.type));
+              const merged = s.value.map(sec => {
+                const defaultSec = DEFAULT_HOME_SECTIONS.find(d => d.id === sec.id || d.type === sec.type);
+                const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'live_mock_test', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
+                return {
+                  ...sec,
+                  isVisible: isCoreStudySec ? true : (sec.isVisible !== undefined ? sec.isVisible : true),
+                  items: (defaultSec && defaultSec.items && (!sec.items || sec.items.length === 0)) ? defaultSec.items : (sec.items || defaultSec?.items)
+                };
+              });
+
+              if (missingDefaults.length > 0) {
+                missingDefaults.forEach(defSec => {
+                  const ctaIdx = merged.findIndex(item => item.type === 'cta_banner' || item.id === 'cta_banner');
+                  if (ctaIdx !== -1) {
+                    merged.splice(ctaIdx, 0, { ...defSec, isVisible: true });
+                  } else {
+                    merged.push({ ...defSec, isVisible: true });
+                  }
+                });
+              }
+
+              setHomeSections(merged);
+              localStorage.setItem(STORAGE_KEYS.HOME_SECTIONS, JSON.stringify(merged));
+            } else if (s.key === 'feedbacks_data' && Array.isArray(s.value) && s.value.length > 0) {
+              setFeedbacks(prev => {
+                const map = new Map(s.value.map(item => [item.id, item]));
+                prev.forEach(localItem => {
+                  if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+                });
+                return Array.from(map.values());
+              });
+            } else if (s.key === 'study_requests_data' && Array.isArray(s.value) && s.value.length > 0) {
+              setStudyRequests(prev => {
+                const map = new Map(s.value.map(item => [item.id, item]));
+                prev.forEach(localItem => {
+                  if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+                });
+                return Array.from(map.values());
+              });
             }
           });
         }
@@ -1468,6 +1628,64 @@ export const DataProvider = ({ children }) => {
         }
       } catch (attErr) {
         console.warn('Supabase attempts fetch notice:', attErr);
+      }
+
+      // 9. Fetch Feedbacks from Supabase Table
+      try {
+        const { data: dbFeedbacks, error: fbErr } = await supabase.from('feedbacks').select('*').order('created_at', { ascending: false });
+        if (!fbErr && dbFeedbacks && dbFeedbacks.length > 0) {
+          const formattedFb = dbFeedbacks.map(f => ({
+            id: f.id,
+            targetType: f.target_type || f.targetType || 'test',
+            targetId: f.target_id || f.targetId,
+            targetTitle: f.target_title || f.targetTitle || '',
+            rating: Number(f.rating) || 5,
+            commentKn: f.comment_kn || f.commentKn || f.comment || '',
+            comment: f.comment || f.comment_kn || '',
+            userName: f.user_name || f.userName || 'Student',
+            userEmail: f.user_email || f.userEmail || '',
+            userDistrict: f.user_district || f.userDistrict || '',
+            isFeaturedOnHome: Boolean(f.is_featured_on_home !== undefined ? f.is_featured_on_home : f.isFeaturedOnHome),
+            createdAt: f.created_at || f.createdAt || new Date().toISOString()
+          }));
+          setFeedbacks(prev => {
+            const map = new Map(formattedFb.map(item => [item.id, item]));
+            prev.forEach(localItem => {
+              if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+            });
+            return Array.from(map.values());
+          });
+        }
+      } catch (fbErr) {
+        console.warn('Supabase feedbacks fetch notice:', fbErr);
+      }
+
+      // 10. Fetch Study Requests from Supabase Table
+      try {
+        const { data: dbRequests, error: reqErr } = await supabase.from('study_requests').select('*').order('created_at', { ascending: false });
+        if (!reqErr && dbRequests && dbRequests.length > 0) {
+          const formattedReq = dbRequests.map(r => ({
+            id: r.id,
+            title: r.title,
+            category: r.category || 'Other',
+            description: r.description || '',
+            requesterName: r.requester_name || r.requesterName || 'Student',
+            requesterContact: r.requester_contact || r.requesterContact || '',
+            requesterEmail: r.requester_email || r.requesterEmail || '',
+            status: r.status || 'pending',
+            adminReply: r.admin_reply || r.adminReply || '',
+            createdAt: r.created_at || r.createdAt || new Date().toISOString()
+          }));
+          setStudyRequests(prev => {
+            const map = new Map(formattedReq.map(item => [item.id, item]));
+            prev.forEach(localItem => {
+              if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+            });
+            return Array.from(map.values());
+          });
+        }
+      } catch (reqErr) {
+        console.warn('Supabase study_requests fetch notice:', reqErr);
       }
     } catch (e) {
       console.warn('Supabase initial fetch info:', e);
@@ -4244,6 +4462,171 @@ export const DataProvider = ({ children }) => {
     return { success: true, capsule: newCapsule, quiz: newDailyQuiz };
   };
 
+  // Add Feedback / Rating
+  const addFeedback = useCallback(async (feedbackData) => {
+    const newFeedback = {
+      id: `fb_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString(),
+      isFeaturedOnHome: false, // by default pending developer push
+      rating: 5,
+      ...feedbackData
+    };
+
+    setFeedbacks(prev => {
+      const updated = [newFeedback, ...prev];
+      try {
+        localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await supabase.from('feedbacks').upsert({
+        id: newFeedback.id,
+        target_type: newFeedback.targetType || 'test',
+        target_id: newFeedback.targetId,
+        target_title: newFeedback.targetTitle || '',
+        rating: Number(newFeedback.rating) || 5,
+        comment_kn: newFeedback.commentKn || newFeedback.comment || '',
+        comment: newFeedback.comment || newFeedback.commentKn || '',
+        user_name: newFeedback.userName || 'Student',
+        user_email: newFeedback.userEmail || '',
+        user_district: newFeedback.userDistrict || '',
+        is_featured_on_home: false,
+        created_at: newFeedback.createdAt
+      });
+    } catch (e) {
+      console.warn('Supabase feedback insert fallback:', e);
+    }
+
+    return newFeedback;
+  }, []);
+
+  // Toggle Push Feedback to Home Page
+  const togglePushFeedbackToHome = useCallback(async (feedbackId) => {
+    let targetFb = null;
+    setFeedbacks(prev => {
+      const updated = prev.map(fb => {
+        if (fb.id === feedbackId) {
+          targetFb = { ...fb, isFeaturedOnHome: !fb.isFeaturedOnHome };
+          return targetFb;
+        }
+        return fb;
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
+        supabase.from('app_settings').upsert({ key: 'feedbacks_data', value: updated });
+      } catch (e) {}
+      return updated;
+    });
+
+    if (targetFb) {
+      try {
+        await supabase.from('feedbacks').update({
+          is_featured_on_home: targetFb.isFeaturedOnHome
+        }).eq('id', feedbackId);
+      } catch (e) {}
+    }
+  }, []);
+
+  // Delete Feedback
+  const deleteFeedback = useCallback(async (feedbackId) => {
+    setFeedbacks(prev => {
+      const updated = prev.filter(fb => fb.id !== feedbackId);
+      try {
+        localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
+        supabase.from('app_settings').upsert({ key: 'feedbacks_data', value: updated });
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await supabase.from('feedbacks').delete().eq('id', feedbackId);
+    } catch (e) {}
+  }, []);
+
+  // Add Study Request ("ASK WHAT YOU WANT...")
+  const addStudyRequest = useCallback(async (requestData) => {
+    const newRequest = {
+      id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      status: 'pending', // 'pending' | 'in_progress' | 'completed' | 'rejected'
+      adminReply: '',
+      createdAt: new Date().toISOString(),
+      ...requestData
+    };
+
+    setStudyRequests(prev => {
+      const updated = [newRequest, ...prev];
+      try {
+        localStorage.setItem(STORAGE_KEYS.STUDY_REQUESTS, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await supabase.from('study_requests').upsert({
+        id: newRequest.id,
+        title: newRequest.title,
+        category: newRequest.category || 'Other',
+        description: newRequest.description || '',
+        requester_name: newRequest.requesterName || 'Student',
+        requester_contact: newRequest.requesterContact || '',
+        requester_email: newRequest.requesterEmail || '',
+        status: 'pending',
+        admin_reply: '',
+        created_at: newRequest.createdAt
+      });
+    } catch (e) {
+      console.warn('Supabase study request insert fallback:', e);
+    }
+
+    return newRequest;
+  }, []);
+
+  // Update Study Request Status / Reply
+  const updateStudyRequestStatus = useCallback(async (requestId, updates) => {
+    let targetReq = null;
+    setStudyRequests(prev => {
+      const updated = prev.map(req => {
+        if (req.id === requestId) {
+          targetReq = { ...req, ...updates };
+          return targetReq;
+        }
+        return req;
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.STUDY_REQUESTS, JSON.stringify(updated));
+        supabase.from('app_settings').upsert({ key: 'study_requests_data', value: updated });
+      } catch (e) {}
+      return updated;
+    });
+
+    if (targetReq) {
+      try {
+        await supabase.from('study_requests').update({
+          status: targetReq.status,
+          admin_reply: targetReq.adminReply || ''
+        }).eq('id', requestId);
+      } catch (e) {}
+    }
+  }, []);
+
+  // Delete Study Request
+  const deleteStudyRequest = useCallback(async (requestId) => {
+    setStudyRequests(prev => {
+      const updated = prev.filter(req => req.id !== requestId);
+      try {
+        localStorage.setItem(STORAGE_KEYS.STUDY_REQUESTS, JSON.stringify(updated));
+        supabase.from('app_settings').upsert({ key: 'study_requests_data', value: updated });
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await supabase.from('study_requests').delete().eq('id', requestId);
+    } catch (e) {}
+  }, []);
+
   return (
     <DataContext.Provider
       value={{
@@ -4357,7 +4740,15 @@ export const DataProvider = ({ children }) => {
         liveMockTest,
         setLiveMockTest,
         updateLiveMockTest,
-        generateAiDailyContent
+        generateAiDailyContent,
+        feedbacks,
+        addFeedback,
+        togglePushFeedbackToHome,
+        deleteFeedback,
+        studyRequests,
+        addStudyRequest,
+        updateStudyRequestStatus,
+        deleteStudyRequest
       }}
     >
       {children}

@@ -21,13 +21,23 @@ import {
   Trophy,
   Printer,
   Download,
-  RotateCcw
+  RotateCcw,
+  Star,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
   const { user, isAuthenticated, isDeveloper, isEnrolled } = useAuth();
-  const { lang, exams, recordTestAttempt, toggleBookmark, isBookmarked, checkHasAccess } = useData();
+  const { lang, exams, recordTestAttempt, toggleBookmark, isBookmarked, checkHasAccess, addFeedback } = useData();
+
+  const [testRating, setTestRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [testComment, setTestComment] = useState('');
+  const [reviewerName, setReviewerName] = useState(user?.name || '');
+  const [reviewerDistrict, setReviewerDistrict] = useState('');
+  const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
 
   const activeQuestions = (test?.questions && test.questions.length > 0) 
     ? test.questions 
@@ -485,6 +495,131 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                 </div>
               );
             })()}
+
+            {/* Test Rating & Feedback Form */}
+            <div className="p-5 sm:p-6 bg-gradient-to-br from-amber-500/10 via-slate-50 to-amber-500/5 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900 rounded-3xl border border-amber-300 dark:border-amber-800/80 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 dark:border-amber-900/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
+                    <Star className="w-4 h-4 fill-current" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
+                      {lang === 'kn' ? '⭐ ಈ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗೆ ರೇಟಿಂಗ್ & ಸಲಹೆ ನೀಡಿ' : '⭐ Rate this Test & Share Feedback'}
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      {lang === 'kn' 
+                        ? 'ನಿಮ್ಮ ರೇಟಿಂಗ್ ಮತ್ತು ಸಲಹೆಗಳು ಮುಂದಿನ ಪ್ರಶ್ನೆಪತ್ರಿಕೆಗಳ ಗುಣಮಟ್ಟ ಹೆಚ್ಚಿಸಲು ನಮಗೆ ಸಹಾಯ ಮಾಡುತ್ತವೆ.' 
+                        : 'Your ratings help us improve question quality for future mock tests.'}
+                    </p>
+                  </div>
+                </div>
+
+                {isRatingSubmitted && (
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-3 py-1 rounded-full border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 self-start sm:self-auto">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{lang === 'kn' ? '✓ ರೇಟಿಂಗ್ ದಾಖಲಾಗಿದೆ!' : '✓ Feedback Recorded!'}</span>
+                  </span>
+                )}
+              </div>
+
+              {isRatingSubmitted ? (
+                <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs space-y-1 text-center">
+                  <p className="font-black text-sm">
+                    {lang === 'kn' ? '🎉 ನಿಮ್ಮ ಅನಿಸಿಕೆಗೆ ಧನ್ಯವಾದಗಳು!' : '🎉 Thank you for your review!'}
+                  </p>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                    {lang === 'kn' 
+                      ? 'ನಿಮ್ಮ ವಿಮರ್ಶೆಯನ್ನು ನಮ್ಮ ಡೆವಲಪರ್ ಪರಿಶೀಲಿಸಿ ಮುಖಪುಟದಲ್ಲಿ ಪ್ರದರ್ಶಿಸಬಹುದು.'
+                      : 'Your review has been submitted to the developer and may be featured on the home page.'}
+                  </p>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!testComment.trim()) return;
+                    addFeedback({
+                      targetType: 'test',
+                      targetId: test?.id || 'general_test',
+                      targetTitle: (lang === 'kn' && test?.titleKn ? test.titleKn : test?.title) || 'ಮಾಕ್ ಟೆಸ್ಟ್',
+                      rating: testRating,
+                      commentKn: testComment.trim(),
+                      comment: testComment.trim(),
+                      userName: reviewerName.trim() || user?.name || 'ಆಕಾಂಕ್ಷಿ (Aspirant)',
+                      userEmail: user?.email || '',
+                      userDistrict: reviewerDistrict.trim() || 'ಕರ್ನಾಟಕ'
+                    });
+                    setIsRatingSubmitted(true);
+                  }}
+                  className="space-y-3"
+                >
+                  {/* Star Rating Selector */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {lang === 'kn' ? 'ನಿಮ್ಮ ರೇಟಿಂಗ್:' : 'Your Rating:'}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((starVal) => {
+                        const isFilled = (hoverRating || testRating) >= starVal;
+                        return (
+                          <button
+                            key={starVal}
+                            type="button"
+                            onMouseEnter={() => setHoverRating(starVal)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            onClick={() => setTestRating(starVal)}
+                            className="p-1 text-amber-400 hover:scale-125 transition-transform"
+                          >
+                            <Star className={`w-6 h-6 ${isFilled ? 'fill-current text-amber-400' : 'text-slate-300 dark:text-slate-600'}`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <span className="text-xs font-black text-amber-600 dark:text-amber-400">
+                      {testRating} / 5 Stars
+                    </span>
+                  </div>
+
+                  {/* Feedback Textarea */}
+                  <div>
+                    <textarea
+                      rows={2}
+                      required
+                      value={testComment}
+                      onChange={(e) => setTestComment(e.target.value)}
+                      placeholder={lang === 'kn' ? 'ಈ ಟೆಸ್ಟ್‌ನ ಪ್ರಶ್ನೆಗಳು, ವಿವರಣೆಗಳು ಅಥವಾ ಸಿಲಬಸ್ ಬಗ್ಗೆ ನಿಮ್ಮ ಅನಿಸಿಕೆ ಬರೆಯಿರಿ...' : 'Share what you liked or how we can improve these test questions...'}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Student Details */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <input
+                      type="text"
+                      value={reviewerName}
+                      onChange={(e) => setReviewerName(e.target.value)}
+                      placeholder={lang === 'kn' ? 'ನಿಮ್ಮ ಹೆಸರು (Name)' : 'Your Name'}
+                      className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                    <input
+                      type="text"
+                      value={reviewerDistrict}
+                      onChange={(e) => setReviewerDistrict(e.target.value)}
+                      placeholder={lang === 'kn' ? 'ಜಿಲ್ಲೆ (ಉದಾ: ಧಾರವಾಡ, ಬೆಂಗಳೂರು)' : 'District (e.g. Mysuru)'}
+                      className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{lang === 'kn' ? 'ಅನಿಸಿಕೆ ಸಲ್ಲಿಸಿ' : 'Submit Review'}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
 
             {/* Question-by-Question Detailed Review */}
             <div className="space-y-4">

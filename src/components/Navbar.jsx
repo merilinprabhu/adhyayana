@@ -15,14 +15,17 @@ import {
   X,
   Lock,
   ChevronDown,
-  RefreshCw
+  RefreshCw,
+  MessageSquarePlus
 } from 'lucide-react';
+import { AskWhatYouWantModal } from './AskWhatYouWantModal';
 
 export const Navbar = ({ currentView, setCurrentView, onOpenAuth }) => {
   const { user, isAuthenticated, isDeveloper, logout, toggleRole, triggerGoogleOAuthLogin, isAuthenticating } = useAuth();
   const { lang, setLang } = useData();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [isAskModalOpen, setIsAskModalOpen] = useState(false);
 
   const navLinks = [
     { id: 'home', label: lang === 'kn' ? 'ಮುಖಪುಟ' : 'Home' },
@@ -101,6 +104,18 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuth }) => {
 
         {/* Right Action Icons & Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
+          
+          {/* ASK WHAT YOU WANT TOP BUTTON */}
+          <button
+            onClick={() => setIsAskModalOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-black bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-slate-950 shadow-sm shadow-amber-500/20 flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            title={lang === 'kn' ? 'ನಿಮಗೆ ಬೇಕಾದ ನೋಟ್ಸ್ ಅಥವಾ ಟೆಸ್ಟ್ ಕೇಳಿ' : 'Ask what study material or test you want'}
+          >
+            <MessageSquarePlus className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">{lang === 'kn' ? '💡 ASK WHAT YOU WANT' : '💡 ASK WHAT YOU WANT'}</span>
+            <span className="sm:hidden">{lang === 'kn' ? '💡 ಕೇಳಿ' : '💡 Ask'}</span>
+          </button>
+
           {/* Language Switcher */}
           <button
             onClick={() => setLang(lang === 'kn' ? 'en' : 'kn')}
@@ -252,6 +267,12 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuth }) => {
           )}
         </div>
       )}
+
+      {/* Ask What You Want Modal */}
+      <AskWhatYouWantModal 
+        isOpen={isAskModalOpen} 
+        onClose={() => setIsAskModalOpen(false)} 
+      />
     </header>
   );
 };

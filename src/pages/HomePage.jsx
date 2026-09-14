@@ -53,8 +53,10 @@ import {
   Volume2,
   VolumeX,
   Timer,
-  ChevronLeft
+  ChevronLeft,
+  MessageSquarePlus
 } from 'lucide-react';
+import { AskWhatYouWantModal } from '../components/AskWhatYouWantModal';
 
 // Lightweight Inline Editable Text component for direct in-place editing
 const InlineText = ({
@@ -134,9 +136,11 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
     flashcards,
     liveMockTest,
     updateLiveMockTest,
-    generateAiDailyContent
+    generateAiDailyContent,
+    feedbacks = []
   } = useData();
 
+  const [isAskModalOpen, setIsAskModalOpen] = useState(false);
   const [homeSearchQuery, setHomeSearchQuery] = useState('');
   const [noticeFilter, setNoticeFilter] = useState('all'); // 'all' | 'pdf' | 'image' | 'circular'
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -2348,6 +2352,99 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
             </div>
           </section>
         );
+      case 'student_reviews':
+        // Filter reviews pushed to home, or fallback to curated top ratings if none pushed yet
+        const displayReviews = (feedbacks || []).filter(f => f.isFeaturedOnHome);
+        const activeReviews = displayReviews.length > 0 ? displayReviews : (feedbacks || []).slice(0, 6);
+        if (activeReviews.length === 0) return null;
+
+        return (
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-amber-500 text-xs font-bold uppercase tracking-wider">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <InlineText
+                    value={lang === 'kn' ? (sec.badgeKn || 'ವಿದ್ಯಾರ್ಥಿಗಳ ಅನಿಸಿಕೆ & ರೇಟಿಂಗ್ಸ್') : (sec.badgeEn || 'Student Reviews & Star Ratings')}
+                    onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'badgeKn' : 'badgeEn', val)}
+                    isEditMode={isEditMode}
+                  />
+                </div>
+                <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 mt-0.5">
+                  <InlineText
+                    value={lang === 'kn' ? (sec.titleKn || '⭐ ರಾಜ್ಯದ ಸಾವಿರಾರು ವಿದ್ಯಾರ್ಥಿಗಳ ನೈಜ ಅನುಭವ & ರೇಟಿಂಗ್ಸ್') : (sec.titleEn || '⭐ Verified Aspirant Reviews & Test Ratings')}
+                    onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
+                    isEditMode={isEditMode}
+                  />
+                </h2>
+                <p className="text-[11px] sm:text-xs text-slate-500">
+                  <InlineText
+                    value={lang === 'kn' ? (sec.subtitleKn || 'ಅಧ್ಯಯನ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳ ಬಗ್ಗೆ ಕರ್ನಾಟಕದ ಆಕಾಂಕ್ಷಿಗಳು ನೀಡಿದ ನೈಜ ಪ್ರತಿಕ್ರಿಯೆಗಳು.') : (sec.subtitleEn || 'Authentic ratings and feedback from serious aspirants preparing across Karnataka.')}
+                    onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'subtitleKn' : 'subtitleEn', val)}
+                    isEditMode={isEditMode}
+                    multiline
+                  />
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setIsAskModalOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-xs flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
+                >
+                  <MessageSquarePlus className="w-3.5 h-3.5" />
+                  <span>{lang === 'kn' ? '💡 ನಿಮ್ಮ ಬೇಡಿಕೆ ಕೇಳಿ' : '💡 Ask What You Want'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3-Column Reviews Card Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
+              {activeReviews.map((fb, fIdx) => (
+                <div
+                  key={fb.id || fIdx}
+                  className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-all space-y-2.5 flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                        fb.targetType === 'test'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                          : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                      }`}>
+                        {fb.targetType === 'test' ? '📝 Test Rating' : '📖 Note Review'}
+                      </span>
+
+                      <div className="flex items-center gap-0.5 text-amber-400">
+                        {[...Array(fb.rating || 5)].map((_, s) => (
+                          <Star key={s} className="w-3 h-3 fill-current" />
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 truncate">
+                      {fb.targetTitle}
+                    </p>
+
+                    <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium line-clamp-3 italic">
+                      "{lang === 'kn' && fb.commentKn ? fb.commentKn : fb.comment}"
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500">
+                    <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                      <span>👤 {fb.userName || 'ಆಕಾಂಕ್ಷಿ'}</span>
+                      {fb.userDistrict && <span className="text-slate-400 font-normal"> ({fb.userDistrict})</span>}
+                    </div>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
+                      ✓ Verified
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
 
       default:
         return null;
@@ -3404,6 +3501,12 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
           </div>
         </div>
       )}
+
+      {/* Ask What You Want Modal */}
+      <AskWhatYouWantModal
+        isOpen={isAskModalOpen}
+        onClose={() => setIsAskModalOpen(false)}
+      />
 
     </div>
   );

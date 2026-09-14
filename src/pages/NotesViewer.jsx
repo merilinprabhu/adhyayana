@@ -28,12 +28,23 @@ import {
   Trash2,
   X,
   Plus,
-  Layers
+  Layers,
+  Star,
+  Send,
+  CheckCircle2,
+  MessageSquare
 } from 'lucide-react';
 
 export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
   const { user, isDeveloper, isEnrolled, isAuthenticated } = useAuth();
-  const { lang, exams, checkHasAccess, markNoteAsRead, userHighlights, saveHighlight, deleteHighlight } = useData();
+  const { lang, exams, checkHasAccess, markNoteAsRead, userHighlights, saveHighlight, deleteHighlight, addFeedback } = useData();
+
+  const [noteRating, setNoteRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [noteComment, setNoteComment] = useState('');
+  const [reviewerName, setReviewerName] = useState(user?.name || '');
+  const [reviewerDistrict, setReviewerDistrict] = useState('');
+  const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
 
   useEffect(() => {
     if (note?.id && markNoteAsRead) {
@@ -567,6 +578,131 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
             </div>
           )}
 
+        </div>
+
+        {/* Note Rating & Feedback Form */}
+        <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
+                <Star className="w-4 h-4 fill-current" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
+                  {lang === 'kn' ? '⭐ ಈ ನೋಟ್ಸ್ ಬಗ್ಗೆ ನಿಮ್ಮ ರೇಟಿಂಗ್ & ಸಲಹೆ' : '⭐ Rate this Note & Share Suggestions'}
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  {lang === 'kn' 
+                    ? 'ನೋಟ್ಸ್ ಗುಣಮಟ್ಟ ಮತ್ತು ವಿಷಯ ಸುಧಾರಣೆಗೆ ನಿಮ್ಮ ಅನಿಸಿಕೆ ನಮಗೆ ಅತ್ಯಂತ ಮುಖ್ಯ.' 
+                    : 'Your feedback helps us continuously update and improve study material.'}
+                </p>
+              </div>
+            </div>
+
+            {isRatingSubmitted && (
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-3 py-1 rounded-full border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 self-start sm:self-auto">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{lang === 'kn' ? '✓ ರೇಟಿಂಗ್ ದಾಖಲಾಗಿದೆ!' : '✓ Feedback Recorded!'}</span>
+              </span>
+            )}
+          </div>
+
+          {isRatingSubmitted ? (
+            <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs space-y-1 text-center">
+              <p className="font-black text-sm">
+                {lang === 'kn' ? '🎉 ನಿಮ್ಮ ಅಮೂಲ್ಯ ಅನಿಸಿಕೆಗೆ ಧನ್ಯವಾದಗಳು!' : '🎉 Thank you for rating this note!'}
+              </p>
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                {lang === 'kn' 
+                  ? 'ನಿಮ್ಮ ವಿಮರ್ಶೆಯನ್ನು ನಮ್ಮ ಡೆವಲಪರ್ ಪರಿಶೀಲಿಸಿ ಮುಖಪುಟದಲ್ಲಿ ಪ್ರದರ್ಶಿಸಬಹುದು.'
+                  : 'Your review has been recorded and may be featured on our home page.'}
+              </p>
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!noteComment.trim()) return;
+                addFeedback({
+                  targetType: 'note',
+                  targetId: note?.id || 'general_note',
+                  targetTitle: (lang === 'kn' && note?.titleKn ? note.titleKn : note?.title) || 'ಡಿಜಿಟಲ್ ನೋಟ್ಸ್',
+                  rating: noteRating,
+                  commentKn: noteComment.trim(),
+                  comment: noteComment.trim(),
+                  userName: reviewerName.trim() || user?.name || 'ಆಕಾಂಕ್ಷಿ (Aspirant)',
+                  userEmail: user?.email || '',
+                  userDistrict: reviewerDistrict.trim() || 'ಕರ್ನಾಟಕ'
+                });
+                setIsRatingSubmitted(true);
+              }}
+              className="space-y-3"
+            >
+              {/* Star Rating Selector */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {lang === 'kn' ? 'ನಿಮ್ಮ ರೇಟಿಂಗ್:' : 'Your Rating:'}
+                </span>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((starVal) => {
+                    const isFilled = (hoverRating || noteRating) >= starVal;
+                    return (
+                      <button
+                        key={starVal}
+                        type="button"
+                        onMouseEnter={() => setHoverRating(starVal)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        onClick={() => setNoteRating(starVal)}
+                        className="p-1 text-amber-400 hover:scale-125 transition-transform"
+                      >
+                        <Star className={`w-6 h-6 ${isFilled ? 'fill-current text-amber-400' : 'text-slate-300 dark:text-slate-600'}`} />
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="text-xs font-black text-amber-600 dark:text-amber-400">
+                  {noteRating} / 5 Stars
+                </span>
+              </div>
+
+              {/* Feedback Textarea */}
+              <div>
+                <textarea
+                  rows={2}
+                  required
+                  value={noteComment}
+                  onChange={(e) => setNoteComment(e.target.value)}
+                  placeholder={lang === 'kn' ? 'ಈ ನೋಟ್ಸ್‌ನ ವಿವರಣೆ, ಪಾಯಿಂಟ್ಸ್ ಅಥವಾ ಉಪಯುಕ್ತತೆಯ ಬಗ್ಗೆ ನಿಮ್ಮ ಅನಿಸಿಕೆ ತಿಳಿಸಿ...' : 'Write your review or suggestions about this study note...'}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden leading-relaxed"
+                />
+              </div>
+
+              {/* Student Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <input
+                  type="text"
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  placeholder={lang === 'kn' ? 'ನಿಮ್ಮ ಹೆಸರು (Name)' : 'Your Name'}
+                  className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                />
+                <input
+                  type="text"
+                  value={reviewerDistrict}
+                  onChange={(e) => setReviewerDistrict(e.target.value)}
+                  placeholder={lang === 'kn' ? 'ಜಿಲ್ಲೆ (ಉದಾ: ಶಿವಮೊಗ್ಗ, ಮೈಸೂರು)' : 'District (e.g. Mysuru)'}
+                  className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{lang === 'kn' ? 'ಅನಿಸಿಕೆ ಸಲ್ಲಿಸಿ' : 'Submit Review'}</span>
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
       </div>
