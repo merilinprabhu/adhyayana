@@ -23,7 +23,15 @@ import {
   MessageCircle,
   RefreshCw,
   Trash2,
-  Check
+  Check,
+  Flame,
+  Layers,
+  HelpCircle,
+  RotateCcw,
+  X,
+  Eye,
+  EyeOff,
+  ChevronLeft
 } from 'lucide-react';
 
 export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavigate }) => {
@@ -41,12 +49,27 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
     clearMistakes,
     leaderboard,
     referrals,
-    trackReferral
+    trackReferral,
+    flashcards,
+    flashcardProgress,
+    rateFlashcard,
+    resetDeckProgress,
+    studyStreak,
+    liveMockTest
   } = useData();
-  const [activeTab, setActiveTab] = useState('overview'); // overview | tests | notes | enrolled | history | bookmarks | mistakes | leaderboard | referrals
+  const [activeTab, setActiveTab] = useState('overview'); // overview | tests | notes | enrolled | history | bookmarks | mistakes | flashcards | leaderboard | referrals
   const [testSearch, setTestSearch] = useState('');
   const [noteSearch, setNoteSearch] = useState('');
   const [copiedReferral, setCopiedReferral] = useState(false);
+
+  // Scorecard Detailed Modal State
+  const [selectedAttemptForScorecard, setSelectedAttemptForScorecard] = useState(null);
+  const [scorecardFilter, setScorecardFilter] = useState('all'); // all | correct | wrong | skipped
+
+  // Flashcards Player State
+  const [selectedDeckId, setSelectedDeckId] = useState(flashcards?.[0]?.id || 'deck_polity');
+  const [cardIndex, setCardIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
 
   if (!user) {
     return (
@@ -126,14 +149,35 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
             </div>
           </div>
 
-          {/* Quick study streak */}
-          <div className="flex items-center gap-3 bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-700">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-              🔥
+          {/* Daily Study Streak & Goal Planner */}
+          <div className="bg-slate-800/90 p-4 rounded-2xl border border-slate-700 space-y-2 min-w-[220px]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg">
+                  🔥
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-slate-300">{lang === 'kn' ? 'ಸ್ಟಡಿ ಸ್ಟ್ರೀಕ್' : 'Study Streak'}</p>
+                  <p className="text-sm font-black text-amber-400">{studyStreak?.currentStreak || 1} {lang === 'kn' ? 'ದಿನಗಳು' : 'Days'}</p>
+                </div>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+                {studyStreak?.currentStreak >= 7 ? '🌟 On Fire' : 'Active'}
+              </span>
             </div>
-            <div>
-              <p className="text-xs font-bold text-slate-200">Study Streak</p>
-              <p className="text-sm font-extrabold text-amber-400">Active</p>
+
+            {/* Daily Targets Progress */}
+            <div className="pt-2 border-t border-slate-700/60 text-[10px] space-y-1">
+              <div className="flex justify-between text-slate-400">
+                <span>{lang === 'kn' ? 'ಇಂದಿನ ಪ್ರಶ್ನೆಗಳ ಗುರಿ:' : 'Daily Qs Target:'}</span>
+                <span className="font-bold text-slate-200">{studyStreak?.todayQuestionsAnswered || 0} / 10</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-amber-400 rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.min(100, ((studyStreak?.todayQuestionsAnswered || 0) / 10) * 100)}%` }}
+                ></div>
+              </div>
             </div>
           </div>
         </div>
@@ -283,6 +327,18 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
         </button>
 
         <button
+          onClick={() => setActiveTab('flashcards')}
+          className={`pb-3 px-3.5 sm:px-4 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 ${
+            activeTab === 'flashcards'
+              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-teal-500" />
+          <span>{lang === 'kn' ? 'ಫ್ಲ್ಯಾಶ್‌ಕಾರ್ಡ್ಸ್‌' : '3D Flashcards'} ({flashcards?.length || 0})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('bookmarks')}
           className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'bookmarks'
@@ -298,7 +354,7 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Subject Mastery Breakdown */}
+          {/* Subject Mastery Breakdown & AI Insights */}
           <div className="lg:col-span-7 space-y-6">
             <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
@@ -314,26 +370,45 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
                   <p>No tests taken yet. Attempt a mock test below to see your strengths and weaknesses!</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {Object.entries(subjectStats).map(([subj, data]) => {
-                    const pct = Math.round((data.correct / data.total) * 100);
-                    return (
-                      <div key={subj} className="space-y-1">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span className="text-slate-700 dark:text-slate-300">{subj}</span>
-                          <span className={pct >= 60 ? 'text-emerald-600' : 'text-amber-500'}>
-                            {pct}% ({data.correct}/{data.total})
-                          </span>
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    {Object.entries(subjectStats).map(([subj, data]) => {
+                      const pct = Math.round((data.correct / data.total) * 100);
+                      return (
+                        <div key={subj} className="space-y-1">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span className="text-slate-700 dark:text-slate-300">{subj}</span>
+                            <span className={pct >= 60 ? 'text-emerald-600' : 'text-amber-500'}>
+                              {pct}% ({data.correct}/{data.total})
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${pct >= 60 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                              style={{ width: `${pct}%` }}
+                            ></div>
+                          </div>
                         </div>
-                        <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${pct >= 60 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                            style={{ width: `${pct}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+
+                  {/* AI Diagnostic Advice */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 border border-emerald-500/20 text-xs space-y-1.5">
+                    <div className="flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                      <Sparkles className="w-4 h-4" />
+                      <span>{lang === 'kn' ? 'AI ಸ್ಮಾರ್ಟ್ ಅಧ್ಯಯನ ವಿಶ್ಲೇಷಣೆ:' : 'AI Study Coach Diagnosis:'}</span>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                      {Object.entries(subjectStats).some(([_, d]) => (d.correct / d.total) < 0.6)
+                        ? (lang === 'kn' 
+                            ? 'ಕೆಲವು ವಿಷಯಗಳಲ್ಲಿ ನಿಖರತೆ 60% ಕ್ಕಿಂತ ಕಡಿಮೆಯಿದೆ. "Mistake Box" ನಲ್ಲಿರುವ ಪ್ರಶ್ನೆಗಳನ್ನು ಪುನರಾವರ್ತಿಸಿ ಮತ್ತು ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳನ್ನು ಓದಿ.'
+                            : 'Accuracy is below 60% in certain topics. Practice your failed questions in the "Mistake Box" and review the relevant Digital Notes.')
+                        : (lang === 'kn'
+                            ? 'ಅದ್ಭುತ ನಿಖರತೆ! ನಿಮ್ಮ ಜ್ಞಾನವನ್ನು ಗಟ್ಟಿಗೊಳಿಸಲು ಲೈವ್ ಮಾಕ್ ಟೆಸ್ಟ್ ಮತ್ತು ಫ್ಲ್ಯಾಶ್‌ಕಾರ್ಡ್‌ಗಳನ್ನು ಅಭ್ಯಾಸ ಮಾಡಿ.'
+                            : 'Outstanding performance! Keep up your study streak and test with state-level live mock tests.')}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -695,7 +770,7 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
                     <div className="text-right">
                       <span className="text-lg font-black text-emerald-600">{att.score} Marks</span>
                       <p className="text-xs text-slate-400">{att.accuracy}% Accuracy</p>
@@ -708,6 +783,14 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
                     }`}>
                       {att.accuracy >= 50 ? 'PASSED' : 'NEEDS PRACTICE'}
                     </span>
+
+                    <button
+                      onClick={() => setSelectedAttemptForScorecard(att)}
+                      className="px-3.5 py-2 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 dark:bg-slate-800 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-400 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      <span>{lang === 'kn' ? 'ಅಂಕಪಟ್ಟಿ ವೀಕ್ಷಿಸಿ' : 'View Scorecard'}</span>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1030,7 +1113,399 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
         </div>
       )}
 
+      {/* Tab: 3D Memory Flashcards */}
+      {activeTab === 'flashcards' && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-teal-500" />
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {lang === 'kn' ? '3D ಇಂಟರ್ಯಾಕ್ಟಿವ್ ಮೆಮೊರಿ ಫ್ಲ್ಯಾಶ್‌ಕಾರ್ಡ್ಸ್‌ (Active Recall)' : '3D Interactive Memory Flashcards'}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {lang === 'kn' 
+                  ? 'ಕಾರ್ಡ್ ತಿರುಗಿಸಿ ಉತ್ತರ ನೋಡಿ, ನಿಮ್ಮ ನೆನಪಿನ ಶಕ್ತಿಯನ್ನು (Active Recall) ಪರೀಕ್ಷಿಸಿಕೊಳ್ಳಿ.'
+                  : 'Flip the 3D card to test your memory. Mark cards as "Mastered" or "Needs Practice" for spaced repetition.'}
+              </p>
+            </div>
+
+            {/* Deck Selector */}
+            <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1 scrollbar-thin">
+              {flashcards.map(deck => (
+                <button
+                  key={deck.id}
+                  onClick={() => {
+                    setSelectedDeckId(deck.id);
+                    setCardIndex(0);
+                    setIsFlipped(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    selectedDeckId === deck.id
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {deck.icon || '🗂️'} {lang === 'kn' && deck.deckNameKn ? deck.deckNameKn.split('(')[0].trim() : (deck.deckNameEn || deck.title || deck.subject)} ({deck.cards?.length || 0})
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Flashcard Player Card */}
+          {(() => {
+            const activeDeck = flashcards.find(d => d.id === selectedDeckId) || flashcards[0];
+            const cards = activeDeck?.cards || [];
+            const currentCard = cards[cardIndex] || null;
+            const progress = flashcardProgress[activeDeck?.id] || { mastered: [], needs_practice: [] };
+            const isMastered = currentCard && progress.mastered.includes(currentCard.id);
+            const needsPractice = currentCard && progress.needs_practice.includes(currentCard.id);
+
+            if (!currentCard) {
+              return (
+                <div className="text-center py-12 text-slate-400 text-xs">
+                  <p>No cards available in this deck.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="max-w-xl mx-auto space-y-6">
+                
+                {/* Deck progress bar */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-semibold text-slate-500">
+                    <span>Card {cardIndex + 1} of {cards.length}</span>
+                    <span className="text-emerald-600">
+                      🎯 {progress.mastered.length} Mastered • {progress.needs_practice.length} Review
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                      style={{ width: `${((cardIndex + 1) / cards.length) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* 3D Flippable Card Stage */}
+                <div 
+                  className="relative w-full h-72 sm:h-80 cursor-pointer select-none"
+                  style={{ perspective: '1200px' }}
+                  onClick={() => setIsFlipped(!isFlipped)}
+                >
+                  <div 
+                    className="w-full h-full relative transition-transform duration-500 rounded-3xl shadow-xl"
+                    style={{ 
+                      transformStyle: 'preserve-3d', 
+                      transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' 
+                    }}
+                  >
+                    {/* Front Face (Question) */}
+                    <div 
+                      className="absolute inset-0 w-full h-full bg-gradient-to-br from-emerald-600 to-teal-800 text-white p-8 rounded-3xl flex flex-col justify-between shadow-2xl border border-emerald-400/30"
+                      style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider">
+                          {lang === 'kn' && activeDeck.deckNameKn ? activeDeck.deckNameKn.split('(')[0].trim() : (activeDeck.deckNameEn || activeDeck.title || activeDeck.subject)}
+                        </span>
+                        <span className="text-xs text-emerald-100 flex items-center gap-1">
+                          <RotateCcw className="w-3.5 h-3.5" /> Tap to Flip
+                        </span>
+                      </div>
+
+                      <div className="text-center space-y-3">
+                        <p className="text-xs text-emerald-200 uppercase font-semibold">
+                          {lang === 'kn' ? 'ಪ್ರಶ್ನೆ / ವಿಷಯ' : 'Concept / Question'}
+                        </p>
+                        <h4 className="text-lg sm:text-xl font-extrabold leading-snug">
+                          {lang === 'kn' && currentCard.frontKn ? currentCard.frontKn : (currentCard.front || currentCard.frontEn)}
+                        </h4>
+                      </div>
+
+                      <div className="text-center text-[11px] text-emerald-200/80">
+                        👆 {lang === 'kn' ? 'ಉತ್ತರ ನೋಡಲು ಕಾರ್ಡ್ ಮೇಲೆ ಕ್ಲಿಕ್ ಮಾಡಿ' : 'Click anywhere on card to reveal answer'}
+                      </div>
+                    </div>
+
+                    {/* Back Face (Answer / Explanation) */}
+                    <div 
+                      className="absolute inset-0 w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8 rounded-3xl flex flex-col justify-between shadow-2xl border border-amber-500/30"
+                      style={{ 
+                        backfaceVisibility: 'hidden', 
+                        WebkitBackfaceVisibility: 'hidden',
+                        transform: 'rotateY(180deg)' 
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                          💡 Key Answer & Exam Tip
+                        </span>
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <RotateCcw className="w-3.5 h-3.5" /> Tap to Flip Back
+                        </span>
+                      </div>
+
+                      <div className="text-center space-y-3">
+                        <p className="text-xs text-amber-400 uppercase font-semibold">
+                          {lang === 'kn' ? 'ನಿಖರ ಉತ್ತರ & ವಿವರಣೆ' : 'Direct Fact & Solution'}
+                        </p>
+                        <h4 className="text-sm sm:text-base font-bold leading-relaxed text-slate-100">
+                          {lang === 'kn' && currentCard.backKn ? currentCard.backKn : (currentCard.back || currentCard.backEn)}
+                        </h4>
+                      </div>
+
+                      <div className="text-center text-[10px] text-slate-400">
+                        {lang === 'kn' ? 'ಕಾರ್ಡ್ ತಿರುಗಿಸಲು ಮತ್ತೊಮ್ಮೆ ಕ್ಲಿಕ್ ಮಾಡಿ' : 'Tap again to flip back to question'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Controls & Rating */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (cardIndex > 0) {
+                          setCardIndex(cardIndex - 1);
+                          setIsFlipped(false);
+                        }
+                      }}
+                      disabled={cardIndex === 0}
+                      className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-40 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4 inline" /> {lang === 'kn' ? 'ಹಿಂದಿನದು' : 'Prev'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (cardIndex < cards.length - 1) {
+                          setCardIndex(cardIndex + 1);
+                          setIsFlipped(false);
+                        }
+                      }}
+                      disabled={cardIndex === cards.length - 1}
+                      className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-40 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    >
+                      {lang === 'kn' ? 'ಮುಂದಿನದು' : 'Next'} <ChevronRight className="w-4 h-4 inline" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => rateFlashcard(activeDeck.id, currentCard.id, 'needs_practice')}
+                      className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                        needsPractice
+                          ? 'bg-amber-500 text-slate-950 font-black ring-2 ring-amber-400'
+                          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-800 hover:bg-amber-100'
+                      }`}
+                    >
+                      ⚠️ {lang === 'kn' ? 'ಮತ್ತೆ ಓದಬೇಕು' : 'Need Practice'}
+                    </button>
+                    <button
+                      onClick={() => rateFlashcard(activeDeck.id, currentCard.id, 'mastered')}
+                      className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                        isMastered
+                          ? 'bg-emerald-600 text-white font-black ring-2 ring-emerald-400'
+                          : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                      }`}
+                    >
+                      ✓ {lang === 'kn' ? 'ಪರಿಪೂರ್ಣ (Mastered)' : 'Mastered'}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Detailed Scorecard Modal */}
+      {selectedAttemptForScorecard && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-slate-950 uppercase tracking-wider">
+                  Comprehensive Test Scorecard
+                </span>
+                <h3 className="text-lg sm:text-xl font-black">{selectedAttemptForScorecard.testTitle}</h3>
+                <p className="text-xs text-slate-300">
+                  Attempted on: {new Date(selectedAttemptForScorecard.timestamp).toLocaleString()} • Time: {Math.round((selectedAttemptForScorecard.timeSpentSeconds || 0) / 60)} mins
+                </p>
+              </div>
+
+              <button
+                onClick={() => setSelectedAttemptForScorecard(null)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Score Summary Metrics */}
+            <div className="p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] uppercase font-bold text-slate-400">Total Score</p>
+                <p className="text-xl font-black text-emerald-600">{selectedAttemptForScorecard.score} Marks</p>
+              </div>
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] uppercase font-bold text-slate-400">Accuracy</p>
+                <p className="text-xl font-black text-blue-600">{selectedAttemptForScorecard.accuracy}%</p>
+              </div>
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] uppercase font-bold text-slate-400">Correct / Total</p>
+                <p className="text-xl font-black text-slate-800 dark:text-slate-200">
+                  {selectedAttemptForScorecard.correctAnswers || 0} / {selectedAttemptForScorecard.totalQuestions || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] uppercase font-bold text-slate-400">Status</p>
+                <p className={`text-xl font-black ${selectedAttemptForScorecard.accuracy >= 50 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  {selectedAttemptForScorecard.accuracy >= 50 ? 'PASSED' : 'RETRY'}
+                </p>
+              </div>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 overflow-x-auto">
+              <button
+                onClick={() => setScorecardFilter('all')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  scorecardFilter === 'all'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                All ({(selectedAttemptForScorecard.questionResults || []).length})
+              </button>
+              <button
+                onClick={() => setScorecardFilter('correct')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  scorecardFilter === 'correct'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600'
+                }`}
+              >
+                ✓ Correct ({(selectedAttemptForScorecard.questionResults || []).filter(q => q.isCorrect).length})
+              </button>
+              <button
+                onClick={() => setScorecardFilter('wrong')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  scorecardFilter === 'wrong'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-red-50 dark:bg-red-950/40 text-red-600'
+                }`}
+              >
+                ✗ Wrong ({(selectedAttemptForScorecard.questionResults || []).filter(q => q.userAnswer !== null && q.userAnswer !== undefined && !q.isCorrect).length})
+              </button>
+              <button
+                onClick={() => setScorecardFilter('skipped')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  scorecardFilter === 'skipped'
+                    ? 'bg-amber-500 text-slate-950 font-black'
+                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600'
+                }`}
+              >
+                ⏭️ Skipped ({(selectedAttemptForScorecard.questionResults || []).filter(q => q.userAnswer === null || q.userAnswer === undefined).length})
+              </button>
+            </div>
+
+            {/* Questions Review List */}
+            <div className="p-6 overflow-y-auto space-y-4 max-h-[50vh]">
+              {(selectedAttemptForScorecard.questionResults || [])
+                .filter(q => {
+                  if (scorecardFilter === 'correct') return q.isCorrect;
+                  if (scorecardFilter === 'wrong') return q.userAnswer !== null && q.userAnswer !== undefined && !q.isCorrect;
+                  if (scorecardFilter === 'skipped') return q.userAnswer === null || q.userAnswer === undefined;
+                  return true;
+                })
+                .map((q, idx) => (
+                  <div 
+                    key={q.id || idx}
+                    className={`p-4 rounded-2xl border text-xs space-y-3 ${
+                      q.isCorrect
+                        ? 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/20'
+                        : q.userAnswer === null || q.userAnswer === undefined
+                        ? 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
+                        : 'border-red-200 dark:border-red-900/50 bg-red-50/20 dark:bg-red-950/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase text-slate-400">
+                        Q{idx + 1} • {q.subject || 'General Studies'}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        q.isCorrect
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : q.userAnswer === null || q.userAnswer === undefined
+                          ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                          : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                      }`}>
+                        {q.isCorrect ? '+1.0 Correct' : q.userAnswer === null || q.userAnswer === undefined ? '0.0 Skipped' : '-0.25 Incorrect'}
+                      </span>
+                    </div>
+
+                    <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                      {q.questionKn || q.question}
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {q.options?.map((opt, oIdx) => {
+                        const isCorrectOpt = oIdx === q.correctAnswer;
+                        const isUserOpt = oIdx === q.userAnswer;
+                        return (
+                          <div
+                            key={oIdx}
+                            className={`p-2.5 rounded-xl border text-[11px] flex items-center justify-between ${
+                              isCorrectOpt
+                                ? 'border-emerald-500 bg-emerald-100/70 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold'
+                                : isUserOpt
+                                ? 'border-red-500 bg-red-100/70 dark:bg-red-950 text-red-900 dark:text-red-200'
+                                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            <span>{String.fromCharCode(65 + oIdx)}. {opt}</span>
+                            {isCorrectOpt && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                            {isUserOpt && !isCorrectOpt && <X className="w-3.5 h-3.5 text-red-500" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {q.explanation && (
+                      <div className="p-3 bg-white dark:bg-slate-900/80 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                        <p className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mb-0.5">
+                          💡 {lang === 'kn' ? 'ವಿವರಣೆ & ಆಧಾರ:' : 'Detailed Solution:'}
+                        </p>
+                        <p>{q.explanationKn || q.explanation}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+              <button
+                onClick={() => setSelectedAttemptForScorecard(null)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                Close Scorecard
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
+
 

@@ -376,7 +376,8 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     razorpayKeyId,
     updateRazorpayKeyId,
     parseGoogleSheetCSV,
-    fetchLiveGoogleSheetCSV
+    fetchLiveGoogleSheetCSV,
+    generateAiDailyContent
   } = useData();
 
   const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | analytics | access | notices | broadcast
@@ -1491,7 +1492,24 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* 1-Click AI Daily Content Generator Button */}
+          <button
+            onClick={() => {
+              const res = generateAiDailyContent();
+              showToast(
+                lang === 'kn' 
+                  ? '✨ ಇಂದಿನ 5 ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು & 10 ಪ್ರಶ್ನೆಗಳ ರಸಪ್ರಶ್ನೆ AI ಮೂಲಕ ರಚನೆಯಾಗಿದೆ!' 
+                  : '✨ 5 Current Affairs & 10-Q Daily Quiz Auto-Generated with AI!'
+              );
+            }}
+            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all hover:scale-105"
+            title="Auto generate today's Current Affairs & Daily Quiz with AI"
+          >
+            <Sparkles className="w-4 h-4 text-slate-950" />
+            <span>{lang === 'kn' ? '✨ 1-ಕ್ಲಿಕ್ AI ದಿನಪತ್ರಿಕೆ & ರಸಪ್ರಶ್ನೆ ರಚಿಸಿ' : '✨ 1-Click AI Daily Content'}</span>
+          </button>
+
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-900/60 border border-purple-700 text-xs text-purple-200">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Cloud Sync: <strong>{cloudStatus}</strong></span>
