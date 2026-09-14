@@ -1984,6 +1984,11 @@ export const DataProvider = ({ children }) => {
             created_at: fb.createdAt || new Date().toISOString()
           });
         }
+        await supabase.from('app_settings').upsert({
+          key: 'feedbacks_data',
+          value: allFeedbacksToPush,
+          updated_at: new Date().toISOString()
+        });
         logs.push(`✓ Synced ${allFeedbacksToPush.length} Verified Reviews & Ratings to Cloud`);
       } catch (fbSyncErr) {
         console.warn('Feedbacks sync notice:', fbSyncErr);
@@ -2006,6 +2011,11 @@ export const DataProvider = ({ children }) => {
             created_at: req.createdAt || new Date().toISOString()
           });
         }
+        await supabase.from('app_settings').upsert({
+          key: 'study_requests_data',
+          value: allRequestsToPush,
+          updated_at: new Date().toISOString()
+        });
         logs.push(`✓ Synced ${allRequestsToPush.length} Student Requests to Cloud`);
       } catch (reqSyncErr) {
         console.warn('Study requests sync notice:', reqSyncErr);
@@ -4549,6 +4559,11 @@ export const DataProvider = ({ children }) => {
       const updated = [newFeedback, ...prev];
       try {
         localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
+        supabase.from('app_settings').upsert({
+          key: 'feedbacks_data',
+          value: updated,
+          updated_at: new Date().toISOString()
+        });
       } catch (e) {}
       return updated;
     });
@@ -4572,17 +4587,6 @@ export const DataProvider = ({ children }) => {
       console.warn('Supabase feedback insert fallback:', e);
     }
 
-    try {
-      const { data: dbFeedbacks } = await supabase.from('feedbacks').select('*');
-      if (dbFeedbacks && dbFeedbacks.length > 0) {
-        await supabase.from('app_settings').upsert({
-          key: 'feedbacks_data',
-          value: dbFeedbacks,
-          updated_at: new Date().toISOString()
-        });
-      }
-    } catch (e) {}
-
     return newFeedback;
   }, []);
 
@@ -4599,7 +4603,11 @@ export const DataProvider = ({ children }) => {
       });
       try {
         localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
-        supabase.from('app_settings').upsert({ key: 'feedbacks_data', value: updated });
+        supabase.from('app_settings').upsert({
+          key: 'feedbacks_data',
+          value: updated,
+          updated_at: new Date().toISOString()
+        });
       } catch (e) {}
       return updated;
     });
@@ -4619,7 +4627,11 @@ export const DataProvider = ({ children }) => {
       const updated = prev.filter(fb => fb.id !== feedbackId);
       try {
         localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
-        supabase.from('app_settings').upsert({ key: 'feedbacks_data', value: updated });
+        supabase.from('app_settings').upsert({
+          key: 'feedbacks_data',
+          value: updated,
+          updated_at: new Date().toISOString()
+        });
       } catch (e) {}
       return updated;
     });
@@ -4643,6 +4655,11 @@ export const DataProvider = ({ children }) => {
       const updated = [newRequest, ...prev];
       try {
         localStorage.setItem(STORAGE_KEYS.STUDY_REQUESTS, JSON.stringify(updated));
+        supabase.from('app_settings').upsert({
+          key: 'study_requests_data',
+          value: updated,
+          updated_at: new Date().toISOString()
+        });
       } catch (e) {}
       return updated;
     });
@@ -4663,17 +4680,6 @@ export const DataProvider = ({ children }) => {
     } catch (e) {
       console.warn('Supabase study request insert fallback:', e);
     }
-
-    try {
-      const { data: dbRequests } = await supabase.from('study_requests').select('*');
-      if (dbRequests && dbRequests.length > 0) {
-        await supabase.from('app_settings').upsert({
-          key: 'study_requests_data',
-          value: dbRequests,
-          updated_at: new Date().toISOString()
-        });
-      }
-    } catch (e) {}
 
     return newRequest;
   }, []);
