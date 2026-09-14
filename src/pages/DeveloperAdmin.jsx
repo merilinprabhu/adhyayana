@@ -63,6 +63,7 @@ import {
 } from 'lucide-react';
 
 const SUPABASE_SCHEMA_SQL = `-- ADHYAYANA (ಅಧ್ಯಯನ) Complete Production Database Schema for Supabase
+-- Run this entire script in Supabase Dashboard -> SQL Editor -> Run
 
 -- 1. Exams Table (ಪರೀಕ್ಷಾ ಕೋರ್ಸ್‌ಗಳು)
 CREATE TABLE IF NOT EXISTS public.exams (
@@ -82,7 +83,9 @@ CREATE TABLE IF NOT EXISTS public.exams (
   enrolled_count INT DEFAULT 1,
   tests_count INT DEFAULT 0,
   notes_count INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  validity_days TEXT DEFAULT '365',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 1B. Subjects Table (ವಿಷಯವಾರು ವಿಭಾಗಗಳು)
@@ -93,8 +96,12 @@ CREATE TABLE IF NOT EXISTS public.subjects (
   name_kn TEXT,
   description TEXT,
   icon TEXT DEFAULT 'BookOpen',
+  image_url TEXT,
+  banner_url TEXT,
+  color TEXT DEFAULT 'emerald',
   display_order INT DEFAULT 1,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 2. Tests Table (ಅಣಕು ಪರೀಕ್ಷೆಗಳು)
@@ -112,9 +119,11 @@ CREATE TABLE IF NOT EXISTS public.tests (
   is_free_preview BOOLEAN DEFAULT false,
   price NUMERIC DEFAULT 0,
   is_free BOOLEAN DEFAULT false,
+  validity_days TEXT DEFAULT '30',
   free_questions_count INT DEFAULT 2,
   questions JSONB DEFAULT '[]'::jsonb,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 3. Notes Table (ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು)
@@ -128,10 +137,12 @@ CREATE TABLE IF NOT EXISTS public.notes (
   file_type TEXT DEFAULT 'rich_text',
   gdrive_url TEXT,
   read_time_minutes INT DEFAULT 10,
+  validity_days TEXT DEFAULT '30',
   price NUMERIC DEFAULT 0,
   is_free BOOLEAN DEFAULT false,
   content TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 4. User Profiles Table (ನೊಂದಾಯಿತ ವಿದ್ಯಾರ್ಥಿಗಳ ಪ್ರೊಫೈಲ್‌ಗಳು)
@@ -146,7 +157,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. User Test Attempts Table (ಪರೀಕ್ಷಾ ಸಲ್ಲಿಕೆಗಳು)
+-- 5. User Test Attempts Table (ಪರೀಕ್ಷಾ ಸಲ್ಲಿಕೆಗಳು & ಲೀಡರ್‌ಬೋರ್ಡ್)
 CREATE TABLE IF NOT EXISTS public.user_attempts (
   id TEXT PRIMARY KEY,
   user_id TEXT,
@@ -173,18 +184,35 @@ CREATE TABLE IF NOT EXISTS public.purchases (
   exam_title TEXT,
   amount_paid NUMERIC DEFAULT 0,
   payment_id TEXT,
-  payment_method TEXT DEFAULT 'RAZORPAY',
+  payment_method TEXT DEFAULT 'UPI_QR',
   utr_number TEXT,
   item_type TEXT DEFAULT 'exam',
   status TEXT DEFAULT 'ACTIVE',
-  valid_until TEXT DEFAULT 'LIFETIME',
+  valid_until TEXT DEFAULT '365',
   notes TEXT,
   reject_reason TEXT,
   approved_at TIMESTAMPTZ,
   purchased_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Developer & App Settings Table (UPI ID, Phone, Name, Razorpay)
+-- 7. Official Notices Table (ಅಧಿಕೃತ ಪ್ರಕಟಣಾ ಫಲಕ & ಸುತ್ತೋಲೆಗಳು)
+CREATE TABLE IF NOT EXISTS public.notices (
+  id TEXT PRIMARY KEY,
+  title_kn TEXT,
+  title_en TEXT,
+  category_kn TEXT DEFAULT 'ಅಧಿಕೃತ ಸುತ್ತೋಲೆ',
+  category_en TEXT DEFAULT 'Official Circular',
+  type TEXT DEFAULT 'text',
+  file_url TEXT,
+  description_kn TEXT,
+  description_en TEXT,
+  date TEXT,
+  is_new BOOLEAN DEFAULT true,
+  is_pinned BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. Developer & App Settings Table (UPI ID, Phone, Name, Razorpay, Layouts)
 CREATE TABLE IF NOT EXISTS public.app_settings (
   key TEXT PRIMARY KEY,
   value JSONB NOT NULL,
@@ -199,18 +227,30 @@ ALTER TABLE public.notes DROP CONSTRAINT IF EXISTS notes_exam_id_fkey;
 ALTER TABLE public.notes DROP CONSTRAINT IF EXISTS notes_subject_id_fkey;
 
 -- Safe Column Alterations for Existing Tables (Ensures no missing columns)
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS validity_days TEXT DEFAULT '365';
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS banner_url TEXT;
+ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS color TEXT DEFAULT 'emerald';
+ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS gsheet_url TEXT;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS is_free BOOLEAN DEFAULT false;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS validity_days TEXT DEFAULT '30';
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS free_questions_count INT DEFAULT 2;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS subject_id TEXT;
 ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS questions JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS gdrive_url TEXT;
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS content TEXT;
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS is_free BOOLEAN DEFAULT false;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS validity_days TEXT DEFAULT '30';
 ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS subject_id TEXT;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 ALTER TABLE public.user_attempts ADD COLUMN IF NOT EXISTS user_name TEXT;
 
@@ -220,11 +260,11 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS target_exam TEXT DEFAULT 'K
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ DEFAULT NOW();
 
-ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'RAZORPAY';
+ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'UPI_QR';
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS utr_number TEXT;
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS item_type TEXT DEFAULT 'exam';
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE';
-ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS valid_until TEXT DEFAULT 'LIFETIME';
+ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS valid_until TEXT DEFAULT '365';
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS reject_reason TEXT;
 ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
@@ -236,7 +276,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
 
--- Disable Row Level Security (RLS) to prevent any permission blocking, or set open access
+-- Disable Row Level Security (RLS) to prevent any permission blocking
 ALTER TABLE public.exams DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subjects DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tests DISABLE ROW LEVEL SECURITY;
@@ -244,29 +284,29 @@ ALTER TABLE public.notes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_attempts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notices DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_settings DISABLE ROW LEVEL SECURITY;
 `;
 
-// Helper: Calculate which select option (30, 90, 180, 365, LIFETIME) matches the validUntil timestamp
+// Helper: Calculate which select option matches the validUntil timestamp
 const getPurchaseValidityValue = (validUntil) => {
-  if (!validUntil || validUntil === 'LIFETIME') return 'LIFETIME';
+  if (!validUntil || validUntil === 'LIFETIME' || validUntil === '365') return '365';
   const expiryTime = new Date(validUntil).getTime();
-  if (isNaN(expiryTime)) return 'LIFETIME';
+  if (isNaN(expiryTime)) return '365';
   const diffDays = Math.round((expiryTime - Date.now()) / (1000 * 60 * 60 * 24));
   if (diffDays <= 45) return '30';
   if (diffDays <= 110) return '90';
   if (diffDays <= 220) return '180';
-  if (diffDays <= 450) return '365';
-  return 'LIFETIME';
+  return '365';
 };
 
 // Helper: Format human-readable expiration badge string
 const getPurchaseExpiryLabel = (validUntil, lang = 'kn') => {
-  if (!validUntil || validUntil === 'LIFETIME') {
-    return lang === 'kn' ? '♾️ ಜೀವಿತಾವಧಿ (Lifetime)' : '♾️ Lifetime Access';
+  if (!validUntil || validUntil === 'LIFETIME' || validUntil === '365') {
+    return lang === 'kn' ? '365 ದಿನಗಳ ಪ್ರವೇಶ (1 Year)' : '365 Days Pass (1 Year)';
   }
   const expiryDate = new Date(validUntil);
-  if (isNaN(expiryDate.getTime())) return validUntil;
+  if (isNaN(expiryDate.getTime())) return `${validUntil} ದಿನಗಳು`;
   const diffDays = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   const dateStr = expiryDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   if (diffDays <= 0) {
@@ -277,19 +317,19 @@ const getPurchaseExpiryLabel = (validUntil, lang = 'kn') => {
     : `⏳ Valid till ${dateStr} (${diffDays} days left)`;
 };
 
-export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => {
+export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => {
   const { user } = useAuth();
   const { 
-    lang, 
-    exams, 
-    subjects,
-    tests, 
-    notes, 
-    profiles,
-    allAttempts,
-    allPurchases,
-    cloudStatus,
-    isCloudSyncing,
+    lang = 'kn', 
+    exams = [], 
+    subjects = [], 
+    tests = [], 
+    notes = [],
+    profiles = [],
+    allAttempts = [],
+    allPurchases = [],
+    isCloudSyncing = false,
+    cloudStatus = 'Connected',
     syncFromSupabase,
     seedSupabaseDatabase,
     grantStudentAccess,
@@ -309,16 +349,22 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     developerUpiQrImage,
     updateDeveloperPaymentSettings,
     addExam, 
+    updateExam,
     deleteExam, 
+    duplicateExam,
     addSubject,
     updateSubject,
     deleteSubject,
+    duplicateSubject,
     addTest, 
     updateTest,
     deleteTest, 
+    duplicateTest,
     addNote, 
+    updateNote,
     deleteNote, 
-    notices,
+    duplicateNote,
+    notices = [],
     addNotice,
     updateNotice,
     deleteNotice,
@@ -338,7 +384,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
   const [copiedSql, setCopiedSql] = useState(false);
   const [seedResult, setSeedResult] = useState('');
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const [editingExamId, setEditingExamId] = useState(null);
+  const [editingSubjectId, setEditingSubjectId] = useState(null);
   const [editingTestId, setEditingTestId] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
 
   // Broadcast & Email Automation State
   const [emailForm, setEmailForm] = useState(emailConfig || {
@@ -440,6 +489,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     totalMarks: 50,
     negativeMarking: 0.25,
     price: 49,
+    validityDays: '60', // '10', '20', '30', '60', '90', '180', '365', 'LIFETIME'
     isFree: false,
     freeQuestionsCount: 5,
     sourceType: 'gsheet_url', // gsheet | gsheet_url | manual | gdrive
@@ -460,6 +510,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     titleKn: '',
     category: 'General',
     price: 29,
+    validityDays: '30', // '10', '20', '30', '60', '90', '180', '365', 'LIFETIME'
     isFree: false,
     fileType: 'rich_text', // rich_text | gdrive_pdf
     gdriveUrl: '',
@@ -712,22 +763,30 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     showToast(lang === 'kn' ? 'ಪಾವತಿ & UPI QR ಸೆಟ್ಟಿಂಗ್ಸ್ ಮತ್ತು QR ಇಮೇಜ್ ಉಳಿಸಲಾಗಿದೆ!' : 'Direct Payment & UPI QR Settings Updated Successfully!');
   };
 
-  // Handle Exam Creation
-  const handleCreateExam = async (e) => {
-    e.preventDefault();
-    if (!examForm.title) return;
-
-    const syllabusArray = examForm.syllabusText.split(',').map(s => s.trim()).filter(Boolean);
-    await addExam({
-      ...examForm,
-      price: Number(examForm.price),
-      originalPrice: Number(examForm.originalPrice),
-      syllabus: syllabusArray,
-      testsCount: 0,
-      notesCount: 0
+  // Handle Exam Edit Start
+  const handleStartEditExam = (examToEdit) => {
+    setEditingExamId(examToEdit.id);
+    setActiveTab('exams');
+    setExamForm({
+      title: examToEdit.title || '',
+      shortName: examToEdit.shortName || '',
+      category: examToEdit.category || 'State Civil Services',
+      description: examToEdit.description || '',
+      descriptionKn: examToEdit.descriptionKn || '',
+      price: examToEdit.price !== undefined ? examToEdit.price : 499,
+      originalPrice: examToEdit.originalPrice !== undefined ? examToEdit.originalPrice : 1499,
+      isFree: Boolean(examToEdit.isFree),
+      banner: examToEdit.banner || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80',
+      syllabusText: Array.isArray(examToEdit.syllabus) ? examToEdit.syllabus.join(', ') : (examToEdit.syllabusText || ''),
+      badge: examToEdit.badge || 'Active Exam'
     });
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+    showToast(lang === 'kn' ? `ಪರೀಕ್ಷೆ "${examToEdit.title}" ಎಡಿಟ್ ಮಾಡಲು ಲೋಡ್ ಮಾಡಲಾಗಿದೆ.` : `Loaded "${examToEdit.title}" for editing.`);
+  };
 
-    showToast(lang === 'kn' ? 'ಹೊಸ ಪರೀಕ್ಷಾ ವಿಭಾಗ ರಚಿಸಲಾಗಿದೆ & Supabase ಗೆ ಸಿಂಕ್ ಆಗಿದೆ!' : 'New Exam Type Created & Synced to Cloud!');
+  // Handle Cancel Exam Edit
+  const handleCancelEditExam = () => {
+    setEditingExamId(null);
     setExamForm({
       title: '',
       shortName: '',
@@ -740,6 +799,126 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       banner: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80',
       syllabusText: 'General Studies, History of Karnataka, Mental Ability',
       badge: 'New Exam'
+    });
+  };
+
+  // Handle Exam Creation / Update
+  const handleCreateExam = async (e) => {
+    e.preventDefault();
+    if (!examForm.title) return;
+
+    const syllabusArray = examForm.syllabusText.split(',').map(s => s.trim()).filter(Boolean);
+    const isFreeChecked = Boolean(examForm.isFree) || Number(examForm.price) === 0;
+    const examPayload = {
+      ...examForm,
+      price: isFreeChecked ? 0 : Number(examForm.price),
+      originalPrice: Number(examForm.originalPrice),
+      isFree: isFreeChecked,
+      syllabus: syllabusArray,
+    };
+
+    if (editingExamId) {
+      await updateExam(editingExamId, examPayload);
+      showToast(lang === 'kn' ? 'ಪರೀಕ್ಷಾ ವಿವರಗಳು ಯಶಸ್ವಿಯಾಗಿ ಅಪ್ಡೇಟ್ ಆಗಿವೆ!' : 'Exam details updated and synced!');
+      setEditingExamId(null);
+    } else {
+      await addExam({
+        ...examPayload,
+        testsCount: 0,
+        notesCount: 0
+      });
+      showToast(lang === 'kn' ? 'ಹೊಸ ಪರೀಕ್ಷಾ ವಿಭಾಗ ರಚಿಸಲಾಗಿದೆ & Supabase ಗೆ ಸಿಂಕ್ ಆಗಿದೆ!' : 'New Exam Type Created & Synced to Cloud!');
+    }
+
+    setExamForm({
+      title: '',
+      shortName: '',
+      category: 'State Civil Services',
+      description: '',
+      descriptionKn: '',
+      price: 499,
+      originalPrice: 1499,
+      isFree: false,
+      banner: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80',
+      syllabusText: 'General Studies, History of Karnataka, Mental Ability',
+      badge: 'New Exam'
+    });
+  };
+
+  // Handle Duplicate Items
+  const handleDuplicateExam = async (examToDup) => {
+    await duplicateExam(examToDup);
+    showToast(lang === 'kn' ? `✓ "${examToDup.title}" ನಕಲು ಯಶಸ್ವಿಯಾಗಿ ರಚಿಸಲಾಗಿದೆ!` : `✓ Duplicated "${examToDup.title}" successfully!`);
+  };
+
+  const handleDuplicateSubject = async (subjToDup) => {
+    await duplicateSubject(subjToDup);
+    showToast(lang === 'kn' ? `✓ "${subjToDup.name}" ವಿಷಯದ ನಕಲು ರಚಿಸಲಾಗಿದೆ!` : `✓ Duplicated "${subjToDup.name}" successfully!`);
+  };
+
+  const handleDuplicateTest = async (testToDup) => {
+    await duplicateTest(testToDup);
+    showToast(lang === 'kn' ? `✓ "${testToDup.title}" ಟೆಸ್ಟ್‌ನ ನಕಲು ರಚಿಸಲಾಗಿದೆ!` : `✓ Duplicated "${testToDup.title}" successfully!`);
+  };
+
+  const handleDuplicateNote = async (noteToDup) => {
+    await duplicateNote(noteToDup);
+    showToast(lang === 'kn' ? `✓ "${noteToDup.title}" ನೋಟ್ಸ್‌ನ ನಕಲು ರಚಿಸಲಾಗಿದೆ!` : `✓ Duplicated "${noteToDup.title}" successfully!`);
+  };
+
+  // Handle Subject Edit Start
+  const handleStartEditSubject = (subjectToEdit) => {
+    setEditingSubjectId(subjectToEdit.id);
+    setActiveTab('subjects');
+    setSubjectForm({
+      examId: subjectToEdit.examId || exams[0]?.id || '',
+      name: subjectToEdit.name || '',
+      nameKn: subjectToEdit.nameKn || subjectToEdit.name || '',
+      description: subjectToEdit.description || '',
+      icon: subjectToEdit.icon || 'BookOpen'
+    });
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+    showToast(lang === 'kn' ? `ವಿಷಯ "${subjectToEdit.name}" ಎಡಿಟ್ ಮಾಡಲು ಲೋಡ್ ಮಾಡಲಾಗಿದೆ.` : `Loaded "${subjectToEdit.name}" for editing.`);
+  };
+
+  // Handle Cancel Subject Edit
+  const handleCancelEditSubject = () => {
+    setEditingSubjectId(null);
+    setSubjectForm({
+      examId: exams[0]?.id || '',
+      name: '',
+      nameKn: '',
+      description: '',
+      icon: 'BookOpen'
+    });
+  };
+
+  // Handle Subject Creation / Update
+  const handleCreateSubject = async (e) => {
+    e.preventDefault();
+    if (!subjectForm.name) return;
+
+    const subjectPayload = {
+      ...subjectForm,
+      examId: subjectForm.examId || exams[0]?.id,
+      nameKn: subjectForm.nameKn || subjectForm.name,
+    };
+
+    if (editingSubjectId) {
+      await updateSubject(editingSubjectId, subjectPayload);
+      showToast(lang === 'kn' ? 'ವಿಷಯ ವಿವರಗಳು ಯಶಸ್ವಿಯಾಗಿ ಅಪ್ಡೇಟ್ ಆಗಿವೆ!' : 'Subject Section Updated Successfully!');
+      setEditingSubjectId(null);
+    } else {
+      await addSubject(subjectPayload);
+      showToast(lang === 'kn' ? 'ಹೊಸ ವಿಷಯ ವಿಭಾಗ ರಚಿಸಲಾಗಿದೆ!' : 'New Subject Section Created Successfully!');
+    }
+
+    setSubjectForm({
+      examId: subjectForm.examId || exams[0]?.id || '',
+      name: '',
+      nameKn: '',
+      description: '',
+      icon: 'BookOpen'
     });
   };
 
@@ -775,27 +954,6 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       setTestForm(prev => ({ ...prev, questions: res.questions }));
       showToast(`Successfully fetched & parsed ${res.count} live questions from Google Sheet URL!`);
     }
-  };
-
-  // Handle Subject Creation
-  const handleCreateSubject = async (e) => {
-    e.preventDefault();
-    if (!subjectForm.name) return;
-
-    await addSubject({
-      ...subjectForm,
-      examId: subjectForm.examId || exams[0]?.id,
-      nameKn: subjectForm.nameKn || subjectForm.name,
-    });
-
-    showToast(lang === 'kn' ? 'ಹೊಸ ವಿಷಯ ವಿಭಾಗ ರಚಿಸಲಾಗಿದೆ!' : 'New Subject Section Created Successfully!');
-    setSubjectForm({
-      examId: subjectForm.examId || exams[0]?.id || '',
-      name: '',
-      nameKn: '',
-      description: '',
-      icon: 'BookOpen'
-    });
   };
 
   // Handle Save Razorpay Key
@@ -900,14 +1058,15 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     }
 
     const selectedSubj = subjects.find(s => s.id === testForm.subjectId);
+    const isFreeTest = Boolean(testForm.isFree) || Number(testForm.price) === 0;
 
     const testPayload = {
       ...testForm,
       subjectId: testForm.subjectId || null,
       subjectName: selectedSubj?.name || null,
-      price: Number(testForm.price || 0),
-      isFree: Boolean(testForm.isFree),
-      freeQuestionsCount: Number(testForm.freeQuestionsCount || 0),
+      price: isFreeTest ? 0 : Number(testForm.price || 0),
+      isFree: isFreeTest,
+      freeQuestionsCount: isFreeTest ? (finalQuestions.length || 50) : Number(testForm.freeQuestionsCount || 0),
       durationMinutes: Number(testForm.durationMinutes),
       totalMarks: Number(testForm.totalMarks),
       negativeMarking: Number(testForm.negativeMarking),
@@ -979,42 +1138,92 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
     showToast('Question added to test draft.');
   };
 
-  // Handle Note Creation
+  // Handle Note Edit Start
+  const handleStartEditNote = (noteToEdit) => {
+    setEditingNoteId(noteToEdit.id);
+    setActiveTab('notes');
+    setNoteForm({
+      examId: noteToEdit.examId || exams[0]?.id || '',
+      subjectId: noteToEdit.subjectId || '',
+      title: noteToEdit.title || '',
+      titleKn: noteToEdit.titleKn || noteToEdit.title || '',
+      category: noteToEdit.category || 'General',
+      price: noteToEdit.price !== undefined ? noteToEdit.price : 29,
+      validityDays: noteToEdit.validityDays ? String(noteToEdit.validityDays) : '30',
+      isFree: Boolean(noteToEdit.isFree),
+      fileType: noteToEdit.fileType || (noteToEdit.gdriveUrl ? 'gdrive_pdf' : 'rich_text'),
+      gdriveUrl: noteToEdit.gdriveUrl || '',
+      readTimeMinutes: noteToEdit.readTimeMinutes || 10,
+      content: noteToEdit.content || ''
+    });
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+    showToast(lang === 'kn' ? `ನೋಟ್ಸ್ "${noteToEdit.title}" ಎಡಿಟ್ ಮಾಡಲು ಲೋಡ್ ಮಾಡಲಾಗಿದೆ.` : `Loaded "${noteToEdit.title}" for editing.`);
+  };
+
+  // Handle Cancel Note Edit
+  const handleCancelEditNote = () => {
+    setEditingNoteId(null);
+    setNoteForm({
+      examId: exams[0]?.id || '',
+      subjectId: '',
+      title: '',
+      titleKn: '',
+      category: 'General',
+      price: 29,
+      validityDays: '30',
+      isFree: false,
+      fileType: 'rich_text',
+      gdriveUrl: '',
+      readTimeMinutes: 10,
+      content: ''
+    });
+  };
+
+  // Handle Note Creation / Update
   const handleCreateNote = async (e) => {
     e.preventDefault();
     if (!noteForm.title) return;
 
     const selectedSubj = subjects.find(s => s.id === noteForm.subjectId);
+    const isFreeNote = Boolean(noteForm.isFree) || Number(noteForm.price) === 0;
 
-    await addNote({
+    const notePayload = {
       ...noteForm,
       subjectId: noteForm.subjectId || null,
       category: noteForm.category || selectedSubj?.name || 'General',
-      price: Number(noteForm.price || 0),
-      isFree: Boolean(noteForm.isFree),
-      readTimeMinutes: Number(noteForm.readTimeMinutes)
-    });
+      price: isFreeNote ? 0 : Number(noteForm.price || 0),
+      isFree: isFreeNote,
+      readTimeMinutes: Number(noteForm.readTimeMinutes),
+      validityDays: noteForm.validityDays ? String(noteForm.validityDays) : '30'
+    };
 
-    showToast(lang === 'kn' ? 'ಹೊಸ ನೋಟ್ಸ್ ಪ್ರಕಟಿಸಲಾಗಿದೆ!' : 'New Digital Study Note Published!');
-    
-    // Trigger Auto-broadcast modal
-    setBroadcastModalItem({
-      title: noteForm.titleKn || noteForm.title,
-      category: noteForm.category || 'Digital Notes',
-      type: 'note',
-      link: noteForm.gdriveUrl || '',
-      description: `ಹೊಸ ಅಧ್ಯಯನ ನೋಟ್ಸ್ ಲಭ್ಯವಿದೆ. ಓದುವ ಸಮಯ: ${noteForm.readTimeMinutes} ನಿಮಿಷಗಳು.`
-    });
-
-    // Auto-dispatch background email if enabled
-    if (emailConfig?.autoSendOnNote && (emailConfig?.serviceId || emailConfig?.resendApiKey)) {
-      sendBackgroundEmail({
-        subject: `[ಅಧ್ಯಯನ ADHYAYANA] ಹೊಸ ನೋಟ್ಸ್: ${noteForm.titleKn || noteForm.title}`,
+    if (editingNoteId) {
+      await updateNote(editingNoteId, notePayload);
+      showToast(lang === 'kn' ? 'ನೋಟ್ಸ್ ವಿವರಗಳು ಯಶಸ್ವಿಯಾಗಿ ಅಪ್ಡೇಟ್ ಆಗಿವೆ!' : 'Study Note updated and synced!');
+      setEditingNoteId(null);
+    } else {
+      await addNote(notePayload);
+      showToast(lang === 'kn' ? 'ಹೊಸ ನೋಟ್ಸ್ ಪ್ರಕಟಿಸಲಾಗಿದೆ!' : 'New Digital Study Note Published!');
+      
+      // Trigger Auto-broadcast modal
+      setBroadcastModalItem({
         title: noteForm.titleKn || noteForm.title,
-        category: noteForm.category || 'Study Material',
-        description: 'ಹೊಸ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಬಿಡುಗಡೆಯಾಗಿದೆ. ಈಗಲೇ ಅಧ್ಯಯನ ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ವೀಕ್ಷಿಸಿ.',
-        link: noteForm.gdriveUrl || window.location.origin
+        category: noteForm.category || 'Digital Notes',
+        type: 'note',
+        link: noteForm.gdriveUrl || '',
+        description: `ಹೊಸ ಅಧ್ಯಯನ ನೋಟ್ಸ್ ಲಭ್ಯವಿದೆ. ಓದುವ ಸಮಯ: ${noteForm.readTimeMinutes} ನಿಮಿಷಗಳು.`
       });
+
+      // Auto-dispatch background email if enabled
+      if (emailConfig?.autoSendOnNote && (emailConfig?.serviceId || emailConfig?.resendApiKey)) {
+        sendBackgroundEmail({
+          subject: `[ಅಧ್ಯಯನ ADHYAYANA] ಹೊಸ ನೋಟ್ಸ್: ${noteForm.titleKn || noteForm.title}`,
+          title: noteForm.titleKn || noteForm.title,
+          category: noteForm.category || 'Study Material',
+          description: 'ಹೊಸ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಬಿಡುಗಡೆಯಾಗಿದೆ. ಈಗಲೇ ಅಧ್ಯಯನ ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ವೀಕ್ಷಿಸಿ.',
+          link: noteForm.gdriveUrl || window.location.origin
+        });
+      }
     }
 
     setNoteForm({
@@ -1024,6 +1233,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       titleKn: '',
       category: 'General',
       price: 29,
+      validityDays: '30',
       isFree: false,
       fileType: 'rich_text',
       gdriveUrl: '',
@@ -1498,12 +1708,28 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       {activeTab === 'exams' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Create Exam Form */}
+          {/* Create / Edit Exam Form */}
           <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <FolderPlus className="w-4 h-4 text-purple-600" />
-              Create New Exam Section
-            </h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <FolderPlus className={`w-4 h-4 ${editingExamId ? 'text-blue-600' : 'text-purple-600'}`} />
+                <span>
+                  {editingExamId 
+                    ? (lang === 'kn' ? '✏️ ಪರೀಕ್ಷಾ ವಿಭಾಗ ತಿದ್ದುಪಡಿ (Edit Exam Section)' : '✏️ Edit / Update Exam Section')
+                    : (lang === 'kn' ? 'ಹೊಸ ಪರೀಕ್ಷಾ ವಿಭಾಗ ರಚಿಸಿ' : 'Create New Exam Section')
+                  }
+                </span>
+              </h3>
+              {editingExamId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEditExam}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-500 hover:text-red-600 bg-slate-100 dark:bg-slate-800 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  {lang === 'kn' ? '✕ ರದ್ದುಮಾಡಿ' : '✕ Cancel Edit'}
+                </button>
+              )}
+            </div>
 
             <form onSubmit={handleCreateExam} className="space-y-3 text-xs">
               <div>
@@ -1604,15 +1830,48 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
               </div>
 
               <div>
-                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                  Banner Image URL
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-semibold block text-slate-700 dark:text-slate-300">
+                    {lang === 'kn' ? 'ಬ್ಯಾನರ್ ಚಿತ್ರ (Banner Image URL / File)' : 'Banner Image (URL or Upload)'}
+                  </label>
+                  <label className="cursor-pointer text-[11px] font-bold text-purple-600 hover:text-purple-700 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800">
+                    📁 {lang === 'kn' ? 'ಚಿತ್ರ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ' : 'Upload File'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 3 * 1024 * 1024) {
+                            alert(lang === 'kn' ? 'ದಯವಿಟ್ಟು 3MB ಗಿಂತ ಕಡಿಮೆ ಇರುವ ಚಿತ್ರ ಆಯ್ಕೆಮಾಡಿ' : 'Please select image under 3MB');
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setExamForm(prev => ({ ...prev, banner: reader.result }));
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
                 <input
                   type="url"
+                  placeholder="https://... image link or upload above"
                   value={examForm.banner}
                   onChange={(e) => setExamForm({ ...examForm, banner: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none text-xs"
                 />
+                {examForm.banner && (
+                  <div className="mt-2 relative w-full h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100">
+                    <img src={examForm.banner} alt="Preview" className="w-full h-full object-cover" />
+                    <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded font-mono">
+                      Preview
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 pt-1">
@@ -1620,7 +1879,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                   type="checkbox"
                   id="isFreeExam"
                   checked={examForm.isFree}
-                  onChange={(e) => setExamForm({ ...examForm, isFree: e.target.checked })}
+                  onChange={(e) => setExamForm({ ...examForm, isFree: e.target.checked, price: e.target.checked ? 0 : (examForm.price || 499) })}
                   className="w-4 h-4 text-purple-600 rounded"
                 />
                 <label htmlFor="isFreeExam" className="font-semibold text-slate-700 dark:text-slate-300">
@@ -1630,10 +1889,17 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
+                className={`w-full py-2.5 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5 ${
+                  editingExamId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'
+                }`}
               >
-                <Plus className="w-4 h-4" />
-                <span>Publish Exam Section</span>
+                {editingExamId ? <CheckCircle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                <span>
+                  {editingExamId
+                    ? (lang === 'kn' ? '✓ ಪರೀಕ್ಷಾ ವಿವರ ನವೀಕರಿಸಿ (Update Exam)' : '✓ Update Exam Section')
+                    : (lang === 'kn' ? 'ಪರೀಕ್ಷಾ ವಿಭಾಗ ಪ್ರಕಟಿಸಿ' : 'Publish Exam Section')
+                  }
+                </span>
               </button>
             </form>
           </div>
@@ -1663,6 +1929,20 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
 
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => handleDuplicateExam(ex)}
+                      className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-600 transition-colors"
+                      title={lang === 'kn' ? 'ನಕಲು ಮಾಡಿ (Duplicate Exam)' : 'Duplicate Exam'}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleStartEditExam(ex)}
+                      className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600"
+                      title="Edit Exam"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => onSelectExam(ex)}
                       className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:text-purple-600 text-slate-600"
                       title="Preview"
@@ -1689,12 +1969,28 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
       {activeTab === 'subjects' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Create Subject Form */}
+          {/* Create / Edit Subject Form */}
           <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <FolderKanban className="w-4 h-4 text-purple-600" />
-              <span>{lang === 'kn' ? 'ಹೊಸ ವಿಷಯ ವಿಭಾಗ ರಚಿಸಿ (Create Subject Section)' : 'Create New Subject Section'}</span>
-            </h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <FolderKanban className={`w-4 h-4 ${editingSubjectId ? 'text-blue-600' : 'text-purple-600'}`} />
+                <span>
+                  {editingSubjectId 
+                    ? (lang === 'kn' ? '✏️ ವಿಷಯ ವಿಭಾಗ ತಿದ್ದುಪಡಿ (Edit Subject Section)' : '✏️ Edit / Update Subject Section')
+                    : (lang === 'kn' ? 'ಹೊಸ ವಿಷಯ ವಿಭಾಗ ರಚಿಸಿ (Create Subject Section)' : 'Create New Subject Section')
+                  }
+                </span>
+              </h3>
+              {editingSubjectId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEditSubject}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-500 hover:text-red-600 bg-slate-100 dark:bg-slate-800 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  {lang === 'kn' ? '✕ ರದ್ದುಮಾಡಿ' : '✕ Cancel Edit'}
+                </button>
+              )}
+            </div>
 
             <form onSubmit={handleCreateSubject} className="space-y-3 text-xs">
               <div>
@@ -1759,10 +2055,17 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
+                className={`w-full py-2.5 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5 ${
+                  editingSubjectId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'
+                }`}
               >
-                <Plus className="w-4 h-4" />
-                <span>{lang === 'kn' ? 'ವಿಷಯ ವಿಭಾಗ ಪ್ರಕಟಿಸಿ' : 'Publish Subject Section'}</span>
+                {editingSubjectId ? <CheckCircle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                <span>
+                  {editingSubjectId 
+                    ? (lang === 'kn' ? '✓ ವಿಷಯ ವಿವರ ನವೀಕರಿಸಿ (Update Subject)' : '✓ Update Subject Section')
+                    : (lang === 'kn' ? 'ವಿಷಯ ವಿಭಾಗ ಪ್ರಕಟಿಸಿ' : 'Publish Subject Section')
+                  }
+                </span>
               </button>
             </form>
           </div>
@@ -1808,6 +2111,20 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                       </div>
 
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDuplicateSubject(sub)}
+                          className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-600 transition-colors"
+                          title={lang === 'kn' ? 'ನಕಲು ಮಾಡಿ (Duplicate Subject)' : 'Duplicate Subject'}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleStartEditSubject(sub)}
+                          className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600"
+                          title="Edit Subject"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => deleteSubject(sub.id)}
                           className="p-2 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600"
@@ -1952,32 +2269,77 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                 </div>
 
                 {!testForm.isFree && (
-                  <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-2.5 pt-1">
+                    {/* Quick Validity Chart Presets */}
                     <div>
                       <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                        {lang === 'kn' ? 'ಶುಲ್ಕ ಮೊತ್ತ (Price ₹)' : 'Price Amount (₹)'}
+                        {lang === 'kn' ? '📊 ದರ & ವ್ಯಾಲಿಡಿಟಿ ಚಾರ್ಟ್ (Quick Validity Chart Presets):' : '📊 Validity & Price Preset Chart:'}
                       </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={testForm.price}
-                        onChange={(e) => setTestForm({ ...testForm, price: e.target.value })}
-                        placeholder="e.g. 49"
-                        className="w-full p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-bold"
-                      />
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                        {[
+                          { price: 10, days: 10, label: '₹10 • 10 ದಿನ' },
+                          { price: 20, days: 20, label: '₹20 • 20 ದಿನ' },
+                          { price: 30, days: 30, label: '₹30 • 30 ದಿನ' },
+                          { price: 49, days: 60, label: '₹49 • 60 ದಿನ' },
+                          { price: 99, days: 180, label: '₹99 • 6 ತಿಂಗಳು' },
+                          { price: 199, days: 365, label: '₹199 • 1 ವರ್ಷ' },
+                          { price: 299, days: 365, label: '₹299 • 365 ದಿನ' }
+                        ].map((preset) => (
+                          <button
+                            key={preset.price}
+                            type="button"
+                            onClick={() => setTestForm({ ...testForm, price: preset.price, validityDays: String(preset.days) })}
+                            className={`p-1.5 rounded-lg border text-[10px] font-bold transition-all text-center ${
+                              Number(testForm.price) === preset.price && String(testForm.validityDays) === String(preset.days)
+                                ? 'border-purple-600 bg-purple-600 text-white shadow-sm'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-purple-300'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                        {lang === 'kn' ? 'ಉಚಿತ ಮಾದರಿ ಪ್ರಶ್ನೆಗಳು' : 'Free Preview Qs Count'}
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={testForm.freeQuestionsCount}
-                        onChange={(e) => setTestForm({ ...testForm, freeQuestionsCount: e.target.value })}
-                        placeholder="e.g. 5 (First 5 Qs Free)"
-                        className="w-full p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-bold"
-                      />
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                          {lang === 'kn' ? 'ಶುಲ್ಕ (₹)' : 'Price (₹)'}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={testForm.price}
+                          onChange={(e) => setTestForm({ ...testForm, price: e.target.value })}
+                          placeholder="e.g. 49"
+                          className="w-full p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                          {lang === 'kn' ? 'ಮಾನ್ಯತೆ (ದಿನಗಳು)' : 'Validity (Days)'}
+                        </label>
+                        <input
+                          type="text"
+                          value={testForm.validityDays}
+                          onChange={(e) => setTestForm({ ...testForm, validityDays: e.target.value })}
+                          placeholder="e.g. 10, 20, 30, 365"
+                          className="w-full p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                          {lang === 'kn' ? 'ಉಚಿತ ಪ್ರಶ್ನೆಗಳು' : 'Free Preview Qs'}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={testForm.freeQuestionsCount}
+                          onChange={(e) => setTestForm({ ...testForm, freeQuestionsCount: e.target.value })}
+                          placeholder="e.g. 5"
+                          className="w-full p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-bold"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2324,6 +2686,13 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                       <Mail className="w-4 h-4" />
                     </button>
                     <button
+                      onClick={() => handleDuplicateTest(t)}
+                      className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-600 transition-colors"
+                      title={lang === 'kn' ? 'ನಕಲು ಮಾಡಿ (Duplicate Test)' : 'Duplicate Test'}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => handleStartEditTest(t)}
                       className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 transition-colors"
                       title={lang === 'kn' ? 'ಟೆಸ್ಟ್ ತಿದ್ದುಪಡಿ ಮಾಡಿ (Edit Test)' : 'Edit Test'}
@@ -2360,10 +2729,24 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
           
           {/* Note Form */}
           <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-600" />
-              Publish Digital Study Note / Google Drive PDF
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600" />
+                {editingNoteId 
+                  ? (lang === 'kn' ? '✏️ ನೋಟ್ಸ್ ತಿದ್ದುಪಡಿ (Edit Note)' : '✏️ Edit Study Note')
+                  : (lang === 'kn' ? 'ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಪ್ರಕಟಿಸಿ (Publish Study Note)' : 'Publish Digital Study Note / Google Drive PDF')
+                }
+              </h3>
+              {editingNoteId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEditNote}
+                  className="px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 rounded-lg hover:bg-rose-100 transition-colors"
+                >
+                  ✕ {lang === 'kn' ? 'ರದ್ದುಮಾಡಿ (Cancel)' : 'Cancel Edit'}
+                </button>
+              )}
+            </div>
 
             <form onSubmit={handleCreateNote} className="space-y-3 text-xs">
               <div>
@@ -2453,18 +2836,65 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                 </div>
 
                 {!noteForm.isFree && (
-                  <div>
-                    <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                      {lang === 'kn' ? 'ಶುಲ್ಕ ಮೊತ್ತ (Price ₹)' : 'Price Amount (₹)'}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={noteForm.price}
-                      onChange={(e) => setNoteForm({ ...noteForm, price: e.target.value })}
-                      placeholder="e.g. 29"
-                      className="w-full p-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 outline-none font-bold"
-                    />
+                  <div className="space-y-2.5 pt-1">
+                    {/* Quick Validity Chart Presets */}
+                    <div>
+                      <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                        {lang === 'kn' ? '📊 ದರ & ವ್ಯಾಲಿಡಿಟಿ ಚಾರ್ಟ್ (Quick Validity Chart Presets):' : '📊 Validity & Price Preset Chart:'}
+                      </label>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                        {[
+                          { price: 10, days: 10, label: '₹10 • 10 ದಿನ' },
+                          { price: 20, days: 20, label: '₹20 • 20 ದಿನ' },
+                          { price: 30, days: 30, label: '₹30 • 30 ದಿನ' },
+                          { price: 49, days: 60, label: '₹49 • 60 ದಿನ' },
+                          { price: 99, days: 180, label: '₹99 • 6 ತಿಂಗಳು' },
+                          { price: 199, days: 365, label: '₹199 • 1 ವರ್ಷ' },
+                          { price: 299, days: 365, label: '₹299 • 365 ದಿನ' }
+                        ].map((preset) => (
+                          <button
+                            key={preset.price}
+                            type="button"
+                            onClick={() => setNoteForm({ ...noteForm, price: preset.price, validityDays: String(preset.days) })}
+                            className={`p-1.5 rounded-lg border text-[10px] font-bold transition-all text-center ${
+                              Number(noteForm.price) === preset.price && String(noteForm.validityDays) === String(preset.days)
+                                ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                          {lang === 'kn' ? 'ಶುಲ್ಕ ಮೊತ್ತ (Price ₹)' : 'Price Amount (₹)'}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={noteForm.price}
+                          onChange={(e) => setNoteForm({ ...noteForm, price: e.target.value })}
+                          placeholder="e.g. 29"
+                          className="w-full p-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 outline-none font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                          {lang === 'kn' ? 'ಮಾನ್ಯತೆ ಅವಧಿ (Validity Days)' : 'Validity (Days)'}
+                        </label>
+                        <input
+                          type="text"
+                          value={noteForm.validityDays}
+                          onChange={(e) => setNoteForm({ ...noteForm, validityDays: e.target.value })}
+                          placeholder="e.g. 10, 20, 30, 365"
+                          className="w-full p-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 outline-none font-bold"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2528,10 +2958,15 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
+                className={`w-full py-2.5 ${editingNoteId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5`}
               >
-                <Plus className="w-4 h-4" />
-                <span>Publish Study Note</span>
+                {editingNoteId ? <CheckCircle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                <span>
+                  {editingNoteId 
+                    ? (lang === 'kn' ? '✓ ನೋಟ್ಸ್ ನವೀಕರಿಸಿ (Update Note)' : '✓ Update Study Note')
+                    : (lang === 'kn' ? 'ನೋಟ್ಸ್ ಪ್ರಕಟಿಸಿ (Publish Note)' : 'Publish Study Note')
+                  }
+                </span>
               </button>
             </form>
           </div>
@@ -2591,6 +3026,20 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                       title="Gmail ಮೂಲಕ ಕಳುಹಿಸಿ (1-Click Gmail Share)"
                     >
                       <Mail className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDuplicateNote(n)}
+                      className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-600 transition-colors"
+                      title={lang === 'kn' ? 'ನೋಟ್ಸ್ ನಕಲು ಮಾಡಿ (Duplicate Note)' : 'Duplicate Note'}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleStartEditNote(n)}
+                      className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 transition-colors"
+                      title={lang === 'kn' ? 'ನೋಟ್ಸ್ ತಿದ್ದುಪಡಿ ಮಾಡಿ (Edit Note)' : 'Edit Note'}
+                    >
+                      <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onSelectNote(n)}
@@ -3113,13 +3562,21 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                         <button
                           onClick={() => handleApprovePurchase(pur.id, pur.userEmail, pur.examTitle, '365')}
                           className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all"
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>{lang === 'kn' ? '✓ ಅನುಮೋದಿಸಿ (1 Year Pass)' : '✓ Approve & Unlock'}</span>
+                          <span>{lang === 'kn' ? '✓ 1 ವರ್ಷ ಅನ್‌ಲಾಕ್' : '✓ 1-Yr Unlock'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleApprovePurchase(pur.id, pur.userEmail, pur.examTitle, 'LIFETIME')}
+                          className="py-2.5 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          <span>{lang === 'kn' ? '✨ ಶಾಶ್ವತ (Lifetime)' : '✨ Lifetime'}</span>
                         </button>
 
                         <button
@@ -3127,7 +3584,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectNote, onSelectExam }) => 
                           className="py-2.5 px-3 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
                         >
                           <XCircle className="w-4 h-4" />
-                          <span>{lang === 'kn' ? '✕ ತಿರಸ್ಕರಿಸಿ (Reject)' : '✕ Reject Fake'}</span>
+                          <span>{lang === 'kn' ? '✕ ತಿರಸ್ಕರಿಸಿ' : '✕ Reject'}</span>
                         </button>
                       </div>
                     </div>

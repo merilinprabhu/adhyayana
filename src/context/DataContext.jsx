@@ -557,33 +557,31 @@ export const DataProvider = ({ children }) => {
       // 1. Fetch Exams
       const { data: dbExams, error: examErr } = await supabase.from('exams').select('*');
       if (!examErr && dbExams && dbExams.length > 0) {
-        const formattedExams = dbExams.map(ex => ({
-          id: ex.id,
-          title: ex.title,
-          shortName: ex.short_name || ex.shortName || '',
-          category: ex.category || 'State Civil Services',
-          description: ex.description || '',
-          descriptionKn: ex.description_kn || ex.descriptionKn || '',
-          price: Number(ex.price) || 0,
-          originalPrice: Number(ex.original_price || ex.originalPrice) || 0,
-          isFree: ex.is_free !== undefined ? ex.is_free : ex.isFree,
-          banner: ex.banner,
-          syllabus: Array.isArray(ex.syllabus) ? ex.syllabus : [],
-          badge: ex.badge || '',
-          rating: Number(ex.rating) || 5.0,
-          enrolledCount: ex.enrolled_count || ex.enrolledCount || 1,
-          testsCount: ex.tests_count || ex.testsCount || 0,
-          notesCount: ex.notes_count || ex.notesCount || 0,
-          createdAt: ex.created_at || ex.createdAt
-        }));
-
-        setExams(prev => {
-          const map = new Map(formattedExams.map(item => [item.id, item]));
-          prev.forEach(localItem => {
-            if (!map.has(localItem.id)) map.set(localItem.id, localItem);
-          });
-          return Array.from(map.values());
+        const formattedExams = dbExams.map(ex => {
+          const isFreeVal = ex.is_free !== undefined ? Boolean(ex.is_free) : (Number(ex.price) === 0);
+          return {
+            id: ex.id,
+            title: ex.title,
+            shortName: ex.short_name || ex.shortName || '',
+            category: ex.category || 'State Civil Services',
+            description: ex.description || '',
+            descriptionKn: ex.description_kn || ex.descriptionKn || '',
+            price: isFreeVal ? 0 : (Number(ex.price) || 0),
+            originalPrice: Number(ex.original_price || ex.originalPrice) || 0,
+            isFree: isFreeVal,
+            validityDays: String(ex.validity_days || ex.validityDays || '365'),
+            banner: ex.banner,
+            syllabus: Array.isArray(ex.syllabus) ? ex.syllabus : [],
+            badge: ex.badge || '',
+            rating: Number(ex.rating) || 5.0,
+            enrolledCount: ex.enrolled_count || ex.enrolledCount || 1,
+            testsCount: ex.tests_count || ex.testsCount || 0,
+            notesCount: ex.notes_count || ex.notesCount || 0,
+            createdAt: ex.created_at || ex.createdAt
+          };
         });
+
+        setExams(formattedExams);
         setCloudStatus('connected');
       }
 
@@ -604,103 +602,62 @@ export const DataProvider = ({ children }) => {
           createdAt: s.created_at || s.createdAt
         }));
 
-        setSubjects(prev => {
-          const map = new Map(formattedSubjs.map(item => [item.id, item]));
-          prev.forEach(localItem => {
-            if (!map.has(localItem.id)) {
-              map.set(localItem.id, localItem);
-            } else {
-              const dbItem = map.get(localItem.id);
-              map.set(localItem.id, {
-                ...localItem,
-                ...dbItem,
-                imageUrl: dbItem.imageUrl || localItem.imageUrl || '',
-                color: dbItem.color || localItem.color || 'emerald'
-              });
-            }
-          });
-          return Array.from(map.values());
-        });
+        setSubjects(formattedSubjs);
       }
 
-      // 3. Fetch Tests
-      const { data: dbTests, error: testErr } = await supabase.from('tests').select('*');
+      // 3. Fetch Tests (Latest created first)
+      const { data: dbTests, error: testErr } = await supabase.from('tests').select('*').order('created_at', { ascending: false });
       if (!testErr && dbTests && dbTests.length > 0) {
-        const formattedTests = dbTests.map(t => ({
-          id: t.id,
-          examId: t.exam_id || t.examId,
-          subjectId: t.subject_id || t.subjectId,
-          title: t.title,
-          titleKn: t.title_kn || t.titleKn || t.title,
-          durationMinutes: t.duration_minutes !== undefined ? Number(t.duration_minutes) : (t.durationMinutes || 30),
-          totalMarks: t.total_marks !== undefined ? Number(t.total_marks) : (t.totalMarks || 50),
-          negativeMarking: t.negative_marking !== undefined ? Number(t.negative_marking) : (t.negativeMarking || 0.25),
-          sourceType: t.source_type || t.sourceType || 'manual',
-          gsheetUrl: t.gsheet_url || t.gsheetUrl || '',
-          isFreePreview: t.is_free_preview !== undefined ? t.is_free_preview : t.isFreePreview,
-          isFree: t.is_free !== undefined ? t.is_free : (t.isFree || t.price === 0),
-          price: t.price !== undefined ? Number(t.price) : (t.price || 0),
-          freeQuestionsCount: t.free_questions_count !== undefined ? Number(t.free_questions_count) : (t.freeQuestionsCount !== undefined ? t.freeQuestionsCount : 2),
-          questions: Array.isArray(t.questions) ? t.questions : (typeof t.questions === 'string' ? JSON.parse(t.questions) : []),
-          createdAt: t.created_at || t.createdAt
-        }));
-
-        setTests(prev => {
-          const map = new Map(formattedTests.map(item => [item.id, item]));
-          prev.forEach(localItem => {
-            if (!map.has(localItem.id)) {
-              map.set(localItem.id, localItem);
-            } else {
-              const dbItem = map.get(localItem.id);
-              map.set(localItem.id, {
-                ...localItem,
-                ...dbItem,
-                gsheetUrl: dbItem.gsheetUrl || localItem.gsheetUrl || '',
-                sourceType: dbItem.sourceType || localItem.sourceType || 'gsheet_url',
-                questions: (Array.isArray(dbItem.questions) && dbItem.questions.length > 0) ? dbItem.questions : (localItem.questions || [])
-              });
-            }
-          });
-          return Array.from(map.values());
+        const formattedTests = dbTests.map(t => {
+          const isFreeVal = t.is_free !== undefined ? Boolean(t.is_free) : (Number(t.price) === 0);
+          return {
+            id: t.id,
+            examId: t.exam_id || t.examId,
+            subjectId: t.subject_id || t.subjectId,
+            title: t.title,
+            titleKn: t.title_kn || t.titleKn || t.title,
+            durationMinutes: t.duration_minutes !== undefined ? Number(t.duration_minutes) : (t.durationMinutes || 30),
+            totalMarks: t.total_marks !== undefined ? Number(t.total_marks) : (t.totalMarks || 50),
+            negativeMarking: t.negative_marking !== undefined ? Number(t.negative_marking) : (t.negativeMarking || 0.25),
+            sourceType: t.source_type || t.sourceType || 'manual',
+            gsheetUrl: t.gsheet_url || t.gsheetUrl || '',
+            isFreePreview: t.is_free_preview !== undefined ? t.is_free_preview : t.isFreePreview,
+            isFree: isFreeVal,
+            price: isFreeVal ? 0 : (Number(t.price) || 0),
+            validityDays: String(t.validity_days || t.validityDays || '30'),
+            freeQuestionsCount: t.free_questions_count !== undefined ? Number(t.free_questions_count) : (t.freeQuestionsCount !== undefined ? t.freeQuestionsCount : 2),
+            questions: Array.isArray(t.questions) ? t.questions : (typeof t.questions === 'string' ? JSON.parse(t.questions) : []),
+            createdAt: t.created_at || t.createdAt
+          };
         });
+
+        setTests(formattedTests);
       }
 
-      // 4. Fetch Notes
-      const { data: dbNotes, error: notesErr } = await supabase.from('notes').select('*');
+      // 4. Fetch Notes (Latest created first)
+      const { data: dbNotes, error: notesErr } = await supabase.from('notes').select('*').order('created_at', { ascending: false });
       if (!notesErr && dbNotes && dbNotes.length > 0) {
-        const formattedNotes = dbNotes.map(n => ({
-          id: n.id,
-          examId: n.exam_id || n.examId,
-          subjectId: n.subject_id || n.subjectId,
-          title: n.title,
-          titleKn: n.title_kn || n.titleKn || n.title,
-          category: n.category || '',
-          fileType: n.file_type || n.fileType || 'rich_text',
-          gdriveUrl: n.gdrive_url || n.gdriveUrl || '',
-          readTimeMinutes: n.read_time_minutes !== undefined ? Number(n.read_time_minutes) : (n.readTimeMinutes || 10),
-          isFree: n.is_free !== undefined ? n.is_free : (n.isFree || n.price === 0),
-          price: n.price !== undefined ? Number(n.price) : (n.price || 0),
-          content: n.content || '',
-          createdAt: n.created_at || n.createdAt
-        }));
-
-        setNotes(prev => {
-          const map = new Map(formattedNotes.map(item => [item.id, item]));
-          prev.forEach(localItem => {
-            if (!map.has(localItem.id)) {
-              map.set(localItem.id, localItem);
-            } else {
-              const dbItem = map.get(localItem.id);
-              map.set(localItem.id, {
-                ...localItem,
-                ...dbItem,
-                gdriveUrl: dbItem.gdriveUrl || localItem.gdriveUrl || '',
-                content: dbItem.content || localItem.content || ''
-              });
-            }
-          });
-          return Array.from(map.values());
+        const formattedNotes = dbNotes.map(n => {
+          const isFreeVal = n.is_free !== undefined ? Boolean(n.is_free) : (Number(n.price) === 0);
+          return {
+            id: n.id,
+            examId: n.exam_id || n.examId,
+            subjectId: n.subject_id || n.subjectId,
+            title: n.title,
+            titleKn: n.title_kn || n.titleKn || n.title,
+            category: n.category || '',
+            fileType: n.file_type || n.fileType || 'rich_text',
+            gdriveUrl: n.gdrive_url || n.gdriveUrl || '',
+            readTimeMinutes: n.read_time_minutes !== undefined ? Number(n.read_time_minutes) : (n.readTimeMinutes || 10),
+            validityDays: String(n.validity_days || n.validityDays || '30'),
+            isFree: isFreeVal,
+            price: isFreeVal ? 0 : (Number(n.price) || 0),
+            content: n.content || '',
+            createdAt: n.created_at || n.createdAt
+          };
         });
+
+        setNotes(formattedNotes);
       }
 
       // 5. Fetch Purchases & Orders
@@ -724,13 +681,7 @@ export const DataProvider = ({ children }) => {
           purchasedAt: p.purchased_at || p.purchasedAt
         }));
 
-        setPurchases(prev => {
-          const map = new Map(formattedPurchases.map(item => [item.id, item]));
-          prev.forEach(localItem => {
-            if (!map.has(localItem.id)) map.set(localItem.id, localItem);
-          });
-          return Array.from(map.values());
-        });
+        setPurchases(formattedPurchases);
       }
 
       // 5B. Fetch Official Notices
@@ -968,6 +919,7 @@ export const DataProvider = ({ children }) => {
       const allExamsToPush = exams.length > 0 ? exams : INITIAL_EXAMS;
       let examErrCount = 0;
       for (const exam of allExamsToPush) {
+        const isFreeVal = exam.isFree !== undefined ? Boolean(exam.isFree) : (Number(exam.price) === 0);
         const { error } = await supabase.from('exams').upsert({
           id: exam.id,
           title: exam.title,
@@ -975,9 +927,10 @@ export const DataProvider = ({ children }) => {
           category: exam.category || 'State Civil Services',
           description: exam.description || '',
           description_kn: exam.descriptionKn || exam.description_kn || '',
-          price: Number(exam.price) || 0,
+          price: isFreeVal ? 0 : (Number(exam.price) || 0),
           original_price: Number(exam.originalPrice || exam.original_price) || 0,
-          is_free: exam.isFree !== undefined ? exam.isFree : (Number(exam.price) === 0),
+          is_free: isFreeVal,
+          validity_days: String(exam.validityDays || exam.validity_days || '365'),
           banner: exam.banner,
           syllabus: Array.isArray(exam.syllabus) ? exam.syllabus : [],
           badge: exam.badge || 'Verified',
@@ -1005,7 +958,10 @@ export const DataProvider = ({ children }) => {
           name_kn: subj.nameKn || subj.name,
           description: subj.description || '',
           icon: subj.icon || 'BookOpen',
-          display_order: subj.order || 1
+          image_url: subj.imageUrl || subj.image_url || null,
+          banner_url: subj.bannerUrl || subj.banner_url || null,
+          color: subj.color || 'emerald',
+          display_order: subj.order || subj.display_order || 1
         });
         if (error) {
           console.error('Subject upsert error:', error);
@@ -1019,6 +975,7 @@ export const DataProvider = ({ children }) => {
       const allTestsToPush = tests.length > 0 ? tests : INITIAL_TESTS;
       let testErrCount = 0;
       for (const test of allTestsToPush) {
+        const isFreeVal = test.isFree !== undefined ? Boolean(test.isFree) : (Number(test.price) === 0);
         const { error } = await supabase.from('tests').upsert({
           id: test.id,
           exam_id: test.examId || null,
@@ -1031,8 +988,9 @@ export const DataProvider = ({ children }) => {
           source_type: test.sourceType || 'manual',
           gsheet_url: test.gsheetUrl || test.gsheet_url || null,
           is_free_preview: test.isFreePreview || false,
-          price: Number(test.price) || 0,
-          is_free: test.isFree !== undefined ? test.isFree : (Number(test.price) === 0),
+          price: isFreeVal ? 0 : (Number(test.price) || 0),
+          is_free: isFreeVal,
+          validity_days: String(test.validityDays || test.validity_days || '30'),
           free_questions_count: Number(test.freeQuestionsCount !== undefined ? test.freeQuestionsCount : 5),
           questions: Array.isArray(test.questions) ? test.questions : []
         });
@@ -1048,6 +1006,7 @@ export const DataProvider = ({ children }) => {
       const allNotesToPush = notes.length > 0 ? notes : INITIAL_NOTES;
       let noteErrCount = 0;
       for (const note of allNotesToPush) {
+        const isFreeVal = note.isFree !== undefined ? Boolean(note.isFree) : (Number(note.price) === 0);
         const { error } = await supabase.from('notes').upsert({
           id: note.id,
           exam_id: note.examId || null,
@@ -1058,8 +1017,9 @@ export const DataProvider = ({ children }) => {
           file_type: note.fileType || 'rich_text',
           gdrive_url: note.gdriveUrl || '',
           read_time_minutes: Number(note.readTimeMinutes) || 10,
-          is_free: note.isFree !== undefined ? note.isFree : (Number(note.price) === 0),
-          price: Number(note.price) || 0,
+          validity_days: String(note.validityDays || note.validity_days || '30'),
+          is_free: isFreeVal,
+          price: isFreeVal ? 0 : (Number(note.price) || 0),
           content: note.content || ''
         });
         if (error) {
@@ -1141,6 +1101,7 @@ export const DataProvider = ({ children }) => {
       id: newExam.id || 'exam-' + Date.now(),
       rating: newExam.rating || 5.0,
       enrolledCount: newExam.enrolledCount || 1,
+      validityDays: newExam.validityDays ? String(newExam.validityDays) : '365',
       createdAt: new Date().toISOString(),
     };
 
@@ -1158,6 +1119,7 @@ export const DataProvider = ({ children }) => {
         price: Number(examWithId.price) || 0,
         original_price: Number(examWithId.originalPrice) || 0,
         is_free: examWithId.isFree !== undefined ? examWithId.isFree : (Number(examWithId.price) === 0),
+        validity_days: String(examWithId.validityDays || '365'),
         banner: examWithId.banner,
         syllabus: Array.isArray(examWithId.syllabus) ? examWithId.syllabus : [],
         badge: examWithId.badge || 'Verified',
@@ -1174,10 +1136,46 @@ export const DataProvider = ({ children }) => {
   };
 
   const updateExam = async (id, updatedFields) => {
-    setExams(prev => prev.map(e => e.id === id ? { ...e, ...updatedFields } : e));
+    const existing = exams.find(e => e.id === id);
+    const isFreeVal = updatedFields.isFree !== undefined 
+      ? Boolean(updatedFields.isFree) 
+      : (updatedFields.price !== undefined ? Number(updatedFields.price) === 0 : Boolean(existing?.isFree));
+    
+    const merged = {
+      ...(existing || {}),
+      ...updatedFields,
+      id,
+      price: isFreeVal ? 0 : Number(updatedFields.price !== undefined ? updatedFields.price : (existing?.price || 0)),
+      isFree: isFreeVal
+    };
+
+    setExams(prev => prev.map(e => e.id === id ? merged : e));
+
     try {
-      await supabase.from('exams').update(updatedFields).eq('id', id);
-    } catch (e) {}
+      const isFreeBool = Boolean(merged.isFree);
+      const { error } = await supabase.from('exams').upsert({
+        id: merged.id,
+        title: merged.title,
+        short_name: merged.shortName || merged.short_name || '',
+        category: merged.category || 'State Civil Services',
+        description: merged.description || '',
+        description_kn: merged.descriptionKn || merged.description_kn || '',
+        price: isFreeBool ? 0 : (Number(merged.price) || 0),
+        original_price: Number(merged.originalPrice || merged.original_price) || 0,
+        is_free: isFreeBool,
+        validity_days: String(merged.validityDays || merged.validity_days || '365'),
+        banner: merged.banner,
+        syllabus: Array.isArray(merged.syllabus) ? merged.syllabus : [],
+        badge: merged.badge || 'Verified',
+        rating: Number(merged.rating) || 5.0,
+        enrolled_count: Number(merged.enrolledCount || merged.enrolled_count) || 1,
+        tests_count: Number(merged.testsCount || merged.tests_count) || 0,
+        notes_count: Number(merged.notesCount || merged.notes_count) || 0
+      });
+      if (error) console.error('Supabase updateExam error:', error);
+    } catch (e) {
+      console.warn('Supabase update exam error:', e);
+    }
   };
 
   const deleteExam = async (id) => {
@@ -1190,6 +1188,19 @@ export const DataProvider = ({ children }) => {
       await supabase.from('tests').delete().eq('exam_id', id);
       await supabase.from('notes').delete().eq('exam_id', id);
     } catch (e) {}
+  };
+
+  const duplicateExam = async (examToDup) => {
+    if (!examToDup) return null;
+    const cloned = {
+      ...examToDup,
+      id: 'exam-copy-' + Date.now(),
+      title: `${examToDup.title} (Copy)`,
+      shortName: examToDup.shortName ? `${examToDup.shortName}-copy` : '',
+      enrolledCount: 1,
+      createdAt: new Date().toISOString()
+    };
+    return await addExam(cloned);
   };
 
   // Subject Operations
@@ -1215,6 +1226,8 @@ export const DataProvider = ({ children }) => {
         description: subjectWithId.description || '',
         icon: subjectWithId.icon || 'BookOpen',
         image_url: subjectWithId.imageUrl || null,
+        banner_url: subjectWithId.bannerUrl || null,
+        color: subjectWithId.color || 'emerald',
         display_order: subjectWithId.order || 1
       });
     } catch (e) {
@@ -1225,18 +1238,28 @@ export const DataProvider = ({ children }) => {
   };
 
   const updateSubject = async (id, updatedFields) => {
-    setSubjects(prev => prev.map(s => s.id === id ? { ...s, ...updatedFields } : s));
+    const existing = subjects.find(s => s.id === id);
+    const merged = {
+      ...(existing || {}),
+      ...updatedFields,
+      id
+    };
+
+    setSubjects(prev => prev.map(s => s.id === id ? merged : s));
+
     try {
-      const dbPayload = {
-        name: updatedFields.name,
-        name_kn: updatedFields.nameKn || updatedFields.name,
-        exam_id: updatedFields.examId,
-        description: updatedFields.description,
-        icon: updatedFields.icon,
-        image_url: updatedFields.imageUrl || updatedFields.image_url || null,
-        display_order: updatedFields.order || updatedFields.display_order
-      };
-      await supabase.from('subjects').update(dbPayload).eq('id', id);
+      await supabase.from('subjects').upsert({
+        id: merged.id,
+        name: merged.name,
+        name_kn: merged.nameKn || merged.name,
+        exam_id: merged.examId || null,
+        description: merged.description || '',
+        icon: merged.icon || 'BookOpen',
+        image_url: merged.imageUrl || null,
+        banner_url: merged.bannerUrl || null,
+        color: merged.color || 'emerald',
+        display_order: Number(merged.order || merged.display_order) || 1
+      });
     } catch (e) {}
   };
 
@@ -1250,6 +1273,19 @@ export const DataProvider = ({ children }) => {
       await supabase.from('notes').delete().eq('subject_id', id);
       await supabase.from('tests').delete().eq('subject_id', id);
     } catch (e) {}
+  };
+
+  const duplicateSubject = async (subjToDup) => {
+    if (!subjToDup) return null;
+    const cloned = {
+      ...subjToDup,
+      id: 'sub-copy-' + Date.now(),
+      name: `${subjToDup.name} (Copy)`,
+      nameKn: `${subjToDup.nameKn || subjToDup.name} (ಪ್ರತಿ)`,
+      order: subjects.length + 1,
+      createdAt: new Date().toISOString()
+    };
+    return await addSubject(cloned);
   };
 
   // Home Page Section Customizer Methods
@@ -1386,6 +1422,7 @@ export const DataProvider = ({ children }) => {
       examId: newTest.examId || null,
       subjectId: newTest.subjectId || null,
       price: isFree ? 0 : Number(newTest.price || 49),
+      validityDays: newTest.validityDays ? String(newTest.validityDays) : '30',
       isFree: isFree,
       freeQuestionsCount: isFree ? (newTest.questions?.length || 50) : Number(newTest.freeQuestionsCount !== undefined ? newTest.freeQuestionsCount : 2),
       createdAt: new Date().toISOString(),
@@ -1407,6 +1444,7 @@ export const DataProvider = ({ children }) => {
         gsheet_url: testWithId.gsheetUrl || testWithId.gsheet_url || null,
         questions: Array.isArray(testWithId.questions) ? testWithId.questions : [],
         price: testWithId.price,
+        validity_days: String(testWithId.validityDays || '30'),
         is_free: testWithId.isFree,
         free_questions_count: testWithId.freeQuestionsCount,
         is_free_preview: !isFree && testWithId.freeQuestionsCount > 0
@@ -1419,24 +1457,40 @@ export const DataProvider = ({ children }) => {
   };
 
   const updateTest = async (id, updatedFields) => {
-    setTests(prev => prev.map(t => t.id === id ? { ...t, ...updatedFields } : t));
+    const existing = tests.find(t => t.id === id);
+    const isFreeVal = updatedFields.isFree !== undefined 
+      ? Boolean(updatedFields.isFree) 
+      : (updatedFields.price !== undefined ? Number(updatedFields.price) === 0 : Boolean(existing?.isFree));
+
+    const merged = {
+      ...(existing || {}),
+      ...updatedFields,
+      id,
+      price: isFreeVal ? 0 : Number(updatedFields.price !== undefined ? updatedFields.price : (existing?.price || 0)),
+      isFree: isFreeVal
+    };
+
+    setTests(prev => prev.map(t => t.id === id ? merged : t));
+
     try {
-      const dbPayload = {
-        title: updatedFields.title,
-        title_kn: updatedFields.titleKn || updatedFields.title,
-        exam_id: updatedFields.examId,
-        subject_id: updatedFields.subjectId,
-        duration_minutes: updatedFields.durationMinutes,
-        total_marks: updatedFields.totalMarks,
-        negative_marking: updatedFields.negativeMarking,
-        source_type: updatedFields.sourceType,
-        gsheet_url: updatedFields.gsheetUrl || updatedFields.gsheet_url || null,
-        price: updatedFields.price !== undefined ? Number(updatedFields.price) : 0,
-        is_free: updatedFields.isFree !== undefined ? updatedFields.isFree : (Number(updatedFields.price) === 0),
-        free_questions_count: updatedFields.freeQuestionsCount,
-        questions: updatedFields.questions
-      };
-      await supabase.from('tests').update(dbPayload).eq('id', id);
+      const isFreeBool = Boolean(merged.isFree);
+      await supabase.from('tests').upsert({
+        id: merged.id,
+        title: merged.title,
+        title_kn: merged.titleKn || merged.title,
+        exam_id: merged.examId || null,
+        subject_id: merged.subjectId || null,
+        duration_minutes: Number(merged.durationMinutes) || 30,
+        total_marks: Number(merged.totalMarks) || 50,
+        negative_marking: Number(merged.negativeMarking) || 0.25,
+        source_type: merged.sourceType || 'manual',
+        gsheet_url: merged.gsheetUrl || merged.gsheet_url || null,
+        price: isFreeBool ? 0 : (Number(merged.price) || 0),
+        validity_days: String(merged.validityDays || merged.validity_days || '30'),
+        is_free: isFreeBool,
+        free_questions_count: Number(merged.freeQuestionsCount !== undefined ? merged.freeQuestionsCount : (isFreeBool ? 50 : 2)),
+        questions: Array.isArray(merged.questions) ? merged.questions : []
+      });
     } catch (e) {
       console.warn('Update test Supabase sync notice:', e);
     }
@@ -1449,6 +1503,19 @@ export const DataProvider = ({ children }) => {
     } catch (e) {}
   };
 
+  const duplicateTest = async (testToDup) => {
+    if (!testToDup) return null;
+    const cloned = {
+      ...testToDup,
+      id: 'test-copy-' + Date.now(),
+      title: `${testToDup.title} (Copy)`,
+      titleKn: `${testToDup.titleKn || testToDup.title} (ಪ್ರತಿ)`,
+      questions: Array.isArray(testToDup.questions) ? [...testToDup.questions] : [],
+      createdAt: new Date().toISOString()
+    };
+    return await addTest(cloned);
+  };
+
   // Note Operations (Pure Subject Linked & Exam Linked)
   const addNote = async (newNote) => {
     const isFree = newNote.isFree === true || Number(newNote.price) === 0;
@@ -1458,6 +1525,7 @@ export const DataProvider = ({ children }) => {
       examId: newNote.examId || null,
       subjectId: newNote.subjectId || null,
       price: isFree ? 0 : Number(newNote.price || 29),
+      validityDays: newNote.validityDays ? String(newNote.validityDays) : '30',
       isFree: isFree,
       createdAt: new Date().toISOString(),
     };
@@ -1475,6 +1543,7 @@ export const DataProvider = ({ children }) => {
         file_type: noteWithId.fileType || 'rich_text',
         gdrive_url: noteWithId.gdriveUrl || '',
         read_time_minutes: Number(noteWithId.readTimeMinutes) || 10,
+        validity_days: String(noteWithId.validityDays || '30'),
         is_free: noteWithId.isFree,
         price: noteWithId.price,
         content: noteWithId.content || ''
@@ -1486,22 +1555,38 @@ export const DataProvider = ({ children }) => {
   };
 
   const updateNote = async (id, updatedFields) => {
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...updatedFields } : n));
+    const existing = notes.find(n => n.id === id);
+    const isFreeVal = updatedFields.isFree !== undefined 
+      ? Boolean(updatedFields.isFree) 
+      : (updatedFields.price !== undefined ? Number(updatedFields.price) === 0 : Boolean(existing?.isFree));
+
+    const merged = {
+      ...(existing || {}),
+      ...updatedFields,
+      id,
+      price: isFreeVal ? 0 : Number(updatedFields.price !== undefined ? updatedFields.price : (existing?.price || 0)),
+      isFree: isFreeVal
+    };
+
+    setNotes(prev => prev.map(n => n.id === id ? merged : n));
+
     try {
-      const dbPayload = {
-        title: updatedFields.title,
-        title_kn: updatedFields.titleKn || updatedFields.title,
-        exam_id: updatedFields.examId,
-        subject_id: updatedFields.subjectId,
-        category: updatedFields.category || 'General',
-        file_type: updatedFields.fileType || 'rich_text',
-        gdrive_url: updatedFields.gdriveUrl || updatedFields.gdrive_url || '',
-        read_time_minutes: Number(updatedFields.readTimeMinutes) || 10,
-        price: updatedFields.price !== undefined ? Number(updatedFields.price) : 0,
-        is_free: updatedFields.isFree !== undefined ? updatedFields.isFree : (Number(updatedFields.price) === 0),
-        content: updatedFields.content || ''
-      };
-      await supabase.from('notes').update(dbPayload).eq('id', id);
+      const isFreeBool = Boolean(merged.isFree);
+      await supabase.from('notes').upsert({
+        id: merged.id,
+        title: merged.title,
+        title_kn: merged.titleKn || merged.title,
+        exam_id: merged.examId || null,
+        subject_id: merged.subjectId || null,
+        category: merged.category || 'General',
+        file_type: merged.fileType || 'rich_text',
+        gdrive_url: merged.gdriveUrl || merged.gdrive_url || '',
+        read_time_minutes: Number(merged.readTimeMinutes) || 10,
+        validity_days: String(merged.validityDays || merged.validity_days || '30'),
+        price: isFreeBool ? 0 : (Number(merged.price) || 0),
+        is_free: isFreeBool,
+        content: merged.content || ''
+      });
     } catch (e) {
       console.warn('Update note Supabase sync error:', e);
     }
@@ -1512,6 +1597,18 @@ export const DataProvider = ({ children }) => {
     try {
       await supabase.from('notes').delete().eq('id', id);
     } catch (e) {}
+  };
+
+  const duplicateNote = async (noteToDup) => {
+    if (!noteToDup) return null;
+    const cloned = {
+      ...noteToDup,
+      id: 'note-copy-' + Date.now(),
+      title: `${noteToDup.title} (Copy)`,
+      titleKn: `${noteToDup.titleKn || noteToDup.title} (ಪ್ರತಿ)`,
+      createdAt: new Date().toISOString()
+    };
+    return await addNote(cloned);
   };
 
   // Helper: Live Fetch Google Sheet CSV by URL (Preserves tab gid and handles all URL variations)
@@ -2399,7 +2496,14 @@ export const DataProvider = ({ children }) => {
   // Mark Note As Read
   const markNoteAsRead = (noteId) => {
     if (!noteId) return;
-    setReadNoteIds(prev => prev.includes(noteId) ? prev : [...prev, noteId]);
+    setReadNoteIds(prev => {
+      const filtered = prev.filter(item => (typeof item === 'string' ? item : item.id) !== noteId);
+      const updated = [{ id: noteId, timestamp: new Date().toISOString() }, ...filtered];
+      try {
+        localStorage.setItem(STORAGE_KEYS.READ_NOTES, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   // Official Notice Board Handlers
@@ -2445,21 +2549,25 @@ export const DataProvider = ({ children }) => {
   };
 
   const updateNotice = async (noticeId, updatedData) => {
-    setNotices(prev => prev.map(n => n.id === noticeId ? { ...n, ...updatedData } : n));
+    const existing = notices.find(n => n.id === noticeId);
+    const merged = { ...(existing || {}), ...updatedData, id: noticeId };
+    setNotices(prev => prev.map(n => n.id === noticeId ? merged : n));
     try {
-      const dbPayload = {};
-      if (updatedData.titleKn !== undefined) dbPayload.title_kn = updatedData.titleKn;
-      if (updatedData.titleEn !== undefined) dbPayload.title_en = updatedData.titleEn;
-      if (updatedData.categoryKn !== undefined) dbPayload.category_kn = updatedData.categoryKn;
-      if (updatedData.categoryEn !== undefined) dbPayload.category_en = updatedData.categoryEn;
-      if (updatedData.type !== undefined) dbPayload.type = updatedData.type;
-      if (updatedData.fileUrl !== undefined) dbPayload.file_url = updatedData.fileUrl;
-      if (updatedData.descriptionKn !== undefined) dbPayload.description_kn = updatedData.descriptionKn;
-      if (updatedData.descriptionEn !== undefined) dbPayload.description_en = updatedData.descriptionEn;
-      if (updatedData.date !== undefined) dbPayload.date = updatedData.date;
-      if (updatedData.isNew !== undefined) dbPayload.is_new = updatedData.isNew;
-      if (updatedData.isPinned !== undefined) dbPayload.is_pinned = updatedData.isPinned;
-      await supabase.from('notices').update(dbPayload).eq('id', noticeId);
+      await supabase.from('notices').upsert({
+        id: merged.id,
+        title_kn: merged.titleKn || merged.title_kn,
+        title_en: merged.titleEn || merged.title_en,
+        category_kn: merged.categoryKn || merged.category_kn,
+        category_en: merged.categoryEn || merged.category_en,
+        type: merged.type,
+        file_url: merged.fileUrl || merged.file_url || '',
+        description_kn: merged.descriptionKn || merged.description_kn || '',
+        description_en: merged.descriptionEn || merged.description_en || '',
+        date: merged.date || new Date().toISOString().split('T')[0],
+        is_new: Boolean(merged.isNew !== undefined ? merged.isNew : merged.is_new),
+        is_pinned: Boolean(merged.isPinned !== undefined ? merged.isPinned : merged.is_pinned),
+        created_at: merged.createdAt || merged.created_at || new Date().toISOString()
+      });
     } catch (e) {
       console.warn('Supabase notice update fallback:', e);
     }
@@ -2645,17 +2753,21 @@ export const DataProvider = ({ children }) => {
         addExam,
         updateExam,
         deleteExam,
+        duplicateExam,
         addSubject,
         updateSubject,
         deleteSubject,
+        duplicateSubject,
         clearAllData,
         restoreInitialData,
         addTest,
         updateTest,
         deleteTest,
+        duplicateTest,
         addNote,
         updateNote,
         deleteNote,
+        duplicateNote,
         fetchLiveGoogleSheetCSV,
         parseGoogleSheetCSV,
         recordTestAttempt,

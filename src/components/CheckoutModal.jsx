@@ -72,32 +72,26 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
   const originalPrice = item.price !== undefined ? Number(item.price) : 49;
   const discountedPrice = Math.max(0, Math.round(originalPrice * (1 - discountPercent / 100)));
 
-  // Dynamic UPI Payment Strings for 1-Click Launchers (PhonePe/GPay/Paytm/BHIM)
+  // Clean 10-Digit Mobile Number and Payee Info (Strictly Mobile Number Only)
   const rawPhone = (developerPhone || '6360433316').replace(/\D/g, '');
   const activePhone = rawPhone.length === 10 ? rawPhone : (rawPhone.slice(-10) || '6360433316');
-  
-  // Use phone number based handles if specific UPI ID isn't customized or prefer phone number
-  const upiId = developerUpiId || `${activePhone}@ybl`;
-  const merchantName = developerName || 'SAVITA (ಅಧ್ಯಯನ)';
+  const merchantName = developerName || 'SAVITHA (ಅಧ್ಯಯನ)';
   const cleanTitle = encodeURIComponent((item?.title || 'Study Material').substring(0, 30));
   const encodedName = encodeURIComponent(merchantName);
 
-  // App-specific phone-based UPI URLs
-  const phonePeUrl = `phonepe://pay?pa=${encodeURIComponent(`${activePhone}@ybl`)}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
-  const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
-  const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(`${activePhone}@paytm`)}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+  // App Launcher Intents - Direct App Openers (No @ybl VPA to prevent bank security decline)
+  const phonePeUrl = `phonepe://`;
+  const gpayUrl = `gpay://`;
+  const paytmUrl = `paytmmp://`;
+  const upiUrl = `upi://pay?pa=${activePhone}@ybl&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
 
   const qrCodeImageUrl = developerUpiQrImage || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiUrl)}&margin=10`;
 
-  const copyToClipboard = (text, type) => {
+  const copyToClipboard = (text, type = 'phone') => {
     navigator.clipboard.writeText(text);
-    if (type === 'upi') {
-      setCopiedUpi(true);
-      setTimeout(() => setCopiedUpi(false), 2500);
-    } else if (type === 'phone') {
+    if (type === 'phone') {
       setCopiedPhone(true);
-      setTimeout(() => setCopiedPhone(false), 2500);
+      setTimeout(() => setCopiedPhone(false), 3000);
     }
   };
 
@@ -276,7 +270,7 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                 </span>
               </h3>
               <p className="text-[10px] sm:text-[11px] text-slate-400">
-                PhonePe / Google Pay / Paytm QR • Instant Lifetime Access
+                PhonePe / Google Pay / Paytm QR • Direct Instant Checkout
               </p>
             </div>
           </div>
@@ -291,58 +285,63 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
         {isCompleted ? (
           /* SUCCESS OR PENDING APPROVAL SCREEN */
           discountedPrice > 0 && !isDeveloper ? (
-            <div className="p-6 sm:p-8 text-center space-y-4">
+            <div className="p-6 sm:p-8 text-center space-y-4 animate-in fade-in">
               <div className="w-16 h-16 bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-amber-50 dark:ring-amber-900/30">
-                <Clock className="w-10 h-10 animate-pulse" />
+                <Clock className="w-9 h-9 animate-pulse" />
               </div>
               <div>
-                <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  {lang === 'kn' ? '⏳ ಪಾವತಿ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ' : '⏳ Payment Under Verification'}
+                <span className="inline-block px-3 py-1 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 rounded-full text-xs font-bold mb-2 border border-amber-300 dark:border-amber-800">
+                  ⏳ {lang === 'kn' ? 'ಡೆವಲಪರ್ ದೃಢೀಕರಣಕ್ಕಾಗಿ ನಿರೀಕ್ಷಿಸಿ' : 'Waiting for Developer Approval'}
+                </span>
+                <h4 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100">
+                  {lang === 'kn' ? 'ಪಾವತಿ ವಿವರ ಯಶಸ್ವಿಯಾಗಿ ದಾಖಲಾಗಿದೆ!' : 'Payment Submitted Successfully!'}
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 max-w-sm mx-auto leading-relaxed">
                   {lang === 'kn'
-                    ? 'ನಿಮ್ಮ UTR ಸಂಖ್ಯೆ ದಾಖಲಾಗಿದೆ. ಡೆವಲಪರ್ ಪರಿಶೀಲಿಸಿ ಕೆಲವೇ ನಿಮಿಷಗಳಲ್ಲಿ ನಿಮ್ಮ ಖಾತೆಗೆ ಪ್ರವೇಶಾವಕಾಶ ನೀಡುತ್ತಾರೆ.'
-                    : 'Your UTR number has been submitted. The admin will verify and activate your access shortly.'}
+                    ? 'ನಿಮ್ಮ 12-ಅಂಕಿಯ UTR ಸಂಖ್ಯೆಯನ್ನು ಪರಿಶೀಲನೆಗೆ ಸಲ್ಲಿಸಲಾಗಿದೆ. ಡೆವಲಪರ್ ತಮ್ಮ ಬ್ಯಾಂಕ್‌ನಲ್ಲಿ ದೃಢಪಡಿಸಿದ ನಂತರ ಕೆಲವೇ ನಿಮಿಷಗಳಲ್ಲಿ ನಿಮ್ಮ ಕಂಟೆಂಟ್ ಅನ್‌ಲಾಕ್ ಆಗುತ್ತದೆ.'
+                    : 'Your 12-digit UTR has been submitted. The developer will verify against bank records and approve your access shortly.'}
                 </p>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl text-left border border-slate-200 dark:border-slate-700 text-xs space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Content / Item:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{item.title}</span>
+              <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-2xl text-left border border-slate-200 dark:border-slate-700 text-xs space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">ಅಧ್ಯಯನ ಸಾಮಗ್ರಿ (Item):</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100 text-right line-clamp-1 max-w-[200px]">{item.title}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Submitted UTR:</span>
-                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{utrNumber}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">ದಾಖಲಾದ UTR / Ref ಸಂಖ್ಯೆ:</span>
+                  <span className="font-mono font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">{utrNumber}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Amount:</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">₹{discountedPrice}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">ಪಾವತಿಸಿದ ಮೊತ್ತ:</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">₹{discountedPrice}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Status:</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                    Pending Admin Approval (ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ)
+                <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-500 font-medium">ಸ್ಥಿತಿ (Status):</span>
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse">
+                    ⏳ ಡೆವಲಪರ್ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ (Pending Confirmation)
                   </span>
                 </div>
               </div>
 
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>{lang === 'kn' ? 'WhatsApp ನಲ್ಲಿ ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಕಳುಹಿಸಿ (ತಕ್ಷಣ ಅನ್‌ಲಾಕ್)' : 'Send Screenshot on WhatsApp (Fast Unlock)'}</span>
-              </a>
+              <div className="space-y-2 pt-1">
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>{lang === 'kn' ? '📲 WhatsApp ನಲ್ಲಿ ರಸೀದಿ ಕಳುಹಿಸಿ (ತಕ್ಷಣ ಅನ್‌ಲಾಕ್)' : '📲 Send Receipt on WhatsApp (Fast Unlock)'}</span>
+                </a>
 
-              <button
-                onClick={onClose}
-                className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-all"
-              >
-                {lang === 'kn' ? 'ಸರಿ, ಮುಕ್ತಾಯಗೊಳಿಸಿ' : 'Close'}
-              </button>
+                <button
+                  onClick={onClose}
+                  className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-all"
+                >
+                  {lang === 'kn' ? 'ಸರಿ, ಮುಕ್ತಾಯಗೊಳಿಸಿ (Close)' : 'Close'}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="p-6 sm:p-8 text-center space-y-4">
@@ -424,6 +423,40 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                 {discountPercent > 0 && (
                   <p className="text-[10px] text-slate-400 line-through font-semibold">₹{originalPrice}</p>
                 )}
+                <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                  ⏱️ {item.validityDays ? `${item.validityDays} ದಿನಗಳು` : (discountedPrice <= 10 ? '10 ದಿನಗಳು' : discountedPrice <= 20 ? '20 ದಿನಗಳು' : discountedPrice <= 30 ? '30 ದಿನಗಳು' : '365 ದಿನಗಳು')}
+                </span>
+              </div>
+            </div>
+
+            {/* Validity & Pricing Chart Guide */}
+            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/30 dark:via-slate-800 dark:to-purple-950/30 p-3 rounded-2xl border border-purple-200/80 dark:border-purple-800/60 text-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-xs text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-purple-600" />
+                  <span>{lang === 'kn' ? 'ವ್ಯಾಲಿಡಿಟಿ ಚಾರ್ಟ್ (Validity Chart):' : 'Validity & Pricing Chart:'}</span>
+                </span>
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 font-bold">
+                  {item.validityDays ? `${item.validityDays} Days Pass` : 'Affordable Prep Plans'}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5 text-[10px]">
+                <div className={`p-1.5 rounded-xl border text-center ${discountedPrice === 10 ? 'border-purple-600 bg-purple-100 dark:bg-purple-900/60 font-bold' : 'bg-white dark:bg-slate-800 border-purple-100 dark:border-purple-900'}`}>
+                  <span className="font-bold text-purple-700 dark:text-purple-300 block">₹10</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-[9px]">10 ದಿನಗಳು</span>
+                </div>
+                <div className={`p-1.5 rounded-xl border text-center ${discountedPrice === 20 ? 'border-purple-600 bg-purple-100 dark:bg-purple-900/60 font-bold' : 'bg-white dark:bg-slate-800 border-purple-100 dark:border-purple-900'}`}>
+                  <span className="font-bold text-purple-700 dark:text-purple-300 block">₹20</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-[9px]">20 ದಿನಗಳು</span>
+                </div>
+                <div className={`p-1.5 rounded-xl border text-center ${discountedPrice === 30 ? 'border-purple-600 bg-purple-100 dark:bg-purple-900/60 font-bold' : 'bg-white dark:bg-slate-800 border-purple-100 dark:border-purple-900'}`}>
+                  <span className="font-bold text-purple-700 dark:text-purple-300 block">₹30</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-[9px]">30 ದಿನಗಳು</span>
+                </div>
+                <div className={`p-1.5 rounded-xl border text-center ${discountedPrice >= 49 ? 'border-purple-600 bg-purple-100 dark:bg-purple-900/60 font-bold' : 'bg-white dark:bg-slate-800 border-purple-100 dark:border-purple-900'}`}>
+                  <span className="font-bold text-purple-700 dark:text-purple-300 block">₹49+</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-[9px]">60+ ದಿನಗಳು</span>
+                </div>
               </div>
             </div>
 
@@ -446,135 +479,130 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
               /* DIRECT UPI / QR CODE (PHONEPE / GPAY / PAYTM) */
               <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-800/50">
                 
-                {/* 1-CLICK MOBILE APP LAUNCHERS */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                      <Smartphone className="w-4 h-4 text-purple-600" />
-                      <span>{lang === 'kn' ? '📱 ಮೊಬೈಲ್ 1-ಕ್ಲಿಕ್ ಪಾವತಿ (Open in App):' : '📱 1-Click Pay in App:'}</span>
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
-                      ⚡ ಮೊತ್ತ: ₹{discountedPrice}
-                    </span>
+                {/* STEP 1: MOBILE NUMBER PAYMENT & APP BUTTONS */}
+                <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
+                  
+                  {/* Step Header & User Directions */}
+                  <div className="bg-emerald-50/70 dark:bg-emerald-950/30 p-3 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 space-y-1.5">
+                    <div className="font-bold text-xs text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                      <span>💡 {lang === 'kn' ? 'ಪಾವತಿ ಮಾಡುವ ಸರಳ ವಿಧಾನ (Payment Guide):' : 'Easy 3-Step Payment Guide:'}</span>
+                    </div>
+                    <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300">
+                      <div className="flex items-start gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                        <span>{lang === 'kn' ? <>ಮೊಬೈಲ್ ಸಂಖ್ಯೆ <strong>{activePhone}</strong> (SAVITHA) ಗೆ PhonePe / GPay / Paytm ನಲ್ಲಿ "To Mobile Number" ಮೂಲಕ ₹{discountedPrice} ಪಾವತಿಸಿ.</> : <>Pay ₹{discountedPrice} to Mobile Number <strong>{activePhone}</strong> (SAVITHA) via PhonePe / GPay / Paytm.</>}</span>
+                      </div>
+                      <div className="flex items-start gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                        <span>{lang === 'kn' ? <>ಪಾವತಿ ರಸೀದಿಯಲ್ಲಿರುವ <strong>12-ಅಂಕಿಯ UTR / UPI Ref ಸಂಖ್ಯೆಯನ್ನು</strong> ಕೆಳಗೆ ನಮೂದಿಸಿ ಸಲ್ಲಿಸಿ.</> : <>Enter the <strong>12-digit UTR / UPI Ref number</strong> from your receipt below and submit.</>}</span>
+                      </div>
+                      <div className="flex items-start gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                        <span>{lang === 'kn' ? <>ಡೆವಲಪರ್ ಬ್ಯಾಂಕ್‌ನಲ್ಲಿ ದೃಢಪಡಿಸಿದ ತಕ್ಷಣ ನಿಮ್ಮ ಕೋರ್ಸ್ ಅನ್‌ಲಾಕ್ ಆಗುತ್ತದೆ.</> : <>Course unlocks shortly upon developer confirmation.</>}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {/* PhonePe */}
-                    <a
-                      href={phonePeUrl}
-                      onClick={() => copyToClipboard(activePhone, 'phone')}
-                      className="p-2.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
-                    >
-                      <span className="w-7 h-7 rounded-full bg-white text-purple-600 font-black text-sm flex items-center justify-center shadow-inner">
-                        Pe
-                      </span>
-                      <span className="text-[11px] font-bold">PhonePe</span>
-                      <span className="text-[9px] text-purple-200 font-mono">{activePhone}</span>
-                    </a>
+                  {/* Highlighted Mobile Number & Payee Box */}
+                  <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/40 dark:via-slate-800 dark:to-emerald-950/40 p-3.5 rounded-2xl border-2 border-emerald-300 dark:border-emerald-700/70 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="text-center sm:text-left space-y-0.5">
+                      <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                        <span className="text-slate-400 text-[10px]">ಸ್ವೀಕರಿಸುವವರ ಹೆಸರು:</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{merchantName}</span>
+                      </div>
+                      <div className="text-xl sm:text-2xl font-black font-mono tracking-wider text-emerald-700 dark:text-emerald-300">
+                        {activePhone}
+                      </div>
+                    </div>
 
-                    {/* Google Pay */}
-                    <a
-                      href={gpayUrl}
+                    <button
+                      type="button"
                       onClick={() => copyToClipboard(activePhone, 'phone')}
-                      className="p-2.5 bg-slate-900 hover:bg-black active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm border border-slate-700 transition-all text-center"
+                      className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 ${
+                        copiedPhone 
+                          ? 'bg-emerald-600 text-white shadow-emerald-600/30' 
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                      }`}
                     >
-                      <span className="w-7 h-7 rounded-full bg-white text-blue-600 font-black text-sm flex items-center justify-center shadow-inner">
-                        G
-                      </span>
-                      <span className="text-[11px] font-bold">Google Pay</span>
-                      <span className="text-[9px] text-slate-300 font-mono">{activePhone}</span>
-                    </a>
-
-                    {/* Paytm */}
-                    <a
-                      href={paytmUrl}
-                      onClick={() => copyToClipboard(activePhone, 'phone')}
-                      className="p-2.5 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
-                    >
-                      <span className="w-7 h-7 rounded-full bg-white text-sky-600 font-black text-xs flex items-center justify-center shadow-inner">
-                        Pay
-                      </span>
-                      <span className="text-[11px] font-bold">Paytm</span>
-                      <span className="text-[9px] text-sky-100 font-mono">{activePhone}</span>
-                    </a>
-
-                    {/* Any UPI / BHIM */}
-                    <a
-                      href={upiUrl}
-                      onClick={() => copyToClipboard(activePhone, 'phone')}
-                      className="p-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
-                    >
-                      <Zap className="w-6 h-6 text-amber-300" />
-                      <span className="text-[11px] font-bold">{lang === 'kn' ? 'ಎಲ್ಲಾ UPI' : 'Other UPI'}</span>
-                      <span className="text-[9px] text-emerald-100 font-mono">{activePhone}</span>
-                    </a>
+                      {copiedPhone ? (
+                        <>
+                          <Check className="w-4 h-4 text-white" />
+                          <span>ಕಾಪಿ ಮಾಡಲಾಗಿದೆ!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>ಸಂಖ್ಯೆ ಕಾಪಿ ಮಾಡಿ (Copy)</span>
+                        </>
+                      )}
+                    </button>
                   </div>
+
                   {copiedPhone && (
-                    <div className="text-center p-1.5 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-xl text-[11px] text-emerald-700 dark:text-emerald-300 font-bold animate-in fade-in">
-                      ✓ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ({activePhone}) ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ಗೆ ಕಾಪಿ ಆಗಿದೆ! ಆ್ಯಪ್‌ನಲ್ಲಿ ಪೇಸ್ಟ್ ಮಾಡಿ ಪಾವತಿಸಿ.
+                    <div className="text-center p-2 bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs text-emerald-800 dark:text-emerald-200 font-bold animate-in fade-in">
+                      ✓ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ <strong>{activePhone}</strong> ಕಾಪಿ ಆಗಿದೆ! ನಿಮ್ಮ PhonePe / GPay ನಲ್ಲಿ ಪೇಸ್ಟ್ ಮಾಡಿ ₹{discountedPrice} ಪಾವತಿಸಿ.
                     </div>
                   )}
-                </div>
 
-                {/* DESKTOP QR CODE & PAYEE DETAILS */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-inner text-center">
-                    <img
-                      src={qrCodeImageUrl}
-                      alt="UPI Payment QR Code"
-                      className="w-36 h-36 object-contain mx-auto rounded-lg"
-                    />
-                    <span className="text-[10px] font-bold text-emerald-700 block mt-1">
-                      {lang === 'kn' ? 'ಕಂಪ್ಯೂಟರ್‌ನಲ್ಲಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ' : 'Scan via Any App'}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 text-left w-full sm:w-auto">
-                    <div className="text-xs">
-                      <span className="text-slate-400 text-[10px] block font-medium">ಸ್ವೀಕರಿಸುವವರ ಹೆಸರು (Payee):</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-100 text-xs truncate max-w-[190px] block">
-                        {merchantName}
-                      </span>
-                    </div>
-
-                    {/* Copy UPI ID */}
-                    <div className="space-y-1">
-                      <span className="text-slate-400 text-[10px] block font-medium">UPI ID:</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-xs bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-emerald-700 dark:text-emerald-300 border border-slate-200 dark:border-slate-700">
-                          {upiId}
+                  {/* 1-Click App Launcher Buttons */}
+                  <div className="pt-1">
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-2">
+                      {lang === 'kn' ? 'ನೇರವಾಗಿ ಆ್ಯಪ್ ತೆರೆಯಿರಿ (ಆಟೋ-ಕಾಪಿ ಆಗುತ್ತದೆ):' : 'Open Payment App Directly:'}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* PhonePe */}
+                      <a
+                        href={phonePeUrl}
+                        onClick={() => copyToClipboard(activePhone, 'phone')}
+                        className="p-2.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
+                      >
+                        <span className="w-7 h-7 rounded-full bg-white text-purple-600 font-black text-sm flex items-center justify-center shadow-inner">
+                          Pe
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(upiId, 'upi')}
-                          className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg text-slate-600 transition-colors shadow-sm"
-                          title="Copy UPI ID"
-                        >
-                          {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
+                        <span className="text-xs font-bold">PhonePe</span>
+                      </a>
 
-                    {/* Copy Phone Number */}
-                    {developerPhone && (
-                      <div className="space-y-1">
-                        <span className="text-slate-400 text-[10px] block font-medium">PhonePe / GPay ಸಂಖ್ಯೆ:</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                            {developerPhone}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(developerPhone, 'phone')}
-                            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg text-slate-600 transition-colors shadow-sm"
-                            title="Copy Phone Number"
-                          >
-                            {copiedPhone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                      {/* Google Pay */}
+                      <a
+                        href={gpayUrl}
+                        onClick={() => copyToClipboard(activePhone, 'phone')}
+                        className="p-2.5 bg-slate-900 hover:bg-black active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm border border-slate-700 transition-all text-center"
+                      >
+                        <span className="w-7 h-7 rounded-full bg-white text-blue-600 font-black text-sm flex items-center justify-center shadow-inner">
+                          G
+                        </span>
+                        <span className="text-xs font-bold">Google Pay</span>
+                      </a>
+
+                      {/* Paytm */}
+                      <a
+                        href={paytmUrl}
+                        onClick={() => copyToClipboard(activePhone, 'phone')}
+                        className="p-2.5 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
+                      >
+                        <span className="w-7 h-7 rounded-full bg-white text-sky-600 font-black text-xs flex items-center justify-center shadow-inner">
+                          Pay
+                        </span>
+                        <span className="text-xs font-bold">Paytm</span>
+                      </a>
+                    </div>
                   </div>
+
+                  {/* QR Code Collapsible/View */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-3">
+                    <div className="bg-white p-1.5 rounded-xl border border-slate-200 shadow-inner">
+                      <img
+                        src={qrCodeImageUrl}
+                        alt="QR Code"
+                        className="w-16 h-16 object-contain rounded"
+                      />
+                    </div>
+                    <div className="text-left text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">ಅಥವಾ ಇನ್ನೊಂದು ಮೊಬೈಲ್‌ನಿಂದ QR ಸ್ಕ್ಯಾನ್ ಮಾಡಿ:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">SAVITHA • {activePhone}</span>
+                    </div>
+                  </div>
+
                 </div>
 
                 {/* SUBMIT UTR & NOTIFY DEVELOPER */}

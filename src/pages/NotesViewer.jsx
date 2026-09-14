@@ -27,7 +27,13 @@ import {
 
 export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
   const { user, isDeveloper, isEnrolled, isAuthenticated } = useAuth();
-  const { lang, exams, checkHasAccess } = useData();
+  const { lang, exams, checkHasAccess, markNoteAsRead } = useData();
+
+  useEffect(() => {
+    if (note?.id && markNoteAsRead) {
+      markNoteAsRead(note.id);
+    }
+  }, [note?.id, markNoteAsRead]);
 
   const [fontSize, setFontSize] = useState(16); // px
   const [readingTheme, setReadingTheme] = useState('sepia'); // 'light' | 'sepia' | 'dark'

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { 
@@ -529,8 +529,12 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
         );
 
       case 'recent_updates':
-        const recentTests = (tests || []).slice(0, 4);
-        const recentNotes = (notes || []).slice(0, 4);
+        const recentTests = [...(tests || [])]
+          .sort((a, b) => new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime())
+          .slice(0, 4);
+        const recentNotes = [...(notes || [])]
+          .sort((a, b) => new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime())
+          .slice(0, 4);
         const subjMap = Object.fromEntries((subjects || []).map(s => [s.id, s]));
         const hasRecentItems = recentTests.length > 0 || recentNotes.length > 0;
 
@@ -1517,20 +1521,107 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
     }
   };
 
-  // Calculate user resume learning state
-  const latestAttempt = (attempts && attempts.length > 0) ? attempts[attempts.length - 1] : null;
-  const latestReadNoteId = (readNoteIds && readNoteIds.length > 0) ? readNoteIds[readNoteIds.length - 1] : null;
+  // Calculate user resume learning state (sorted by timestamp descending)
+  const sortedAttempts = (attempts && attempts.length > 0)
+    ? [...attempts].sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+    : [];
+  const latestAttempt = sortedAttempts.length > 0 ? sortedAttempts[0] : null;
+
+  // Track recent read note
+  let latestReadNoteId = null;
+  let latestReadNoteTime = 0;
+  if (readNoteIds && readNoteIds.length > 0) {
+    const firstRead = readNoteIds[0];
+    if (typeof firstRead === 'object' && firstRead !== null && firstRead.id) {
+      latestReadNoteId = firstRead.id;
+      latestReadNoteTime = new Date(firstRead.timestamp || 0).getTime();
+    } else if (typeof firstRead === 'string') {
+      latestReadNoteId = firstRead;
+    }
+  }
   const recentNoteObj = latestReadNoteId ? notes.find(n => n.id === latestReadNoteId) : null;
-  const recentTestObj = latestAttempt ? tests.find(t => t.id === latestAttempt.testId || (t.title && t.title.toLowerCase() === (latestAttempt.testTitle || '').toLowerCase())) : null;
-  const hasResumeActivity = isAuthenticated && (recentTestObj || recentNoteObj);
+
+  // Match test accurately: by testId or title (case-insensitive & trimmed)
+  const recentTestObj = latestAttempt
+    ? (tests.find(t => t.id === latestAttempt.testId) ||
+       tests.find(t => (t.title || '').trim().toLowerCase() === (latestAttempt.testTitle || '').trim().toLowerCase()) ||
+       { id: latestAttempt.testId, title: latestAttempt.testTitle, titleKn: latestAttempt.testTitleKn || latestAttempt.testTitle })
+    : null;
+
+  const latestAttemptTime = latestAttempt ? new Date(latestAttempt.timestamp || 0).getTime() : 0;
+  const isTestMoreRecent = recentTestObj && (!recentNoteObj || latestAttemptTime >= latestReadNoteTime);
+  const activeResumeType = isTestMoreRecent ? 'test' : (recentNoteObj ? 'note' : null);
+  const hasResumeActivity = isAuthenticated && Boolean(activeResumeType);
+
+  // Dynamic Live Ticker items (auto push newly added tests, notes, and notices)
+  const dynamicTickerItems = useMemo(() => {
+    const list = [];
+
+    // Push latest added tests
+    if (tests && tests.length > 0) {
+      const recentTests = [...tests].slice(0, 3);
+      recentTests.forEach(t => {
+        const title = lang === 'kn' ? (t.titleKn || t.title) : t.title;
+        list.push({
+          id: `ticker-t-${t.id}`,
+          type: 'test',
+          data: t,
+          text: lang === 'kn' ? `📝 ಹೊಸ ಮಾಕ್ ಟೆಸ್ಟ್: "${title}" ಲಭ್ಯವಿದೆ!` : `📝 New Mock Test: "${title}" is now available!`
+        });
+      });
+    }
+
+    // Push latest added digital notes
+    if (notes && notes.length > 0) {
+      const recentNotes = [...notes].slice(0, 3);
+      recentNotes.forEach(n => {
+        const title = lang === 'kn' ? (n.titleKn || n.title) : n.title;
+        list.push({
+          id: `ticker-n-${n.id}`,
+          type: 'note',
+          data: n,
+          text: lang === 'kn' ? `📚 ಹೊಸ ನೋಟ್ಸ್: "${title}" ಪ್ರಕಟಿಸಲಾಗಿದೆ!` : `📚 New Notes: "${title}" published!`
+        });
+      });
+    }
+
+    // Push recent notices
+    if (notices && notices.length > 0) {
+      notices.slice(0, 2).forEach(not => {
+        const title = lang === 'kn' ? (not.titleKn || not.titleEn) : (not.titleEn || not.titleKn);
+        list.push({
+          id: `ticker-not-${not.id}`,
+          type: 'notice',
+          data: not,
+          text: lang === 'kn' ? `📢 ಅಧಿಸೂಚನೆ: "${title}"` : `📢 Notice: "${title}"`
+        });
+      });
+    }
+
+    // Fallbacks if empty
+    if (list.length === 0) {
+      list.push({
+        id: 'f1',
+        type: 'general',
+        text: lang === 'kn' ? '📢 KPSC KAS & Group-C 2026-27 ಪರೀಕ್ಷಾ ಸರಣಿ ಮತ್ತು ವಿಷಯವಾರು ನೋಟ್ಸ್‌ಗಳು ಲಭ್ಯ!' : '📢 KPSC KAS & Group-C 2026-27 Test Series and Notes available!'
+      });
+      list.push({
+        id: 'f2',
+        type: 'general',
+        text: lang === 'kn' ? '⚡ ಇಂದಿನ ದೈನಂದಿನ ಉಚಿತ 10-ಪ್ರಶ್ನೆಗಳ ಕ್ವಿಜ್ ಲೈವ್ ಆಗಿದೆ!' : '⚡ Today\'s Daily Free Quiz is live!'
+      });
+    }
+
+    return list;
+  }, [tests, notes, notices, lang]);
 
   return (
     <div className="space-y-8 sm:space-y-12 pb-20 relative">
 
       {/* 1. TOP LIVE EXAM ALERT & NOTIFICATION TICKER */}
-      <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white py-2 px-3 sm:px-6 shadow-sm overflow-hidden text-xs">
+      <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white py-2 px-3 sm:px-6 shadow-sm overflow-hidden text-xs border-b border-emerald-600/30">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 shrink-0 font-extrabold uppercase tracking-wider bg-black/25 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] shadow-inner">
+          <div className="flex items-center gap-2 shrink-0 font-extrabold uppercase tracking-wider bg-black/30 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] shadow-inner border border-white/10">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
@@ -1539,21 +1630,35 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
             <span>{lang === 'kn' ? 'ಲೈವ್ ಅಪ್‌ಡೇಟ್ಸ್' : 'LIVE UPDATES'}</span>
           </div>
           
-          <div className="flex-1 overflow-hidden whitespace-nowrap text-[11px] sm:text-xs">
-            <div className="inline-block animate-pulse font-medium">
-              <span>📢 KPSC KAS & Group-C 2026-27 ಪರೀಕ್ಷಾ ಸರಣಿ ಮತ್ತು ವಿಷಯವಾರು ನೋಟ್ಸ್‌ಗಳು ಲಭ್ಯ!</span>
-              <span className="mx-3 text-emerald-300 font-bold">•</span>
-              <span>⚡ ಇಂದಿನ ದೈನಂದಿನ ಉಚಿತ 10-ಪ್ರಶ್ನೆಗಳ ಕ್ವಿಜ್ ಲೈವ್ ಆಗಿದೆ!</span>
-              <span className="mx-3 text-emerald-300 font-bold">•</span>
-              <span>👮 ಪೊಲೀಸ್ PSI & FDA ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳನ್ನು ತಕ್ಷಣ ಅಭ್ಯಾಸ ಮಾಡಿ!</span>
+          <div className="flex-1 overflow-x-auto no-scrollbar whitespace-nowrap text-[11px] sm:text-xs">
+            <div className="inline-flex items-center gap-4 animate-pulse font-medium">
+              {dynamicTickerItems.map((item, idx) => (
+                <React.Fragment key={item.id}>
+                  {idx > 0 && <span className="text-emerald-300 font-bold">•</span>}
+                  <button
+                    onClick={() => {
+                      if (item.type === 'test' && onSelectTest) onSelectTest(item.data);
+                      else if (item.type === 'note' && onSelectNote) onSelectNote(item.data);
+                      else if (item.type === 'notice') {
+                        setSelectedNoticeForModal(item.data);
+                      } else {
+                        onNavigate('notes');
+                      }
+                    }}
+                    className="hover:underline hover:text-amber-200 transition-colors text-left flex items-center gap-1.5"
+                  >
+                    <span>{item.text}</span>
+                  </button>
+                </React.Fragment>
+              ))}
             </div>
           </div>
 
           <button 
             onClick={() => onNavigate('notes')}
-            className="shrink-0 font-bold bg-white text-emerald-900 hover:bg-emerald-50 px-3 py-1 rounded-full text-[10px] sm:text-xs shadow-sm transition-transform active:scale-95 flex items-center gap-1"
+            className="shrink-0 font-bold bg-white text-emerald-950 hover:bg-emerald-50 px-3 py-1 rounded-full text-[10px] sm:text-xs shadow-sm transition-transform active:scale-95 flex items-center gap-1"
           >
-            <span>{lang === 'kn' ? 'ತೆರೆಯಿರಿ' : 'Explore'}</span>
+            <span>{lang === 'kn' ? 'ಎಲ್ಲಾ ವೀಕ್ಷಿಸಿ' : 'View All'}</span>
             <ChevronRight className="w-3 h-3" />
           </button>
         </div>
@@ -1562,10 +1667,10 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
       {/* 2. RESUME LEARNING QUICK CARD (For Logged-in Students) */}
       {hasResumeActivity && (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mb-4 sm:-mb-6 animate-in fade-in slide-in-from-top-3 duration-300">
-          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white shadow-xl border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 text-white shadow-xl border border-emerald-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center font-black text-xl shrink-0 shadow-inner">
-                {recentTestObj ? '📝' : '📖'}
+                {activeResumeType === 'test' ? '📝' : '📖'}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1573,11 +1678,20 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     {lang === 'kn' ? 'ಮುಂದುವರಿಸಿ • Resume Learning' : 'Resume Learning'}
                   </span>
                   <span className="text-xs text-emerald-300/80 font-medium">
-                    {recentTestObj ? 'ಕೊನೆಯದಾಗಿ ಬರೆದ ಮಾಕ್ ಟೆಸ್ಟ್' : 'ಕೊನೆಯದಾಗಿ ಓದಿದ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್'}
+                    {activeResumeType === 'test' 
+                      ? (lang === 'kn' ? 'ಕೊನೆಯದಾಗಿ ಬರೆದ ಮಾಕ್ ಟೆಸ್ಟ್' : 'Recent Mock Test Attempt') 
+                      : (lang === 'kn' ? 'ಕೊನೆಯದಾಗಿ ಓದಿದ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್' : 'Recent Digital Note')}
                   </span>
+                  {activeResumeType === 'test' && latestAttempt?.score !== undefined && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                      {lang === 'kn' 
+                        ? `ಗಳಿಸಿದ ಅಂಕ: ${latestAttempt.score}/${latestAttempt.totalMarks || 50} (${Math.round(latestAttempt.accuracy || 0)}% ನಿಖರತೆ)` 
+                        : `Score: ${latestAttempt.score}/${latestAttempt.totalMarks || 50} (${Math.round(latestAttempt.accuracy || 0)}% acc)`}
+                    </span>
+                  )}
                 </div>
-                <h3 className="text-sm sm:text-base font-bold text-white truncate mt-0.5">
-                  {recentTestObj 
+                <h3 className="text-sm sm:text-base font-bold text-white truncate mt-1">
+                  {activeResumeType === 'test' && recentTestObj
                     ? (lang === 'kn' ? (recentTestObj.titleKn || recentTestObj.title) : recentTestObj.title)
                     : (recentNoteObj ? (lang === 'kn' ? (recentNoteObj.titleKn || recentNoteObj.title) : recentNoteObj.title) : '')}
                 </h3>
@@ -1587,9 +1701,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
             <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
               <button
                 onClick={() => {
-                  if (recentTestObj && onSelectTest) {
+                  if (activeResumeType === 'test' && recentTestObj && onSelectTest) {
                     onSelectTest(recentTestObj);
-                  } else if (recentNoteObj && onSelectNote) {
+                  } else if (activeResumeType === 'note' && recentNoteObj && onSelectNote) {
                     onSelectNote(recentNoteObj);
                   } else {
                     onNavigate('notes');
@@ -1597,7 +1711,11 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 }}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-1.5 transition-all hover:scale-105 active:scale-95"
               >
-                <span>{lang === 'kn' ? 'ಅಧ್ಯಯನ ಮುಂದುವರಿಸಿ →' : 'Continue Study →'}</span>
+                <span>
+                  {activeResumeType === 'test'
+                    ? (lang === 'kn' ? 'ಮರು-ಪರೀಕ್ಷೆ / ಮುಂದುವರಿಸಿ →' : 'Retake / Continue Test →')
+                    : (lang === 'kn' ? 'ಓದುವುದನ್ನು ಮುಂದುವರಿಸಿ →' : 'Continue Reading →')}
+                </span>
               </button>
             </div>
           </div>

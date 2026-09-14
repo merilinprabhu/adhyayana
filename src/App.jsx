@@ -15,6 +15,7 @@ import { NotesViewer } from './pages/NotesViewer';
 import { TestPlayer } from './pages/TestPlayer';
 import { UserDashboard } from './pages/UserDashboard';
 import { DeveloperAdmin } from './pages/DeveloperAdmin';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainApp = () => {
   const { isAuthenticated, isDeveloper, setIsAuthModalOpen, triggerGoogleOAuthLogin } = useAuth();
@@ -166,11 +167,13 @@ const MainApp = () => {
 
         {currentView === 'developer' && (
           isDeveloper ? (
-            <DeveloperAdmin
-              onSelectTest={handleSelectTest}
-              onSelectNote={handleSelectNote}
-              onSelectExam={handleSelectExam}
-            />
+            <ErrorBoundary>
+              <DeveloperAdmin
+                onSelectTest={handleSelectTest}
+                onSelectNote={handleSelectNote}
+                onSelectExam={handleSelectExam}
+              />
+            </ErrorBoundary>
           ) : (
             <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
               <div className="w-16 h-16 bg-red-100 dark:bg-red-950/50 text-red-600 rounded-full flex items-center justify-center mb-4 text-2xl font-bold shadow-sm">
@@ -206,10 +209,12 @@ const MainApp = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <MainApp />
-      </DataProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <DataProvider>
+          <MainApp />
+        </DataProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
