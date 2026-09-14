@@ -296,15 +296,15 @@ export const DataProvider = ({ children }) => {
 
   // Developer Direct Payment (UPI / PhonePe / GPay / Paytm / QR)
   const [developerUpiId, setDeveloperUpiId] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.DEV_UPI_ID) || 'merilinprabhugk@okaxis';
+    return localStorage.getItem(STORAGE_KEYS.DEV_UPI_ID) || '6360433316@ybl';
   });
 
   const [developerPhone, setDeveloperPhone] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.DEV_PHONE) || '9480123456';
+    return localStorage.getItem(STORAGE_KEYS.DEV_PHONE) || '6360433316';
   });
 
   const [developerName, setDeveloperName] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.DEV_NAME) || 'Merilin Prabhu (ಅಧ್ಯಯನ)';
+    return localStorage.getItem(STORAGE_KEYS.DEV_NAME) || 'SAVITA (ಅಧ್ಯಯನ)';
   });
 
   const [developerUpiQrImage, setDeveloperUpiQrImage] = useState(() => {

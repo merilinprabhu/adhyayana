@@ -361,25 +361,18 @@ export const NotesViewer = ({ note, onBack, onOpenCheckout, onOpenAuth }) => {
               </div>
             </div>
           ) : note.fileType === 'gdrive_pdf' ? (
-            /* Google Drive PDF Embed */
-            <div className="space-y-4">
-              <div className="aspect-[4/3] sm:aspect-[16/10] w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+            /* Protected Google Drive PDF Embed (View-Only Mode) */
+            <div className="space-y-3">
+              <div className="aspect-[4/3] sm:aspect-[16/10] w-full min-h-[600px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-inner">
                 <iframe
-                  src={note.gdriveUrl || "https://docs.google.com/viewer?url=https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf&embedded=true"}
-                  title="Google Drive Document Viewer"
+                  src={
+                    note.gdriveUrl?.includes('drive.google.com')
+                      ? note.gdriveUrl.replace(/\/view(\?.*)?$/, '/preview').replace(/\/edit(\?.*)?$/, '/preview')
+                      : (note.gdriveUrl || "https://docs.google.com/viewer?url=https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf&embedded=true")
+                  }
+                  title="Protected Document Viewer"
                   className="w-full h-full border-none"
                 ></iframe>
-              </div>
-              <div className="text-center">
-                <a
-                  href={note.gdriveUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:underline"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Open in Google Drive Viewer</span>
-                </a>
               </div>
             </div>
           ) : (

@@ -73,16 +73,20 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
   const discountedPrice = Math.max(0, Math.round(originalPrice * (1 - discountPercent / 100)));
 
   // Dynamic UPI Payment Strings for 1-Click Launchers (PhonePe/GPay/Paytm/BHIM)
-  const upiId = developerUpiId || '6360433316@ybl';
-  const merchantName = developerName || 'ADHYAYANA (ಅಧ್ಯಯನ)';
+  const rawPhone = (developerPhone || '6360433316').replace(/\D/g, '');
+  const activePhone = rawPhone.length === 10 ? rawPhone : (rawPhone.slice(-10) || '6360433316');
+  
+  // Use phone number based handles if specific UPI ID isn't customized or prefer phone number
+  const upiId = developerUpiId || `${activePhone}@ybl`;
+  const merchantName = developerName || 'SAVITA (ಅಧ್ಯಯನ)';
   const cleanTitle = encodeURIComponent((item?.title || 'Study Material').substring(0, 30));
-  const encodedUpiId = encodeURIComponent(upiId);
   const encodedName = encodeURIComponent(merchantName);
 
-  const upiUrl = `upi://pay?pa=${encodedUpiId}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
-  const phonePeUrl = `phonepe://pay?pa=${encodedUpiId}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
-  const gpayUrl = `gpay://upi/pay?pa=${encodedUpiId}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
-  const paytmUrl = `paytmmp://pay?pa=${encodedUpiId}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+  // App-specific phone-based UPI URLs
+  const phonePeUrl = `phonepe://pay?pa=${encodeURIComponent(`${activePhone}@ybl`)}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+  const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+  const paytmUrl = `paytmmp://pay?pa=${encodeURIComponent(`${activePhone}@paytm`)}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodedName}&am=${discountedPrice}&cu=INR&tn=${cleanTitle}`;
 
   const qrCodeImageUrl = developerUpiQrImage || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiUrl)}&margin=10`;
 
@@ -458,45 +462,58 @@ export const CheckoutModal = ({ exam, item: propItem, isOpen, onClose, onPurchas
                     {/* PhonePe */}
                     <a
                       href={phonePeUrl}
+                      onClick={() => copyToClipboard(activePhone, 'phone')}
                       className="p-2.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
                     >
                       <span className="w-7 h-7 rounded-full bg-white text-purple-600 font-black text-sm flex items-center justify-center shadow-inner">
                         Pe
                       </span>
                       <span className="text-[11px] font-bold">PhonePe</span>
+                      <span className="text-[9px] text-purple-200 font-mono">{activePhone}</span>
                     </a>
 
                     {/* Google Pay */}
                     <a
                       href={gpayUrl}
+                      onClick={() => copyToClipboard(activePhone, 'phone')}
                       className="p-2.5 bg-slate-900 hover:bg-black active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm border border-slate-700 transition-all text-center"
                     >
                       <span className="w-7 h-7 rounded-full bg-white text-blue-600 font-black text-sm flex items-center justify-center shadow-inner">
                         G
                       </span>
                       <span className="text-[11px] font-bold">Google Pay</span>
+                      <span className="text-[9px] text-slate-300 font-mono">{activePhone}</span>
                     </a>
 
                     {/* Paytm */}
                     <a
                       href={paytmUrl}
+                      onClick={() => copyToClipboard(activePhone, 'phone')}
                       className="p-2.5 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
                     >
                       <span className="w-7 h-7 rounded-full bg-white text-sky-600 font-black text-xs flex items-center justify-center shadow-inner">
                         Pay
                       </span>
                       <span className="text-[11px] font-bold">Paytm</span>
+                      <span className="text-[9px] text-sky-100 font-mono">{activePhone}</span>
                     </a>
 
                     {/* Any UPI / BHIM */}
                     <a
                       href={upiUrl}
+                      onClick={() => copyToClipboard(activePhone, 'phone')}
                       className="p-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-center"
                     >
                       <Zap className="w-6 h-6 text-amber-300" />
                       <span className="text-[11px] font-bold">{lang === 'kn' ? 'ಎಲ್ಲಾ UPI' : 'Other UPI'}</span>
+                      <span className="text-[9px] text-emerald-100 font-mono">{activePhone}</span>
                     </a>
                   </div>
+                  {copiedPhone && (
+                    <div className="text-center p-1.5 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-xl text-[11px] text-emerald-700 dark:text-emerald-300 font-bold animate-in fade-in">
+                      ✓ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ({activePhone}) ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ಗೆ ಕಾಪಿ ಆಗಿದೆ! ಆ್ಯಪ್‌ನಲ್ಲಿ ಪೇಸ್ಟ್ ಮಾಡಿ ಪಾವತಿಸಿ.
+                    </div>
+                  )}
                 </div>
 
                 {/* DESKTOP QR CODE & PAYEE DETAILS */}
