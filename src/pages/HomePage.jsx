@@ -2353,9 +2353,8 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
           </section>
         );
       case 'student_reviews':
-        // Filter reviews pushed to home, or fallback to curated top ratings if none pushed yet
-        const displayReviews = (feedbacks || []).filter(f => f.isFeaturedOnHome);
-        const activeReviews = displayReviews.length > 0 ? displayReviews : (feedbacks || []).slice(0, 6);
+        // ONLY show reviews that are explicitly pushed to home by developer (isFeaturedOnHome === true)
+        const activeReviews = (feedbacks || []).filter(f => Boolean(f.isFeaturedOnHome));
         if (activeReviews.length === 0) return null;
 
         return (

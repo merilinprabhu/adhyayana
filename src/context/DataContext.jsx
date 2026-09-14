@@ -1558,6 +1558,11 @@ export const DataProvider = ({ children }) => {
                 });
                 return Array.from(map.values());
               });
+            } else if (s.key === 'footer_config' && s.value && typeof s.value === 'object') {
+              setFooterConfig(prev => ({ ...prev, ...s.value }));
+              try {
+                localStorage.setItem(STORAGE_KEYS.FOOTER_CONFIG, JSON.stringify(s.value));
+              } catch (e) {}
             }
           });
         }
@@ -1950,6 +1955,52 @@ export const DataProvider = ({ children }) => {
         logs.push(`✓ Synced ${allNoticesToPush.length} Official Notices to Cloud`);
       } catch (notSyncErr) {
         console.warn('Notices sync notice:', notSyncErr);
+      }
+
+      // 6. Seed Feedbacks & Reviews
+      try {
+        const allFeedbacksToPush = feedbacks.length > 0 ? feedbacks : INITIAL_FEEDBACKS;
+        for (const fb of allFeedbacksToPush) {
+          await supabase.from('feedbacks').upsert({
+            id: fb.id,
+            target_type: fb.targetType || 'test',
+            target_id: fb.targetId,
+            target_title: fb.targetTitle || '',
+            rating: Number(fb.rating) || 5,
+            comment_kn: fb.commentKn || fb.comment || '',
+            comment: fb.comment || fb.comment_kn || '',
+            user_name: fb.userName || 'Student',
+            user_email: fb.userEmail || '',
+            user_district: fb.userDistrict || '',
+            is_featured_on_home: Boolean(fb.isFeaturedOnHome),
+            created_at: fb.createdAt || new Date().toISOString()
+          });
+        }
+        logs.push(`✓ Synced ${allFeedbacksToPush.length} Verified Reviews & Ratings to Cloud`);
+      } catch (fbSyncErr) {
+        console.warn('Feedbacks sync notice:', fbSyncErr);
+      }
+
+      // 7. Seed Study Requests
+      try {
+        const allRequestsToPush = studyRequests.length > 0 ? studyRequests : INITIAL_STUDY_REQUESTS;
+        for (const req of allRequestsToPush) {
+          await supabase.from('study_requests').upsert({
+            id: req.id,
+            title: req.title,
+            category: req.category || 'Other',
+            description: req.description || '',
+            requester_name: req.requesterName || 'Student',
+            requester_contact: req.requesterContact || '',
+            requester_email: req.requesterEmail || '',
+            status: req.status || 'pending',
+            admin_reply: req.adminReply || '',
+            created_at: req.createdAt || new Date().toISOString()
+          });
+        }
+        logs.push(`✓ Synced ${allRequestsToPush.length} Student Requests to Cloud`);
+      } catch (reqSyncErr) {
+        console.warn('Study requests sync notice:', reqSyncErr);
       }
 
       setCloudStatus('connected');
@@ -3458,8 +3509,22 @@ export const DataProvider = ({ children }) => {
     setReadNoticeIds(prev => prev.includes(noticeId) ? prev : [...prev, noticeId]);
   };
 
-  const updateFooterConfig = (newConfig) => {
-    setFooterConfig(prev => ({ ...prev, ...newConfig }));
+  const updateFooterConfig = async (newConfig) => {
+    const merged = { ...footerConfig, ...newConfig };
+    setFooterConfig(merged);
+    try {
+      localStorage.setItem(STORAGE_KEYS.FOOTER_CONFIG, JSON.stringify(merged));
+    } catch (e) {}
+
+    try {
+      await supabase.from('app_settings').upsert({
+        key: 'footer_config',
+        value: merged,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn('Supabase footer save notice:', e);
+    }
   };
 
   const updateEmailConfig = (newConfig) => {
@@ -4484,7 +4549,7 @@ export const DataProvider = ({ children }) => {
       await supabase.from('feedbacks').upsert({
         id: newFeedback.id,
         target_type: newFeedback.targetType || 'test',
-        target_id: newFeedback.targetId,
+        target_id: newFeedback.targetId || 'general_test',
         target_title: newFeedback.targetTitle || '',
         rating: Number(newFeedback.rating) || 5,
         comment_kn: newFeedback.commentKn || newFeedback.comment || '',
@@ -4498,6 +4563,17 @@ export const DataProvider = ({ children }) => {
     } catch (e) {
       console.warn('Supabase feedback insert fallback:', e);
     }
+
+    try {
+      const { data: dbFeedbacks } = await supabase.from('feedbacks').select('*');
+      if (dbFeedbacks && dbFeedbacks.length > 0) {
+        await supabase.from('app_settings').upsert({
+          key: 'feedbacks_data',
+          value: dbFeedbacks,
+          updated_at: new Date().toISOString()
+        });
+      }
+    } catch (e) {}
 
     return newFeedback;
   }, []);
@@ -4579,6 +4655,17 @@ export const DataProvider = ({ children }) => {
     } catch (e) {
       console.warn('Supabase study request insert fallback:', e);
     }
+
+    try {
+      const { data: dbRequests } = await supabase.from('study_requests').select('*');
+      if (dbRequests && dbRequests.length > 0) {
+        await supabase.from('app_settings').upsert({
+          key: 'study_requests_data',
+          value: dbRequests,
+          updated_at: new Date().toISOString()
+        });
+      }
+    } catch (e) {}
 
     return newRequest;
   }, []);
