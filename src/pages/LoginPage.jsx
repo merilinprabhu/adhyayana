@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { usePwa } from '../context/PwaContext';
 import { 
   BookOpen, 
   ShieldCheck, 
@@ -21,7 +22,8 @@ import {
   Award,
   Layers,
   LogOut,
-  Send
+  Send,
+  Download
 } from 'lucide-react';
 
 export const KARNATAKA_DISTRICTS = [
@@ -101,6 +103,7 @@ export const LoginPage = ({ initialMode = null }) => {
   } = useAuth();
 
   const { lang, setLang } = useData();
+  const { triggerInstall, isInstalled } = usePwa();
 
   const isProfileDone = Boolean(
     user?.isAuthorizedAdmin ||
@@ -264,6 +267,18 @@ export const LoginPage = ({ initialMode = null }) => {
 
         {/* Top Right Controls */}
         <div className="flex items-center gap-2">
+          {!isInstalled && (
+            <button
+              onClick={triggerInstall}
+              type="button"
+              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-emerald-500 text-white hover:from-amber-600 hover:to-emerald-600 shadow-md shadow-emerald-900/30 transition-all cursor-pointer transform hover:scale-105 active:scale-95"
+              title="Install App"
+            >
+              <Download className="w-3.5 h-3.5 animate-bounce" />
+              <span className="inline">{lang === 'kn' ? 'ಆ್ಯಪ್ ಇನ್‌ಸ್ಟಾಲ್' : 'Install App'}</span>
+            </button>
+          )}
+
           {user && (
             <button
               onClick={logout}

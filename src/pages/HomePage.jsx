@@ -137,6 +137,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
     liveMockTest,
     updateLiveMockTest,
     generateAiDailyContent,
+    fetchLiveGovtNewsFeeds,
     feedbacks = []
   } = useData();
 
@@ -161,15 +162,34 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
   const handleGeminiAiDailyRefresh = async (subject = 'all') => {
     setIsAiGenerating(true);
     try {
-      await generateAiDailyContent({ subjectFilter: subject });
+      const res = await generateAiDailyContent({ subjectFilter: subject, cyclePool: true });
+      const firstHeadline = res?.capsule?.items?.[0]?.headlineKn || res?.capsule?.points?.[0]?.titleKn || '';
       setAiSuccessToast(
         lang === 'kn'
-          ? '✨ Gemini AI: 50 ವಿಷಯಗಳ ಇಂದಿನ ಅಧ್ಯಯನ ಸಾಮಗ್ರಿಗಳನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಆಟೋ-ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ!'
-          : '✨ Gemini AI: 50-Item Daily Study Bank Successfully Refreshed!'
+          ? `✨ Gemini AI: ಇಂದಿನ ಹೊಸ ಅಧ್ಯಯನ ವಿಷಯಗಳು ಯಶಸ್ವಿಯಾಗಿ ಅಪ್‌ಡೇಟ್ ಆಗಿವೆ! (${firstHeadline.slice(0, 30)}...)`
+          : `✨ Gemini AI: Fresh Daily Study Set Activated! (${firstHeadline.slice(0, 30)}...)`
       );
       setTimeout(() => setAiSuccessToast(null), 5000);
     } catch (err) {
       console.error('Error in AI refresh:', err);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const handleFetchLiveGovtNews = async () => {
+    setIsAiGenerating(true);
+    try {
+      const res = await fetchLiveGovtNewsFeeds();
+      const firstHeadline = res?.capsule?.items?.[0]?.headlineKn || res?.capsule?.points?.[0]?.titleKn || '';
+      setAiSuccessToast(
+        lang === 'kn'
+          ? `📡 PIB & ಸರ್ಕಾರಿ ಲೈವ್ ಪ್ರಕಟಣೆಗಳು ಯಶಸ್ವಿಯಾಗಿ ಸಿಂಕ್ ಆಗಿವೆ! (${firstHeadline.slice(0, 30)}...)`
+          : `📡 Live Official Govt Releases Synced! (${firstHeadline.slice(0, 30)}...)`
+      );
+      setTimeout(() => setAiSuccessToast(null), 5000);
+    } catch (err) {
+      console.error('Error fetching live govt news:', err);
     } finally {
       setIsAiGenerating(false);
     }
@@ -1973,21 +1993,32 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Live Govt PIB & DD News Feed Button */}
+                <button
+                  onClick={() => handleFetchLiveGovtNews()}
+                  disabled={isAiGenerating}
+                  className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs shadow-lg shadow-teal-600/20 flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50 cursor-pointer"
+                  title="ಭಾರತ ಸರ್ಕಾರದ PIB & DD News ಲೈವ್ ಪ್ರಕಟಣೆಗಳನ್ನು ತಕ್ಷಣ ಪಡೆದುಕೊಳ್ಳಿ"
+                >
+                  <Zap className={`w-4 h-4 fill-current ${isAiGenerating ? 'animate-pulse' : ''}`} />
+                  <span>{isAiGenerating ? (lang === 'kn' ? 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...' : 'Fetching...') : (lang === 'kn' ? '📡 PIB ಲೈವ್ ಸರ್ಕಾರಿ ಸುದ್ದಿ' : '📡 Live PIB Feed')}</span>
+                </button>
+
                 {/* Gemini AI Refresh Button */}
                 <button
                   onClick={() => handleGeminiAiDailyRefresh(activeSubjectFilter)}
                   disabled={isAiGenerating}
-                  className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition-all hover:scale-105 shrink-0 disabled:opacity-50"
-                  title="Gemini AI ಮೂಲಕ 50 ಹೊಸ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳನ್ನು ಆಟೋ-ರಿಫ್ರೆಶ್ ಮಾಡಿ"
+                  className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50 cursor-pointer"
+                  title="Gemini AI ಸಿಲಬಸ್ ರೊಟೇಷನ್ ಮೂಲಕ 50 ಹೊಸ ವಿಷಯಗಳನ್ನು ಆಟೋ-ರಿಫ್ರೆಶ್ ಮಾಡಿ"
                 >
                   <Sparkles className={`w-4 h-4 ${isAiGenerating ? 'animate-spin' : ''}`} />
-                  <span>{isAiGenerating ? (lang === 'kn' ? 'AI ರಿಫ್ರೆಶ್...' : 'AI Refreshing...') : (lang === 'kn' ? '✨ AI 50-Item Refresh' : '✨ AI 50-Item Refresh')}</span>
+                  <span>{isAiGenerating ? (lang === 'kn' ? 'AI ರಿಫ್ರೆಶ್...' : 'Refreshing...') : (lang === 'kn' ? '✨ AI ಸಿಲಬಸ್ ಸೆಟ್' : '✨ AI Study Set')}</span>
                 </button>
 
                 {/* Voice Reader Button */}
                 <button
                   onClick={() => handleToggleCurrentAffairsAudio(latestAffairs)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all shrink-0 ${
+                  className={`px-3 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                     isPlayingAudio
                       ? 'bg-rose-600 text-white animate-pulse'
                       : 'bg-slate-900 dark:bg-slate-800 text-slate-100 hover:bg-slate-800'

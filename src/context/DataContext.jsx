@@ -267,10 +267,10 @@ export const INITIAL_NOTICES = [
 
 export const INITIAL_CURRENT_AFFAIRS = [
   {
-    id: 'ca_2026_09_14',
-    date: '2026-09-14',
-    titleKn: 'ಇಂದಿನ ಪ್ರಮುಖ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳ ಕ್ಯಾಪ್ಸೂಲ್ (14 ಸೆಪ್ಟೆಂಬರ್ 2026)',
-    titleEn: 'Daily High-Yield Current Affairs Capsule (14 September 2026)',
+    id: `ca_${new Date().toISOString().split('T')[0].replace(/-/g, '_')}`,
+    date: new Date().toISOString().split('T')[0],
+    titleKn: `ಇಂದಿನ ಪ್ರಮುಖ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳ ಕ್ಯಾಪ್ಸೂಲ್ (${new Date().toLocaleDateString('kn-IN', { day: 'numeric', month: 'long', year: 'numeric' })})`,
+    titleEn: `Daily High-Yield Current Affairs Capsule (${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })})`,
     audioText: 'ನಮಸ್ಕಾರ, ಇಂದಿನ ಪ್ರಮುಖ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು: ಕರ್ನಾಟಕ ರಾಜ್ಯ ಶಿಕ್ಷಣ ನೀತಿ ಕರಡು ಬಿಡುಗಡೆ, ಇಸ್ರೋ ಚಂದ್ರಯಾನ-4 ಮಾದರಿ ಪರೀಕ್ಷೆ ಯಶಸ್ವಿ, ಸಂವಿಧಾನ ಆಡಳಿತ ಸುಧಾರಣೆಗಳು, ರಿಸರ್ವ್ ಬ್ಯಾಂಕ್ ನೂತನ ಮಾರ್ಗಸೂಚಿಗಳು, ಮತ್ತು ಪ್ಯಾರಿಸ್ ಪ್ಯಾರಾಲಿಂಪಿಕ್ಸ್‌ನಲ್ಲಿ ಭಾರತದ ಐತಿಹಾಸಿಕ ಸಾಧನೆ.',
     points: [
       {
@@ -1571,6 +1571,21 @@ export const DataProvider = ({ children }) => {
               try {
                 localStorage.setItem(STORAGE_KEYS.FOOTER_CONFIG, JSON.stringify(s.value));
               } catch (e) {}
+            } else if (s.key === 'daily_current_affairs' && Array.isArray(s.value) && s.value.length > 0) {
+              setCurrentAffairs(s.value);
+              try {
+                localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify(s.value));
+              } catch (e) {}
+            } else if (s.key === 'daily_flashcards' && Array.isArray(s.value) && s.value.length > 0) {
+              setFlashcards(s.value);
+              try {
+                localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(s.value));
+              } catch (e) {}
+            } else if (s.key === 'daily_quiz_settings' && s.value && typeof s.value === 'object') {
+              setDailyQuiz(s.value);
+              try {
+                localStorage.setItem(STORAGE_KEYS.DAILY_QUIZ, JSON.stringify(s.value));
+              } catch (e) {}
             }
           });
         }
@@ -1803,6 +1818,22 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(emailConfig));
   }, [emailConfig]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify(currentAffairs));
+  }, [currentAffairs]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(flashcards));
+  }, [flashcards]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.FLASHCARD_PROGRESS, JSON.stringify(flashcardProgress));
+  }, [flashcardProgress]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.STUDY_STREAK, JSON.stringify(studyStreak));
+  }, [studyStreak]);
 
   // 1-Click Push / Seed All Current Local & Template Data to Supabase Database
   const seedSupabaseDatabase = async () => {
@@ -3829,14 +3860,12 @@ export const DataProvider = ({ children }) => {
     });
   };
 
-  // 1-Click Gemini AI Engine for Daily 50-Item Content Refresh across 9 Subjects
-  const generateAiDailyContent = async ({ topic = 'Karnataka Competitive Exams', subjectFilter = 'all' } = {}) => {
-    const today = new Date().toISOString().split('T')[0];
-    const dateFormatted = new Date().toLocaleDateString('kn-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const allSubjectNews = [
+  // 6 Rich Multi-Subject Daily Current Affairs Pools (54 Total Syllabus-Aligned Items)
+  const DYNAMIC_CURRENT_AFFAIRS_POOLS = [
+    // Pool 0: Karnataka State Reforms, Constitution & Space Tech
+    [
       {
-        id: `ca_gen_${Date.now()}_1`,
+        id: `ca_p0_1`,
         categoryKn: '🏛️ ಕರ್ನಾಟಕ ವಿಶೇಷ & ಆಡಳಿತ',
         categoryEn: 'Karnataka State Affairs',
         tag: 'current_affairs',
@@ -3848,7 +3877,7 @@ export const DataProvider = ({ children }) => {
         examTakeawayKn: 'ಕರ್ನಾಟಕ ಸಾರ್ವಜನಿಕ ಗ್ರಂಥಾಲಯಗಳ ಕಾಯ್ದೆ ಮತ್ತು ಡಿಜಿಟಲ್ ಇ-ಲರ್ನಿಂಗ್ ಉಪಕ್ರಮಗಳು.'
       },
       {
-        id: `ca_gen_${Date.now()}_2`,
+        id: `ca_p0_2`,
         categoryKn: '⚖️ ಸಂವಿಧಾನ & ಶಾಸನಗಳು',
         categoryEn: 'Indian Polity & Law',
         tag: 'polity',
@@ -3860,7 +3889,7 @@ export const DataProvider = ({ children }) => {
         examTakeawayKn: 'ಪುಟ್ಟಸ್ವಾಮಿ ತೀರ್ಪು ಮತ್ತು ಸಂವಿಧಾನದ 21ನೇ ವಿಧಿಯ ಮಹತ್ವ.'
       },
       {
-        id: `ca_gen_${Date.now()}_3`,
+        id: `ca_p0_3`,
         categoryKn: '📜 ಇತಿಹಾಸ & ಪರಂಪರೆ',
         categoryEn: 'History & Heritage',
         tag: 'history',
@@ -3872,7 +3901,7 @@ export const DataProvider = ({ children }) => {
         examTakeawayKn: 'ರಾಷ್ಟ್ರಕೂಟ ಸಾಮ್ರಾಜ್ಯದ ಆಡಳಿತ ಮತ್ತು ಸಾಹಿತ್ಯ ಕೊಡುಗೆಗಳು.'
       },
       {
-        id: `ca_gen_${Date.now()}_4`,
+        id: `ca_p0_4`,
         categoryKn: '💰 ಆರ್ಥಿಕತೆ & ನೀತಿಗಳು',
         categoryEn: 'Economy & Banking',
         tag: 'economy',
@@ -3884,7 +3913,7 @@ export const DataProvider = ({ children }) => {
         examTakeawayKn: 'ಭಾರತೀಯ ರಿಸರ್ವ್ ಬ್ಯಾಂಕ್ ವಿತ್ತೀಯ ನೀತಿ ಮತ್ತು ಡಿಜಿಟಲ್ ಬ್ಯಾಂಕಿಂಗ್.'
       },
       {
-        id: `ca_gen_${Date.now()}_5`,
+        id: `ca_p0_5`,
         categoryKn: '✍️ ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ',
         categoryEn: 'Kannada Language & Literature',
         tag: 'kannada',
@@ -3896,7 +3925,7 @@ export const DataProvider = ({ children }) => {
         examTakeawayKn: 'ಕವಿರಾಜಮಾರ್ಗ (ಶ್ರೀವಿಜಯ) ಮತ್ತು ಹಳಗನ್ನಡ ವ್ಯಾಕರಣ ನಿಯಮಗಳು.'
       },
       {
-        id: `ca_gen_${Date.now()}_6`,
+        id: `ca_p0_6`,
         categoryKn: '🌍 ಭೂಗೋಳ & ಪರಿಸರ',
         categoryEn: 'Geography & Environment',
         tag: 'geography',
@@ -3908,7 +3937,7 @@ export const DataProvider = ({ children }) => {
         examTakeawayKn: 'ಕರ್ನಾಟಕದ ಜೀವಗೋಳ ಮೀಸಲು ಪ್ರದೇಶಗಳು ಮತ್ತು ನದಿ ವ್ಯವಸ್ಥೆ.'
       },
       {
-        id: `ca_gen_${Date.now()}_7`,
+        id: `ca_p0_7`,
         categoryKn: '🔬 ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ',
         categoryEn: 'Science & Technology',
         tag: 'science',
@@ -3920,7 +3949,7 @@ export const DataProvider = ({ children }) => {
         examTakeawayKn: 'ಇಸ್ರೋ ಬಾಹ್ಯಾಕಾಶ ಯೋಜನೆಗಳು ಮತ್ತು ಉಪಗ್ರಹ ತಂತ್ರಜ್ಞಾನ.'
       },
       {
-        id: `ca_gen_${Date.now()}_8`,
+        id: `ca_p0_8`,
         categoryKn: '🏆 ಕ್ರೀಡೆ & ಪ್ರಶಸ್ತಿಗಳು',
         categoryEn: 'Sports & Awards',
         tag: 'sports',
@@ -3932,7 +3961,7 @@ export const DataProvider = ({ children }) => {
         examTakeawayKn: 'ರಾಷ್ಟ್ರೀಯ ಕ್ರೀಡಾ ಪ್ರಶಸ್ತಿಗಳು ಮತ್ತು ಪ್ರಮುಖ ಪಂದ್ಯಾವಳಿಗಳು.'
       },
       {
-        id: `ca_gen_${Date.now()}_9`,
+        id: `ca_p0_9`,
         categoryKn: '🌐 ಅಂತಾರಾಷ್ಟ್ರೀಯ & ಜಾಗತಿಕ',
         categoryEn: 'International Affairs',
         tag: 'international',
@@ -3943,7 +3972,595 @@ export const DataProvider = ({ children }) => {
         examTakeaway: 'International Solar Alliance (ISA), UNFCCC COP Declarations.',
         examTakeawayKn: 'ಅಂತಾರಾಷ್ಟ್ರೀಯ ಸೌರ ಮೈತ್ರಿಕೂಟ (ISA) ಮತ್ತು ಜಾಗತಿಕ ಶೃಂಗಸಭೆಗಳು.'
       }
-    ];
+    ],
+
+    // Pool 1: Brand Bengaluru, Hoysala Heritage & Human Spaceflight
+    [
+      {
+        id: `ca_p1_1`,
+        categoryKn: '🏛️ ಕರ್ನಾಟಕ ವಿಶೇಷ & ಆಡಳಿತ',
+        categoryEn: 'Karnataka State Affairs',
+        tag: 'current_affairs',
+        headlineKn: `ಬ್ರಾಂಡ್ ಬೆಂಗಳೂರು: ಉಪನಗರ ರೈಲು ಯೋಜನೆ (K-RIDE Suburban Rail) ಕಾಮಗಾರಿಗೆ ವೇಗ`,
+        headlineEn: `Bengaluru Suburban Rail Project Corridor 2 & 4 Civil Works Fast-Tracked`,
+        descKn: `ಬೆಂಗಳೂರಿನ ಸಂಚಾರ ದಟ್ಟಣೆ ನಿವಾರಣೆಗೆ 148 ಕಿ.ಮೀ ಉಪನಗರ ರೈಲು ಜಾಲಕ್ಕೆ ಹೆಚ್ಚುವರಿ ₹15,767 ಕೋಟಿ ಹೂಡಿಕೆ ಅನುಮೋದನೆ ದೊರೆತಿದೆ.`,
+        descEn: `Karnataka state cabinet fast-tracks suburban train corridors connecting Yeshwantpur, Channasandra, and Baiyappanahalli.`,
+        examTakeaway: 'Urban Mass Transit Planning, K-RIDE joint venture & Infrastructure financing.',
+        examTakeawayKn: 'ಕರ್ನಾಟಕ ನಗರಾಭಿವೃದ್ಧಿ ಯೋಜನೆಗಳು ಮತ್ತು ರೈಲ್ವೆ ಜಂಟಿ ಸಹಭಾಗಿತ್ವ (K-RIDE).'
+      },
+      {
+        id: `ca_p1_2`,
+        categoryKn: '⚖️ ಸಂವಿಧಾನ & ಶಾಸನಗಳು',
+        categoryEn: 'Indian Polity & Law',
+        tag: 'polity',
+        headlineKn: `ಮುಖ್ಯ ಚುನಾವಣಾ ಆಯುಕ್ತರ ನೇಮಕಾತಿ: ನೂತನ ಶಾಸನಾತ್ಮಕ ಆಯ್ಕೆ ಸಮಿತಿ ಕಾಯ್ದೆ ಜಾರಿ`,
+        headlineEn: `Statutory Selection Committee Enforced for Appointment of Election Commissioners`,
+        descKn: `ಪ್ರಧಾನಿ, ಕೇಂದ್ರ ಕ್ಯಾಬಿನೆಟ್ ಸಚಿವರು ಮತ್ತು ಲೋಕಸಭೆಯ ವಿರೋಧ ಪಕ್ಷದ ನಾಯಕರನ್ನು ಒಳಗೊಂಡ ಆಯ್ಕೆ ಸಮಿತಿ ರಚನೆಯಾಗಿದೆ.`,
+        descEn: `New parliamentary act outlines the structured appointment mechanism for Chief Election Commissioner under Article 324.`,
+        examTakeaway: 'Article 324 Election Commission of India & Constitutional Independence.',
+        examTakeawayKn: 'ಸಂವಿಧಾನದ 324ನೇ ವಿಧಿ ಮತ್ತು ಭಾರತೀಯ ಚುನಾವಣಾ ಆಯೋಗದ ರಚನೆ.'
+      },
+      {
+        id: `ca_p1_3`,
+        categoryKn: '📜 ಇತಿಹಾಸ & ಪರಂಪರೆ',
+        categoryEn: 'History & Heritage',
+        tag: 'history',
+        headlineKn: `ಹೊಯ್ಸಳರ ಪವಿತ್ರ ದೇವಾಲಯ ಸಮೂಹಗಳಿಗೆ ಯುನೆಸ್ಕೋ ವಿಶ್ವ ಪಾರಂಪರಿಕ ತಾಣ ಗೌರವ`,
+        headlineEn: `Sacred Ensembles of Hoysalas Formally Inscribed on UNESCO World Heritage List`,
+        descKn: `ಬೇಲೂರು, ಹಳೇಬೀಡು ಮತ್ತು ಸೋಮನಾಥಪುರದ ಹೊಯ್ಸಳ ಶೈಲಿಯ ಅದ್ಭುತ ನಕ್ಷತ್ರಾಕಾರದ ಶಿಲ್ಪಕಲೆಗೆ ಜಾಗತಿಕ ಮನ್ನಣೆ ದೊರೆತಿದೆ.`,
+        descEn: `UNESCO officially recognizes Belur Chennakeshava, Halebidu Hoysaleshwara and Somanathapura Keshava temples.`,
+        examTakeaway: 'Hoysala Vesara Architecture, Soapstone Reliefs & King Vishnuvardhana.',
+        examTakeawayKn: 'ಹೊಯ್ಸಳ ವಾಸ್ತುಶಿಲ್ಪ, ಸೋಪ್‌ಸ್ಟೋನ್ ಕಲೆ ಮತ್ತು ವಿಷ್ಣುವರ್ಧನನ ಕಾಲದ ದೇವಾಲಯಗಳು.'
+      },
+      {
+        id: `ca_p1_4`,
+        categoryKn: '💰 ಆರ್ಥಿಕತೆ & ನೀತಿಗಳು',
+        categoryEn: 'Economy & Banking',
+        tag: 'economy',
+        headlineKn: `ಕರ್ನಾಟಕ ರಾಜ್ಯ ಜಿಎಸ್‌ಟಿ ಸಂಗ್ರಹದಲ್ಲಿ ಸಾರ್ವಕಾಲಿಕ ದಾಖಲೆ: ₹1.50 ಲಕ್ಷ ಕೋಟಿ ಗಡಿ ದಾಟಿದ ಆದಾಯ`,
+        headlineEn: `Karnataka Registers All-Time High GST Tax Mop-up Surpassing ₹1.50 Lakh Crore`,
+        descKn: `ದೇಶದಲ್ಲೇ ಅತಿ ಹೆಚ್ಚು ತೆರಿಗೆ ಸಂಗ್ರಹಿಸುವ ಎರಡನೇ ರಾಜ್ಯವಾಗಿ ಕರ್ನಾಟಕ ಮುಂದುವರಿದಿದ್ದು, ತಂತ್ರಜ್ಞಾನ ಆಧಾರಿತ ಆಡಿಟ್ ನೆರವಾಗಿದೆ.`,
+        descEn: `Robust digital audit systems and booming IT/Services turnover propel Karnataka as India's 2nd highest tax grosser.`,
+        examTakeaway: 'State GST Devolution, Fiscal Deficit Targets & Karnataka Fiscal Responsibility Act.',
+        examTakeawayKn: 'ಕರ್ನಾಟಕ ವಿತ್ತೀಯ ಜವಾಬ್ದಾರಿ ಕಾಯ್ದೆ ಮತ್ತು ಜಿಎಸ್‌ಟಿ ಕೌನ್ಸಿಲ್ ನೀತಿಗಳು.'
+      },
+      {
+        id: `ca_p1_5`,
+        categoryKn: '✍️ ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ',
+        categoryEn: 'Kannada Language & Literature',
+        tag: 'kannada',
+        headlineKn: `ಕುವೆಂಪು ರಾಷ್ಟ್ರೀಯ ಪುರಸ್ಕಾರ ಪ್ರದಾನ ಹಾಗೂ 'ವಿಶ್ವಮಾನವ ಸಂದೇಶ' ಕುರಿತ ರಾಷ್ಟ್ರೀಯ ಗೋಷ್ಠಿ`,
+        headlineEn: `Kuvempu National Literary Award Conferred; Universal Humanism Symposium Held`,
+        descKn: `ಭಾರತೀಯ ಸಂವಿಧಾನದ 8ನೇ ಶೆಡ್ಯೂಲ್‌ನಲ್ಲಿರುವ ಭಾಷೆಗಳ ಶ್ರೇಷ್ಠ ಸಾಹಿತಿಗಳಿಗೆ ನೀಡಲಾಗುವ ₹5 ಲಕ್ಷ ನಗದು ಪುರಸ್ಕಾರ ಪ್ರದಾನ.`,
+        descEn: `Prestigious annual Kuvempu National Award honors pan-Indian literary excellence reflecting Kuvempu's Vishwamanava philosophy.`,
+        examTakeaway: 'Rashtrakavi Kuvempu, Jnanpith Works & Kannada 8th Schedule Recognition.',
+        examTakeawayKn: 'ರಾಷ್ಟ್ರಕವಿ ಕುವೆಂಪು ಅವರ ಕೃತಿಗಳು, ಜ್ಞಾನಪೀಠ ಪ್ರಶಸ್ತಿ ಇತಿಹಾಸ ಮತ್ತು ಕನ್ನಡ ಸಾಹಿತ್ಯ.'
+      },
+      {
+        id: `ca_p1_6`,
+        categoryKn: '🌍 ಭೂಗೋಳ & ಪರಿಸರ',
+        categoryEn: 'Geography & Environment',
+        tag: 'geography',
+        headlineKn: `ಕಾಳಿ ನದಿ ಕಣಿವೆ ಮತ್ತು ದಾಂಡೇಲಿ ಹಾರ್ನ್‌ಬಿಲ್ ಸಂರಕ್ಷಿತ ಪ್ರದೇಶಕ್ಕೆ ವಿಶೇಷ ಅಭಿವೃದ್ಧಿ ಯೋಜನೆ`,
+        headlineEn: `Special Eco-Restoration Plan Implemented for Kali River Basin & Dandeli Hornbill Sanctuary`,
+        descKn: `ಉತ್ತರ ಕನ್ನಡ ಜಿಲ್ಲೆಯ ಅರಣ್ಯ ಪ್ರದೇಶದಲ್ಲಿ ನಾಲ್ಕು ಅಪರೂಪದ ಹಾರ್ನ್‌ಬಿಲ್ ಪ್ರಭೇದಗಳ ಸಂರಕ್ಷಣೆಗೆ ವನ್ಯಜೀವಿ ಕಾರಿಡಾರ್ ನಿರ್ಮಾಣ.`,
+        descEn: `Comprehensive habitat preservation safeguards Western Ghats Great Pied Hornbill and Malabar Pied Hornbill nesting zones.`,
+        examTakeaway: 'Forest Conservation Act 1980, River Basins & Wildlife Sanctuaries of Karnataka.',
+        examTakeawayKn: 'ಕರ್ನಾಟಕದ ವನ್ಯಜೀವಿ ಧಾಮಗಳು ಮತ್ತು ಪಶ್ಚಿಮ ಘಟ್ಟಗಳ ಪರಿಸರ ಸೂಕ್ಷ್ಮ ವಲಯಗಳು.'
+      },
+      {
+        id: `ca_p1_7`,
+        categoryKn: '🔬 ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ',
+        categoryEn: 'Science & Technology',
+        tag: 'science',
+        headlineKn: `ಗಗನಯಾನ ಮಾನವಸಹಿತ ಬಾಹ್ಯಾಕಾಶ ಯೋಜನೆ: ಬೆಂಗಳೂರು ಇಸ್ರೋದಲ್ಲಿ ಸಿಮ್ಯುಲೇಟರ್ ಪರೀಕ್ಷೆ ಯಶಸ್ವಿ`,
+        headlineEn: `ISRO Gaganyaan Crew Escape System & Environmental Simulators Validated in Bengaluru`,
+        descKn: `ಭಾರತೀಯ ಗಗನಯಾತ್ರಿಗಳನ್ನು ಸುರಕ್ಷಿತವಾಗಿ ಬಾಹ್ಯಾಕಾಶಕ್ಕೆ ಕಳುಹಿಸುವ ಕ್ರೂ ಎಸ್ಕೇಪ್ ಸಿಸ್ಟಮ್ ಪರೀಕ್ಷೆ ಪೂರ್ಣಗೊಂಡಿದೆ.`,
+        descEn: `Human Spaceflight Centre (HSFC) in Bengaluru completes critical environmental control loop tests for Gaganyaan-1.`,
+        examTakeaway: 'ISRO Human Spaceflight Programme, LVM3 Rocket & Low Earth Orbit (LEO) dynamics.',
+        examTakeawayKn: 'ಇಸ್ರೋ ಮಾನವಸಹಿತ ಗಗನಯಾನ ಯೋಜನೆ, LVM3 ರಾಕೆಟ್ ಮತ್ತು ಬಾಹ್ಯಾಕಾಶ ತಂತ್ರಜ್ಞಾನ.'
+      },
+      {
+        id: `ca_p1_8`,
+        categoryKn: '🏆 ಕ್ರೀಡೆ & ಪ್ರಶಸ್ತಿಗಳು',
+        categoryEn: 'Sports & Awards',
+        tag: 'sports',
+        headlineKn: `ಖೇಲೋ ಇಂಡಿಯಾ ಯೂನಿವರ್ಸಿಟಿ ಗೇಮ್ಸ್: ಕರ್ನಾಟಕದ ಜೈನ್ ವಿಶ್ವವಿದ್ಯಾಲಯಕ್ಕೆ ಓವರ್‌ಆಲ್ ಚಾಂಪಿಯನ್‌ಶಿಪ್`,
+        headlineEn: `Khelo India University Games: Karnataka's Jain University Clinches Overall Championship`,
+        descKn: `ಈಜು ಮತ್ತು ಬ್ಯಾಡ್ಮಿಂಟನ್‌ನಲ್ಲಿ ಅತಿ ಹೆಚ್ಚು ಚಿನ್ನದ ಪದಕಗಳನ್ನು ಗೆದ್ದು ರಾಜ್ಯದ ಕ್ರೀಡಾಪಟುಗಳು ರಾಷ್ಟ್ರೀಯ ಮಟ್ಟದಲ್ಲಿ ಮಿಂಚಿದ್ದಾರೆ.`,
+        descEn: `Karnataka athletes dominate aquatic and badminton events, setting multiple national university records.`,
+        examTakeaway: 'National Sports Policy, Khelo India Scheme & Karnataka Sports Budget Allocations.',
+        examTakeawayKn: 'ಖೇಲೋ ಇಂಡಿಯಾ ಯೋಜನೆ ಮತ್ತು ಕರ್ನಾಟಕ ಕ್ರೀಡಾ ನೀತಿ.'
+      },
+      {
+        id: `ca_p1_9`,
+        categoryKn: '🌐 ಅಂತಾರಾಷ್ಟ್ರೀಯ & ಜಾಗತಿಕ',
+        categoryEn: 'International Affairs',
+        tag: 'international',
+        headlineKn: `ವಿಶ್ವಸಂಸ್ಥೆ ಭದ್ರತಾ ಮಂಡಳಿ (UNSC) ಸುಧಾರಣೆ: ಭಾರತಕ್ಕೆ ಶಾಶ್ವತ ಸದಸ್ಯತ್ವಕ್ಕೆ ಜಾಗತಿಕ ಬೆಂಬಲ`,
+        headlineEn: `G4 Nations Reiterate Call for Immediate UNSC Reforms & India Permanent Seat`,
+        descKn: `ಭಾರತ, ಜಪಾನ್, ಜರ್ಮನಿ ಮತ್ತು ಬ್ರೆಜಿಲ್ (G4) ದೇಶಗಳು ವಿಶ್ವಸಂಸ್ಥೆ ಭದ್ರತಾ ಮಂಡಳಿಯ ಸದಸ್ಯತ್ವ ವಿಸ್ತರಣೆಗೆ ಜಂಟಿ ಹೇಳಿಕೆ ನೀಡಿವೆ.`,
+        descEn: `Global summit emphasizes representation of developing nations in the United Nations Security Council executive organ.`,
+        examTakeaway: 'UN Charter Article 23/27, G4 Alliances & Permanent Five (P5) Veto Powers.',
+        examTakeawayKn: 'ವಿಶ್ವಸಂಸ್ಥೆ ಭದ್ರತಾ ಮಂಡಳಿ (UNSC), G4 ಒಕ್ಕೂಟ ಮತ್ತು ಭಾರತದ ವಿದೇಶಾಂಗ ನೀತಿ.'
+      }
+    ],
+
+    // Pool 2: Agriculture, Panchayati Raj, Millets & Lunar Missions
+    [
+      {
+        id: `ca_p2_1`,
+        categoryKn: '🏛️ ಕರ್ನಾಟಕ ವಿಶೇಷ & ಆಡಳಿತ',
+        categoryEn: 'Karnataka State Affairs',
+        tag: 'current_affairs',
+        headlineKn: `ಕರ್ನಾಟಕ 'ರೈತ ಸಿರಿ' ಯೋಜನೆ: ಸಿರಿಧಾನ್ಯ (Millets) ಬೆಳೆಗಾರರಿಗೆ ಪ್ರತಿ ಹೆಕ್ಟೇರ್‌ಗೆ ₹10,000 ಪ್ರೋತ್ಸಾಹಧನ`,
+        headlineEn: `Karnataka 'Raita Siri' Scheme Disburses ₹10,000/Hectare Incentive for Millet Farmers`,
+        descKn: `ರಾಗಿ, ನವಣೆ, ಸಾಮೆ, ಸಜ್ಜೆ ಬೆಳೆಯುವ ರೈತರಿಗೆ ನೀರಿನ ಮಿತವ್ಯಯ ಮತ್ತು ಪೌಷ್ಟಿಕಾಂಶ ಭದ್ರತೆಗಾಗಿ ನೇರ ಬ್ಯಾಂಕ್ ಖಾತೆ ವರ್ಗಾವಣೆ (DBT).`,
+        descEn: `Targeted agricultural stimulus promotes drought-resilient organic millets across dryland agro-climatic zones of Karnataka.`,
+        examTakeaway: 'International Year of Millets, Rainfed Agriculture & Karnataka State Farming Policy.',
+        examTakeawayKn: 'ಕರ್ನಾಟಕ ಕೃಷಿ ನೀತಿ, ಸಿರಿಧಾನ್ಯ ಕೃಷಿ ಮತ್ತು ಒಣಭೂಮಿ ಬೇಸಾಯ ಪದ್ಧತಿ.'
+      },
+      {
+        id: `ca_p2_2`,
+        categoryKn: '⚖️ ಸಂವಿಧಾನ & ಶಾಸನಗಳು',
+        categoryEn: 'Indian Polity & Law',
+        tag: 'polity',
+        headlineKn: `73 ಮತ್ತು 74ನೇ ಸಂವಿಧಾನ ತಿದ್ದುಪಡಿ: ಕರ್ನಾಟಕ ಪಂಚಾಯತ್ ರಾಜ್ ವಾರ್ಡ್ ಸಮಿತಿಗಳ ಸಬಲೀಕರಣ`,
+        headlineEn: `State Enacts Administrative Directives Empowering Gram Sabha & Ward Committees`,
+        descKn: `ಗ್ರಾಮ ಪಂಚಾಯತ್ ಮಟ್ಟದಲ್ಲಿ ಸಾರ್ವಜನಿಕ ಸಾಮಾಜಿಕ ಲೆಕ್ಕಪರಿಶೋಧನೆ (Social Audit) ಕಡ್ಡಾಯಗೊಳಿಸಿ ನೂತನ ಮಾರ್ಗಸೂಚಿ ಪ್ರಕಟ.`,
+        descEn: `Karnataka RDPR ministry issues mandatory guidelines for transparent local grassroots financial accountability.`,
+        examTakeaway: 'Article 243, 11th & 12th Schedules of Constitution, Balwant Rai Mehta Recommendations.',
+        examTakeawayKn: 'ಸಂವಿಧಾನದ 243ನೇ ವಿಧಿ, 11 ಮತ್ತು 12ನೇ ಶೆಡ್ಯೂಲ್ ಹಾಗೂ ಕರ್ನಾಟಕ ಗ್ರಾಮೀಣಾಭಿವೃದ್ಧಿ ಆಡಳಿತ.'
+      },
+      {
+        id: `ca_p2_3`,
+        categoryKn: '📜 ಇತಿಹಾಸ & ಪರಂಪರೆ',
+        categoryEn: 'History & Heritage',
+        tag: 'history',
+        headlineKn: `ವಿಜಯನಗರ ಸಾಮ್ರಾಜ್ಯದ ರಾಜಧಾನಿ ಹಂಪಿಯ ಕಲ್ಲಿನ ರಥಕ್ಕೆ ಅತ್ಯಾಧುನಿಕ ವೈಜ್ಞಾನಿಕ ಸಂರಕ್ಷಣೆ`,
+        headlineEn: `ASI Deploys Advanced 3D Laser Scanning & Structural Conservation for Hampi Stone Chariot`,
+        descKn: `ವಿಜಯ ವಿಠ್ಠಲ ದೇವಾಲಯ ಸಂಕೀರ್ಣದಲ್ಲಿರುವ 16ನೇ ಶತಮಾನದ ಗರುಡ ವಾಹನ ರೂಪದ ಐತಿಹಾಸಿಕ ಕಲ್ಲಿನ ರಥದ ಸಂರಕ್ಷಣಾ ಕಾಮಗಾರಿ ಪೂರ್ಣ.`,
+        descEn: `Archaeological Survey of India strengthens monolithic granite joints of the iconic 16th century Vijayanagara masterpiece.`,
+        examTakeaway: 'Vijayanagara Empire Architecture, Krishnadevaraya Reign & Rayagopuras.',
+        examTakeawayKn: 'ವಿಜಯನಗರ ಸಾಮ್ರಾಜ್ಯದ ಇತಿಹಾಸ, ಶ್ರೀಕೃಷ್ಣದೇವರಾಯನ ಆಳ್ವಿಕೆ ಮತ್ತು ಹಂಪಿ ವಾಸ್ತುಶಿಲ್ಪ.'
+      },
+      {
+        id: `ca_p2_4`,
+        categoryKn: '💰 ಆರ್ಥಿಕತೆ & ನೀತಿಗಳು',
+        categoryEn: 'Economy & Banking',
+        tag: 'economy',
+        headlineKn: `ನೀತಿ ಆಯೋಗದ ಭಾರತ ನಾವೀನ್ಯತಾ ಸೂಚ್ಯಂಕ (Innovation Index): ಕರ್ನಾಟಕಕ್ಕೆ ದೇಶದಲ್ಲೇ ನಂ.1 ಸ್ಥಾನ`,
+        headlineEn: `Karnataka Retains Rank 1 in NITI Aayog India Innovation Index for Knowledge Ecosystem`,
+        descKn: `ಪೇಟೆಂಟ್ ನೋಂದಣಿ, ಸಂಶೋಧನೆ ಮತ್ತು ಅಭಿವೃದ್ಧಿ (R&D) ಹೂಡಿಕೆ ಹಾಗೂ ಸ್ಟಾರ್ಟ್‌ಅಪ್ ಪರಿಸರದಲ್ಲಿ ಕರ್ನಾಟಕ ಅಗ್ರಸ್ಥಾನದಲ್ಲಿದೆ.`,
+        descEn: `Highest number of patents filed and deep tech R&D investments place Karnataka ahead of all major states.`,
+        examTakeaway: 'NITI Aayog Indices, R&D Expenditure Targets & Global Competitiveness.',
+        examTakeawayKn: 'ನೀತಿ ಆಯೋಗದ ಪ್ರಮುಖ ವರದಿಗಳು, ಸಂಶೋಧನೆ & ಅಭಿವೃದ್ಧಿ (R&D) ಹೂಡಿಕೆಗಳು.'
+      },
+      {
+        id: `ca_p2_5`,
+        categoryKn: '✍️ ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ',
+        categoryEn: 'Kannada Language & Literature',
+        tag: 'kannada',
+        headlineKn: `ದ.ರಾ. ಬೇಂದ್ರೆ ಕಾವ್ಯೋತ್ಸವ ಮತ್ತು ಆಧುನಿಕ ನವೋದಯ ಕಾವ್ಯ ಸಾಹಿತ್ಯ ಸಮ್ಮೇಳನ`,
+        headlineEn: `Da Ra Bendre Kavya Utsava: Modern Navodaya Poetry & Literary Traditions Analyzed`,
+        descKn: `'ನಾಕುತಂತಿ' ಕೃತಿಯ ಜ್ಞಾನಪೀಠ ಸಂಭ್ರಮ ಹಾಗೂ ಕನ್ನಡ ಕಾವ್ಯದಲ್ಲಿ ಶಬ್ದ-ಗಾರುಡಿಗ ಬೇಂದ್ರೆಯವರ ಕೊಡುಗೆಗಳ ಪುನರ್ವಿಮರ್ಶೆ.`,
+        descEn: `Eminent poets analyze Bendre's 'Naaku Tanti' and rhythmic metre traditions in Kannada lyric poetry.`,
+        examTakeaway: 'Da Ra Bendre (Ambikatanayadatta), Naaku Tanti & Kannada Navodaya Literature.',
+        examTakeawayKn: 'ವರಕವಿ ದ.ರಾ. ಬೇಂದ್ರೆ (ಅಂಬಿಕಾತನಯದತ್ತ), ನಾಕುತಂತಿ ಮತ್ತು ನವೋದಯ ಕಾವ್ಯ ಯುಗ.'
+      },
+      {
+        id: `ca_p2_6`,
+        categoryKn: '🌍 ಭೂಗೋಳ & ಪರಿಸರ',
+        categoryEn: 'Geography & Environment',
+        tag: 'geography',
+        headlineKn: `ತುಂಗಭದ್ರಾ ಜಲಾಶಯದ ಹೊಸ ಹೈಡ್ರಾಲಿಕ್ ಕ್ರೆಸ್ಟ್ ಗೇಟ್‌ಗಳ ಆಧುನೀಕರಣ ಕಾಮಗಾರಿ ಆರಂಭ`,
+        headlineEn: `Comprehensive Modernization & Dynamic Sensor Automation of Tungabhadra Dam Crest Gates`,
+        descKn: `ಹೊಸಪೇಟೆಯ ಮುನಿರಾಬಾದ್ ಬಳಿ ಇರುವ ಟಿ.ಬಿ. ಡ್ಯಾಮ್‌ನಲ್ಲಿ ಜಲ ಸುರಕ್ಷತೆಗಾಗಿ ಜರ್ಮನ್ ತಂತ್ರಜ್ಞಾನದ ಗೇಟ್‌ಗಳ ಅಳವಡಿಕೆ.`,
+        descEn: `Karnataka & Andhra Pradesh joint board installs real-time telemetry sensors and reinforced alloy radial gates.`,
+        examTakeaway: 'Krishna River Basin Tributaries, Dam Safety Act 2021 & Irrigation Systems in Karnataka.',
+        examTakeawayKn: 'ಕರ್ನಾಟಕದ ನದಿ ವ್ಯವಸ್ಥೆಗಳು, ತುಂಗಭದ್ರಾ ಜಲಾಶಯ ಮತ್ತು ಅಣೆಕಟ್ಟು ಸುರಕ್ಷತಾ ಕಾಯ್ದೆ.'
+      },
+      {
+        id: `ca_p2_7`,
+        categoryKn: '🔬 ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ',
+        categoryEn: 'Science & Technology',
+        tag: 'science',
+        headlineKn: `ಚಂದ್ರಯಾನ-3 ಪ್ರೊಪಲ್ಷನ್ ಮಾಡ್ಯೂಲ್ ಚಂದ್ರನ ಕಕ್ಷೆಯಿಂದ ಭೂಕಕ್ಷೆಗೆ ಯಶಸ್ವಿ ಮರುಸ್ಥಾಪನೆ`,
+        headlineEn: `ISRO Chandrayaan-3 Propulsion Module Returns from Lunar Orbit to Earth Orbit`,
+        descKn: `ಭವಿಷ್ಯದ ಮಾದರಿ ವಾಪಸಾತಿ (Sample Return Mission) ಯೋಜನೆಗಳಿಗೆ ಅಗತ್ಯವಾದ ಕಕ್ಷಾ ಬದಲಾವಣೆ ಸಾಮರ್ಥ್ಯವನ್ನು ಇಸ್ರೋ ಸಾಬೀತುಪಡಿಸಿದೆ.`,
+        descEn: `Historic experimental trajectory adjustment demonstrates India's advanced deep-space orbital dynamics capabilities.`,
+        examTakeaway: 'Chandrayaan Programme, Vikram Lander, Pragyan Rover & Deep Space Network Byalalu.',
+        examTakeawayKn: 'ಇಸ್ರೋ ಚಂದ್ರಯಾನ-3 ಯೋಜನೆ, ವಿಕ್ರಮ್ ಲ್ಯಾಂಡರ್, ಪ್ರಜ್ಞಾನ್ ರೋವರ್ ಮತ್ತು ಬ್ಯಾಲಾಳು ಕೇಂದ್ರ.'
+      },
+      {
+        id: `ca_p2_8`,
+        categoryKn: '🏆 ಕ್ರೀಡೆ & ಪ್ರಶಸ್ತಿಗಳು',
+        categoryEn: 'Sports & Awards',
+        tag: 'sports',
+        headlineKn: `ರಾಷ್ಟ್ರೀಯ ಕ್ರೀಡಾಕೂಟ: ಈಜು ಮತ್ತು ಅಥ್ಲೆಟಿಕ್ಸ್‌ನಲ್ಲಿ ಕರ್ನಾಟಕಕ್ಕೆ ದಾಖಲೆಯ ಚಿನ್ನದ ಪದಕಗಳ ಸುರಿಮಳೆ`,
+        headlineEn: `National Games: Karnataka Aquatic Champions & Runners Bag Record Gold Medal Haul`,
+        descKn: `ರಾಷ್ಟ್ರೀಯ ಜಲಕ್ರೀಡೆ ಚಾಂಪಿಯನ್‌ಶಿಪ್‌ನಲ್ಲಿ ಕರ್ನಾಟಕದ ಈಜುಗಾರರು 12 ಹೊಸ ರಾಷ್ಟ್ರೀಯ ದಾಖಲೆಗಳನ್ನು ನಿರ್ಮಿಸಿದ್ದಾರೆ.`,
+        descEn: `Karnataka dominates national swimming leaderboard, securing prime qualifying spots for international trials.`,
+        examTakeaway: 'Major Dhyan Chand Khel Ratna, Arjuna Awardees & National Games History.',
+        examTakeawayKn: 'ಮೇಜರ್ ಧ್ಯಾನ್‌ಚಂದ್ ಖೇಲ್ ರತ್ನ, ಅರ್ಜುನ ಪ್ರಶಸ್ತಿಗಳು ಮತ್ತು ರಾಷ್ಟ್ರೀಯ ಕ್ರೀಡಾಕೂಟ.'
+      },
+      {
+        id: `ca_p2_9`,
+        categoryKn: '🌐 ಅಂತಾರಾಷ್ಟ್ರೀಯ & ಜಾಗತಿಕ',
+        categoryEn: 'International Affairs',
+        tag: 'international',
+        headlineKn: `ಬ್ರಿಕ್ಸ್ (BRICS) ಶೃಂಗಸಭೆ ವಿಸ್ತರಣೆ ಮತ್ತು ಜಾಗತಿಕ ದಕ್ಷಿಣ (Global South) ಆರ್ಥಿಕ ಪಾಲುದಾರಿಕೆ`,
+        headlineEn: `BRICS Expansion Welcomes New Member States to Strengthen Multipolar Global Trade`,
+        descKn: `ನ್ಯೂ ಡೆವಲಪ್‌ಮೆಂಟ್ ಬ್ಯಾಂಕ್ (NDB) ಮೂಲಕ ಸ್ಥಳೀಯ ಕರೆನ್ಸಿಗಳಲ್ಲಿ ವ್ಯಾಪಾರ ವಹಿವಾಟು ನಡೆಸುವ ಒಪ್ಪಂದಕ್ಕೆ ಸದಸ್ಯ ರಾಷ್ಟ್ರಗಳ ಸಹಮತ.`,
+        descEn: `Summit formalizes strategic framework promoting local currency settlements and South-South economic cooperation.`,
+        examTakeaway: 'BRICS Origin, Fortaleza Declaration, New Development Bank (NDB) Shanghai.',
+        examTakeawayKn: 'ಬ್ರಿಕ್ಸ್ (BRICS) ಒಕ್ಕೂಟ, ನ್ಯೂ ಡೆವಲಪ್‌ಮೆಂಟ್ ಬ್ಯಾಂಕ್ (NDB) ಮತ್ತು ಜಾಗತಿಕ ವ್ಯಾಪಾರ.'
+      }
+    ],
+
+    // Pool 3: Cyber Governance, Women Reservation & Wildlife Reserves
+    [
+      {
+        id: `ca_p3_1`,
+        categoryKn: '🏛️ ಕರ್ನಾಟಕ ವಿಶೇಷ & ಆಡಳಿತ',
+        categoryEn: 'Karnataka State Affairs',
+        tag: 'current_affairs',
+        headlineKn: `ಕರ್ನಾಟಕ ಸೈಬರ್ ಭದ್ರತಾ ನೀತಿ ಮತ್ತು ಎಐ ಉತ್ಕೃಷ್ಟತಾ ಕೇಂದ್ರ (Center of Excellence) ಸ್ಥಾಪನೆ`,
+        headlineEn: `Karnataka Launches Dedicated Cyber Security Policy & AI Centre of Excellence`,
+        descKn: `ಸರ್ಕಾರಿ ದತ್ತಾಂಶಗಳ ರಕ್ಷಣೆ, ಸೈಬರ್ ಕ್ರೈಮ್ ತಡೆಗಟ್ಟುವಿಕೆ ಮತ್ತು ಕೃತಕ ಬುದ್ಧಿಮತ್ತೆ ಸ್ಟಾರ್ಟ್‌ಅಪ್‌ಗಳಿಗೆ ₹100 ಕೋಟಿ ನಿಧಿ ಸ್ಥಾಪನೆ.`,
+        descEn: `Comprehensive state cyber framework establishes rapid response CERT-Karnataka and citizen digital literacy hubs.`,
+        examTakeaway: 'IT Act 2000, Digital Personal Data Protection Act 2023 & Karnataka Cyber Initiatives.',
+        examTakeawayKn: 'ಮಾಹಿತಿ ತಂತ್ರಜ್ಞಾನ ಕಾಯ್ದೆ 2000, ಡಿಜಿಟಲ್ ದತ್ತಾಂಶ ಸಂರಕ್ಷಣೆ ಮತ್ತು ಸೈಬರ್ ಸೆಕ್ಯುರಿಟಿ.'
+      },
+      {
+        id: `ca_p3_2`,
+        categoryKn: '⚖️ ಸಂವಿಧಾನ & ಶಾಸನಗಳು',
+        categoryEn: 'Indian Polity & Law',
+        tag: 'polity',
+        headlineKn: `ನಾರಿ ಶಕ್ತಿ ವಂದನ್ ಅಧಿನಿಯಮ (106ನೇ ಸಂವಿಧಾನ ತಿದ್ದುಪಡಿ): ಲೋಕಸಭೆ ಮತ್ತು ವಿಧಾನಸಭೆಗಳಲ್ಲಿ ಮಹಿಳೆಯರಿಗೆ 33% ಮೀಸಲಾತಿ`,
+        headlineEn: `106th Constitutional Amendment Act: 33% Women Reservation in Parliament & Assemblies`,
+        descKn: `ಸಂವಿಧಾನಕ್ಕೆ 330A, 332A ಮತ್ತು 334A ವಿಧಿಗಳನ್ನು ಸೇರಿಸಿ ಮಹಿಳಾ ಪ್ರಾತಿನಿಧ್ಯವನ್ನು ಸಾಂವಿಧಾನಿಕವಾಗಿ ಖಾತರಿಪಡಿಸಲಾಗಿದೆ.`,
+        descEn: `Landmark legislation mandates one-third reservation for women in Lok Sabha and State Legislative Assemblies.`,
+        examTakeaway: '106th Amendment Act 2023, Articles 330A & 332A, Delimitation & Census Provisions.',
+        examTakeawayKn: '106ನೇ ಸಾಂವಿಧಾನಿಕ ತಿದ್ದುಪಡಿ ಕಾಯ್ದೆ 2023, ಮಹಿಳಾ ಮೀಸಲಾತಿ ಮತ್ತು ಕ್ಷೇತ್ರ ಪುನರ್ವಿಂಗಡಣೆ.'
+      },
+      {
+        id: `ca_p3_3`,
+        categoryKn: '📜 ಇತಿಹಾಸ & ಪರಂಪರೆ',
+        categoryEn: 'History & Heritage',
+        tag: 'history',
+        headlineKn: `ಬನವಾಸಿಯ ಕದಂಬರ ಸಂಸ್ಥಾಪಕ ಮಯೂರವರ್ಮನ ಕಾಲದ ಪ್ರಾಚೀನ ಶಿಲಾಶಾಸನ ಸಂಶೋಧನೆ`,
+        headlineEn: `Archaeological Survey Unearths Ancient Inscriptions Dating to Kadambas of Banavasi`,
+        descKn: `ಉತ್ತರ ಕನ್ನಡ ಜಿಲ್ಲೆಯ ಬನವಾಸಿ ಸಮೀಪ ಕರ್ನಾಟಕದ ಪ್ರಪ್ರಥಮ ಸ್ವತಂತ್ರ ಸಾಮ್ರಾಜ್ಯದ ಆಡಳಿತ ಪದ್ಧತಿಯನ್ನು ವಿವರಿಸುವ ಕುರುಹುಗಳು ಪತ್ತೆ.`,
+        descEn: `Epigraphical excavations shed new light on administrative decentralization and Sanskrit-Kannada transition under King Mayurasharma.`,
+        examTakeaway: 'Kadamba Dynasty, Mayurasharma, Talagunda Pillar Inscription & Chandravalli Epigraph.',
+        examTakeawayKn: 'ಕದಂಬ ಸಾಮ್ರಾಜ್ಯ, ಮಯೂರವರ್ಮ, ತಾಳಗುಂದ ಶಾಸನ ಮತ್ತು ಕರ್ನಾಟಕದ ಪ್ರಾಚೀನ ಇತಿಹಾಸ.'
+      },
+      {
+        id: `ca_p3_4`,
+        categoryKn: '💰 ಆರ್ಥಿಕತೆ & ನೀತಿಗಳು',
+        categoryEn: 'Economy & Banking',
+        tag: 'economy',
+        headlineKn: `ಕರ್ನಾಟಕ ನೂತನ ಜೈವಿಕ ಆರ್ಥಿಕತೆ ನೀತಿ (Bio-Economy): \$100 ಶತಕೋಟಿ ಗುರಿ ಘೋಷಣೆ`,
+        headlineEn: `Karnataka Targets \$100 Billion Bio-Economy by 2030 through Biotechnology Hubs`,
+        descKn: `ಕೃಷಿ ಜೈವಿಕ ತಂತ್ರಜ್ಞಾನ, ಜೈವಿಕ ಔಷಧಗಳು (Biopharma) ಮತ್ತು ಹಸಿರು ಇಂಧನ ಕ್ಷೇತ್ರದಲ್ಲಿ ಹೊಸ ಉದ್ಯೋಗ ಸೃಷ್ಟಿಗೆ ಆದ್ಯತೆ.`,
+        descEn: `Strategic policy roadmap leverages Bengaluru's biotechnology clusters to attract global bio-manufacturing investments.`,
+        examTakeaway: 'Biotechnology Sector in Karnataka, Institute of Bioinformatics & Bio-economy Indicators.',
+        examTakeawayKn: 'ಕರ್ನಾಟಕದ ಬಯೋಟೆಕ್ನಾಲಜಿ ಕ್ಷೇತ್ರ, ಜೈವಿಕ ಆರ್ಥಿಕತೆ ಮತ್ತು ನೂತನ ಕೈಗಾರಿಕಾ ನೀತಿ.'
+      },
+      {
+        id: `ca_p3_5`,
+        categoryKn: '✍️ ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ',
+        categoryEn: 'Kannada Language & Literature',
+        tag: 'kannada',
+        headlineKn: `ಮಾಸ್ತಿ ವೆಂಕಟೇಶ ಅಯ್ಯಂಗಾರ್ ಜನ್ಮದಿನಾಚರಣೆ & ಕನ್ನಡ ಸಣ್ಣಕಥೆಗಳ ಶತಮಾನೋತ್ಸವ ವಿಚಾರ ಸಂಕಿರಣ`,
+        headlineEn: `Masti Venkatesha Iyengar Birth Centenary: Evolution of Kannada Short Stories Celebrated`,
+        descKn: `'ಕನ್ನಡ ಸಣ್ಣಕಥೆಗಳ ಜನಕ' ಮಾಸ್ತಿಯವರ 'ಚಿಕ್ಕವೀರ ರಾಜೇಂದ್ರ' ಕೃತಿಗೆ ಲಭಿಸಿದ ಜ್ಞಾನಪೀಠ ಪುರಸ್ಕಾರದ ಐತಿಹಾಸಿಕ ವಿಶ್ಲೇಷಣೆ.`,
+        descEn: `Literary scholars deliberate on realism, historical fiction, and humanist themes in Masti's classic short stories.`,
+        examTakeaway: 'Masti Venkatesha Iyengar (Srinivasa), Chikkaveera Rajendra, Jnanpith in Kannada.',
+        examTakeawayKn: 'ಮಾಸ್ತಿ ವೆಂಕಟೇಶ ಅಯ್ಯಂಗಾರ್ (ಶ್ರೀನಿವಾಸ), ಚಿಕ್ಕವೀರ ರಾಜೇಂದ್ರ ಮತ್ತು ಕನ್ನಡ ಸಣ್ಣಕಥಾ ಸಾಹಿತ್ಯ.'
+      },
+      {
+        id: `ca_p3_6`,
+        categoryKn: '🌍 ಭೂಗೋಳ & ಪರಿಸರ',
+        categoryEn: 'Geography & Environment',
+        tag: 'geography',
+        headlineKn: `ಬಂಡೀಪುರ ಮತ್ತು ನಾಗರಹೊಳೆ ಹುಲಿ ಸಂರಕ್ಷಿತ ಪ್ರದೇಶಗಳಲ್ಲಿ ವನ್ಯಜೀವಿ ಕಾರಿಡಾರ್ ವಿಸ್ತರಣೆ`,
+        headlineEn: `Bandipur-Nagarahole Integrated Tiger Reserve Corridor Strengthened for Wildlife Migration`,
+        descKn: `ನೀಲಗಿರಿ ಜೀವಗೋಳ ಮೀಸಲು ಪ್ರದೇಶದ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಆನೆ ಮತ್ತು ಹುಲಿಗಳ ಸಂಚಾರಕ್ಕೆ ಸುರಕ್ಷಿತ ಹಸಿರು ಕಾರಿಡಾರ್ ಯೋಜನೆ ಜಾರಿ.`,
+        descEn: `State forest taskforce implements eco-ducts and acoustic wildlife sensors to prevent road/rail casualties.`,
+        examTakeaway: 'Project Tiger 50 Years, Nilgiri Biosphere Reserve, National Tiger Conservation Authority (NTCA).',
+        examTakeawayKn: 'ಪ್ರಾಜೆಕ್ಟ್ ಟೈಗರ್, ನೀಲಗಿರಿ ಜೀವಗೋಳ ಮೀಸಲು ಪ್ರದೇಶ ಮತ್ತು ಕರ್ನಾಟಕದ ರಾಷ್ಟ್ರೀಯ ಉದ್ಯಾನವನಗಳು.'
+      },
+      {
+        id: `ca_p3_7`,
+        categoryKn: '🔬 ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ',
+        categoryEn: 'Science & Technology',
+        tag: 'science',
+        headlineKn: `ಆದಿತ್ಯ-L1 ಸೌರ ವೀಕ್ಷಣಾಲಯವು ಲಗ್ರಾಂಜ್ ಪಾಯಿಂಟ್ 1 ಕಕ್ಷೆಯಲ್ಲಿ ಯಶಸ್ವಿ ಸ್ಥಿರೀಕರಣ`,
+        headlineEn: `ISRO Positions Aditya-L1 Solar Observatory in Designated Halo Orbit around Sun-Earth L1`,
+        descKn: `ಸೂರ್ಯನ ಕರೋನಾ, ಸೌರ ಮಾರುತಗಳು ಮತ್ತು ಬಾಹ್ಯಾಕಾಶ ಹವಾಮಾನದ ನಿರಂತರ ಅಧ್ಯಯನಕ್ಕೆ ಇಸ್ರೋ ನೌಕೆ ಸನ್ನದ್ಧವಾಗಿದೆ.`,
+        descEn: `India's maiden dedicated solar observatory commences scientific observation 1.5 million km from Earth.`,
+        examTakeaway: 'Aditya-L1 Payloads (VELC, SUIT), Lagrange Points Mechanics & Solar Physics.',
+        examTakeawayKn: 'ಇಸ್ರೋ ಆದಿತ್ಯ-L1 ಸೌರ ಯೋಜನೆ, ಲಗ್ರಾಂಜ್ ಪಾಯಿಂಟ್ಸ್ ಮತ್ತು ಸೌರ ಮಂಡಲ ಭೌತಶಾಸ್ತ್ರ.'
+      },
+      {
+        id: `ca_p3_8`,
+        categoryKn: '🏆 ಕ್ರೀಡೆ & ಪ್ರಶಸ್ತಿಗಳು',
+        categoryEn: 'Sports & Awards',
+        tag: 'sports',
+        headlineKn: `ಏಷ್ಯನ್ ಪ್ಯಾರಾ ಗೇಮ್ಸ್: ಭಾರತೀಯ ಆರ್ಚರಿ ತಂಡದಿಂದ ವಿಶ್ವದಾಖಲೆಯ ಬಂಗಾರದ ಪದಕಗಳ ಸಾಧನೆ`,
+        headlineEn: `Asian Para Games: Indian Archers Clinch World Record Gold Medals with Top Podiums`,
+        descKn: `ಶೀತಲ್ ದೇವಿ ಸೇರಿದಂತೆ ಭಾರತದ ಪ್ಯಾರಾ ಕ್ರೀಡಾಪಟುಗಳು ಐತಿಹಾಸಿಕ 111 ಪದಕಗಳನ್ನು ಗೆದ್ದು ರಾಷ್ಟ್ರೀಯ ದಾಖಲೆ ಬರೆದಿದ್ದಾರೆ.`,
+        descEn: `Indian para-athletes script record haul supported by Target Olympic Podium Scheme (TOPS).`,
+        examTakeaway: 'Paralympic Games History, TOPS Scheme, National Sports Federations.',
+        examTakeawayKn: 'ಪ್ಯಾರಾಲಿಂಪಿಕ್ ಕ್ರೀಡಾಕೂಟ, ಟಾಪ್ಸ್ (TOPS) ಯೋಜನೆ ಮತ್ತು ಭಾರತೀಯ ಕ್ರೀಡಾ ಪ್ರಾಧಿಕಾರ (SAI).'
+      },
+      {
+        id: `ca_p3_9`,
+        categoryKn: '🌐 ಅಂತಾರಾಷ್ಟ್ರೀಯ & ಜಾಗತಿಕ',
+        categoryEn: 'International Affairs',
+        tag: 'international',
+        headlineKn: `ವಿಶ್ವ ವ್ಯಾಪಾರ ಸಂಸ್ಥೆ (WTO) ಮಿನಿಸ್ಟೀರಿಯಲ್ ಸಮ್ಮೇಳನ: ಕೃಷಿ ಸಬ್ಸಿಡಿ & ಆಹಾರ ಭದ್ರತೆ ಒಪ್ಪಂದ`,
+        headlineEn: `WTO Ministerial Conference Formalizes Framework on Public Stockholding for Food Security`,
+        descKn: `ಅಭಿವೃದ್ಧಿಶೀಲ ರಾಷ್ಟ್ರಗಳ ರೈತರಿಗೆ ನೀಡಲಾಗುವ ಎಂಎಸ್‌ಪಿ (MSP) ಬೆಂಬಲ ಬೆಲೆಗೆ ಶಾಶ್ವತ ರಕ್ಷಣೆ ನೀಡಲು ಭಾರತದ ಬಲವಾದ ಪ್ರತಿಪಾದನೆ.`,
+        descEn: `Global trade delegations reach critical milestones safeguarding developing countries' minimum support price mechanisms.`,
+        examTakeaway: 'WTO Structure, Agreement on Agriculture (AoA), Amber/Blue/Green Box Subsidies.',
+        examTakeawayKn: 'ವಿಶ್ವ ವ್ಯಾಪಾರ ಸಂಸ್ಥೆ (WTO), ಕೃಷಿ ಒಪ್ಪಂದ (AoA) ಮತ್ತು ಸಬ್ಸಿಡಿ ಪೆಟ್ಟಿಗೆಗಳು (Boxes).'
+      }
+    ],
+
+    // Pool 4: Kalyana Karnataka 371(J), Badami Chalukyas & NASA-ISRO NISAR
+    [
+      {
+        id: `ca_p4_1`,
+        categoryKn: '🏛️ ಕರ್ನಾಟಕ ವಿಶೇಷ & ಆಡಳಿತ',
+        categoryEn: 'Karnataka State Affairs',
+        tag: 'current_affairs',
+        headlineKn: `ಕಲ್ಯಾಣ ಕರ್ನಾಟಕ ಪ್ರದೇಶಾಭಿವೃದ್ಧಿ ಮಂಡಳಿಗೆ (KKRDB) ₹5,000 ಕೋಟಿ ವಿಶೇಷ ಕ್ರಿಯಾಯೋಜನೆ ಮಂಜೂರು`,
+        headlineEn: `KKRDB Sanctions ₹5,000 Crore Infrastructure & Education Outlay for Kalyana Karnataka`,
+        descKn: `ಕಲಬುರಗಿ, ಬೀದರ್, ರಾಯಚೂರು, ಕೊಪ್ಪಳ, ಯಾದಗಿರಿ, ಬಳ್ಳಾರಿ ಮತ್ತು ವಿಜಯನಗರ ಜಿಲ್ಲೆಗಳಲ್ಲಿ ಶಾಲೆ, ಆಸ್ಪತ್ರೆ ಹಾಗೂ ರಸ್ತೆ ಅಭಿವೃದ್ಧಿಗೆ ಅನುದಾನ.`,
+        descEn: `Comprehensive developmental roadmap strengthens healthcare, higher education and industrial corridors under Article 371(J).`,
+        examTakeaway: 'Article 371(J) Special Constitutional Status, KKRDB & Regional Imbalance Reports (Dr. Nanjundappa Committee).',
+        examTakeawayKn: 'ಸಂವಿಧಾನದ 371(J) ವಿಧಿ, ನಂಜುಂಡಪ್ಪ ವರದಿ ಮತ್ತು ಕಲ್ಯಾಣ ಕರ್ನಾಟಕ ಪ್ರದೇಶಾಭಿವೃದ್ಧಿ ಮಂಡಳಿ.'
+      },
+      {
+        id: `ca_p4_2`,
+        categoryKn: '⚖️ ಸಂವಿಧಾನ & ಶಾಸನಗಳು',
+        categoryEn: 'Indian Polity & Law',
+        tag: 'polity',
+        headlineKn: `ಸಂವಿಧಾನದ 148ನೇ ವಿಧಿ: ಮಹಾಲೇಖಪಾಲರ (CAG) ವಾರ್ಷಿಕ ಹಣಕಾಸು ಆಡಿಟ್ ವರದಿ ಸಂಸತ್ತಿನಲ್ಲಿ ಮಂಡನೆ`,
+        headlineEn: `CAG Submits Annual Financial Audit on Union & State Expenditure Accounts`,
+        descKn: `ಸಾರ್ವಜನಿಕ ಹಣಕಾಸಿನ ಪಾರದರ್ಶಕತೆ ಮತ್ತು ಸಾರ್ವಜನಿಕ ಲೆಕ್ಕಪತ್ರ ಸಮಿತಿಯ (PAC) ಪರಿಶೀಲನೆಗೆ ಮಹಾಲೇಖಪಾಲರ ವರದಿ ಸಲ್ಲಿಕೆ.`,
+        descEn: `Constitutional audit highlights fiscal prudence, digital procurement transparency and state-level subsidy efficiency.`,
+        examTakeaway: 'Article 148-151 CAG, Public Accounts Committee (PAC) & Committee on Public Undertakings (COPU).',
+        examTakeawayKn: 'ಸಂವಿಧಾನದ 148-151 ವಿಧಿಗಳು, ಭಾರತದ ಮಹಾಲೇಖಪಾಲರು (CAG) ಮತ್ತು ಸಾರ್ವಜನಿಕ ಲೆಕ್ಕಪತ್ರ ಸಮಿತಿ.'
+      },
+      {
+        id: `ca_p4_3`,
+        categoryKn: '📜 ಇತಿಹಾಸ & ಪರಂಪರೆ',
+        categoryEn: 'History & Heritage',
+        tag: 'history',
+        headlineKn: `ಬಾದಾಮಿ ಚಾಲುಕ್ಯರ ಗುಹಾಂತರ ದೇವಾಲಯಗಳು ಮತ್ತು ಪಟ್ಟದಕಲ್ಲು ವಾಸ್ತುಶಿಲ್ಪ ಸಂರಕ್ಷಣಾ ಯೋಜನೆ`,
+        headlineEn: `Comprehensive Conservation Blueprint for Badami Chalukya Rock-Cut Caves & Pattadakal`,
+        descKn: `ಇಮ್ಮಡಿ ಪುಲಕೇಶಿ ಮತ್ತು ಮಂಗಳೇಶನ ಕಾಲದ ಬಾದಾಮಿ, ಐಹೊಳೆ ಮತ್ತು ಪಟ್ಟದಕಲ್ಲು ದೇವಾಲಯ ಸಂಕೀರ್ಣಗಳಿಗೆ ಡಿಜಿಟಲ್ ಹೆರಿಟೇಜ್ ಕಾರಿಡಾರ್.`,
+        descEn: `ASI launches high-resolution photogrammetry mapping for 7th-8th century Chalukyan Vesara rock-cut monuments.`,
+        examTakeaway: 'Badami Chalukyas, Aihole Inscription of Ravikirti, Vesara Style & Pattadakal World Heritage.',
+        examTakeawayKn: 'ಬಾದಾಮಿ ಚಾಲುಕ್ಯರು, ರವಿಕೀರ್ತಿಯ ಐಹೊಳೆ ಶಾಸನ ಮತ್ತು ವೇಸರ ವಾಸ್ತುಶಿಲ್ಪ ಶೈಲಿ.'
+      },
+      {
+        id: `ca_p4_4`,
+        categoryKn: '💰 ಆರ್ಥಿಕತೆ & ನೀತಿಗಳು',
+        categoryEn: 'Economy & Banking',
+        tag: 'economy',
+        headlineKn: `ಕರ್ನಾಟಕ ನವೋದ್ಯಮ (Startup) ಪರಿಸರ: ಭಾರತದ ಒಟ್ಟು ಯುನಿಕಾರ್ನ್‌ಗಳಲ್ಲಿ 40% ಬೆಂಗಳೂರಿನಲ್ಲಿ ಸ್ಥಾಪನೆ`,
+        headlineEn: `Bengaluru Commands 40% of Total Indian Unicorn Startups in Global Tech Index`,
+        descKn: `ಫಿನ್‌ಟೆಕ್, ಎಐ ಮತ್ತು ಹೆಲ್ತ್‌ಟೆಕ್ ಕ್ಷೇತ್ರಗಳಲ್ಲಿ ಸಾಹಸೋದ್ಯಮ ಬಂಡವಾಳ (VC) ಹೂಡಿಕೆಯಲ್ಲಿ ಕರ್ನಾಟಕ ಜಾಗತಿಕ ಅಗ್ರಸ್ಥಾನದಲ್ಲಿದೆ.`,
+        descEn: `Vibrant ecosystem of 100+ incubators and pro-business startup regulations place Bengaluru among world's top-5 tech hubs.`,
+        examTakeaway: 'Startup India Initiative, Angel Tax Provisions, DPIIT Recognition & Unicorn Metrics.',
+        examTakeawayKn: 'ಸ್ಟಾರ್ಟ್‌ಅಪ್ ಇಂಡಿಯಾ, ಕರ್ನಾಟಕ ನವೋದ್ಯಮ ನೀತಿ ಮತ್ತು ಏಂಜೆಲ್ ತೆರಿಗೆ ವಿನಾಯಿತಿಗಳು.'
+      },
+      {
+        id: `ca_p4_5`,
+        categoryKn: '✍️ ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ',
+        categoryEn: 'Kannada Language & Literature',
+        tag: 'kannada',
+        headlineKn: `ವಚನ ಸಾಹಿತ್ಯ ಸಂರಕ್ಷಣೆ: ಬಸವಣ್ಣ, ಅಲ್ಲಮಪ್ರಭು & ಅಕ್ಕಮಹಾದೇವಿ ವಚನಗಳ ಬೃಹತ್ ಡಿಜಿಟಲೀಕರಣ ಯೋಜನೆ`,
+        headlineEn: `Comprehensive Digital Archive of 12th Century Vachana Literature of Basaveshwara Launched`,
+        descKn: `ಅನುಭವ ಮಂಟಪದ ಕಾಯಕ-ದಾಸೋಹ ತತ್ವಗಳು, ವಚನ ಛಂದಸ್ಸು ಮತ್ತು ಸಾಮಾಜಿಕ ಸಮಾನತೆಯ ವಚನಗಳ ಜಾಗತಿಕ ಅನುವಾದ ಯೋಜನೆ.`,
+        descEn: `Digitized corpus of 20,000+ sharanas' vachanas made accessible online in 24 major world languages.`,
+        examTakeaway: '12th Century Sharana Movement, Anubhava Mantapa, Vachana Structure & Basaveshwara Philosophy.',
+        examTakeawayKn: '12ನೇ ಶತಮಾನದ ಶರಣ ಚಳವಳಿ, ಅನುಭವ ಮಂಟಪ, ವಚನ ಸಾಹಿತ್ಯ ಮತ್ತು ಬಸವೇಶ್ವರರ ತತ್ವಗಳು.'
+      },
+      {
+        id: `ca_p4_6`,
+        categoryKn: '🌍 ಭೂಗೋಳ & ಪರಿಸರ',
+        categoryEn: 'Geography & Environment',
+        tag: 'geography',
+        headlineKn: `ಶರಾವತಿ ಪಂಪ್ಡ್ ಸ್ಟೋರೇಜ್ ಜಲವಿದ್ಯುತ್ ಯೋಜನೆ: ಪರಿಸರ ಸೂಕ್ಷ್ಮ ಸಂರಕ್ಷಣಾ ಮಾರ್ಗಸೂಚಿ ಪ್ರಕಟ`,
+        headlineEn: `Environmental Safeguards Finalized for 2,000 MW Sharavathi Pumped Storage Hydel Project`,
+        descKn: `ರಾಜ್ಯದ ನವೀಕರಿಸಬಹುದಾದ ಇಂಧನ ಸಂಗ್ರಹಣೆ ಮತ್ತು ವಿದ್ಯುತ್ ಗ್ರಿಡ್ ಸ್ಥಿರತೆಗಾಗಿ ಪರಿಸರ ಸ್ನೇಹಿ ಭೂಗತ ಪವರ್‌ಹೌಸ್ ನಿರ್ಮಾಣ.`,
+        descEn: `State power corporation implements underground turbine layout minimizing surface forest disruption near Jog Falls.`,
+        examTakeaway: 'Hydroelectric Power Projects in Karnataka, Sharavathi River, Jog Falls & Energy Transition.',
+        examTakeawayKn: 'ಕರ್ನಾಟಕದ ಜಲವಿದ್ಯುತ್ ಯೋಜನೆಗಳು, ಶರಾವತಿ ನದಿ, ಜೋಗ ಜಲಪಾತ ಮತ್ತು ಇಂಧನ ನೀತಿ.'
+      },
+      {
+        id: `ca_p4_7`,
+        categoryKn: '🔬 ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ',
+        categoryEn: 'Science & Technology',
+        tag: 'science',
+        headlineKn: `ನಿಸಾರ್ (NISAR): ಇಸ್ರೋ ಮತ್ತು ನಾಸಾ ಜಂಟಿ ಸಿಂಥೆಟಿಕ್ ಅಪರ್ಚರ್ ರಾಡಾರ್ ಉಪಗ್ರಹ ಪರೀಕ್ಷೆ ಮುಕ್ತಾಯ`,
+        headlineEn: `NASA-ISRO NISAR Dual-Band Earth Observatory Satellite Passes Final Environmental Validation`,
+        descKn: `ಭೂಕಂಪ, ಸುನಾಮಿ, ಹಿಮನದಿ ಕರಗುವಿಕೆ ಮತ್ತು ಅರಣ್ಯ ವಿಸ್ತೀರ್ಣ ಬದಲಾವಣೆಗಳನ್ನು ಪ್ರತಿ 12 ದಿನಕ್ಕೊಮ್ಮೆ ನಿಖರವಾಗಿ ಮ್ಯಾಪ್ ಮಾಡುವ ಉಪಗ್ರಹ.`,
+        descEn: `Historic bilateral mission prepares for GSLV launch, carrying world's most advanced L-band and S-band radar payloads.`,
+        examTakeaway: 'NISAR Mission, Synthetic Aperture Radar (SAR), GSLV Launcher & Climate Monitoring.',
+        examTakeawayKn: 'ನಿಸಾರ್ (NISAR) ಉಪಗ್ರಹ, ಸಿಂಥೆಟಿಕ್ ಅಪರ್ಚರ್ ರಾಡಾರ್ ಮತ್ತು ಇಸ್ರೋ-ನಾಸಾ ಜಂಟಿ ಯೋಜನೆ.'
+      },
+      {
+        id: `ca_p4_8`,
+        categoryKn: '🏆 ಕ್ರೀಡೆ & ಪ್ರಶಸ್ತಿಗಳು',
+        categoryEn: 'Sports & Awards',
+        tag: 'sports',
+        headlineKn: `ಪ್ರೊ ಕಬಡ್ಡಿ ಲೀಗ್: ಬೆಂಗಳೂರು ಬುಲ್ಸ್ ತಂಡದ ರಕ್ಷಣಾತ್ಮಕ ರಣತಂತ್ರಕ್ಕೆ ಅಭೂತಪೂರ್ವ ಜಯ`,
+        headlineEn: `Pro Kabaddi League: Bengaluru Bulls Display Masterclass in Strategic Defensive Play`,
+        descKn: `ಕರ್ನಾಟಕದ ಗ್ರಾಮೀಣ ಕ್ರೀಡೆಗಳಿಗೆ ಪುನಶ್ಚೇತನ ನೀಡುವ ನಿಟ್ಟಿನಲ್ಲಿ ರಾಜ್ಯ ಸರ್ಕಾರದಿಂದ 50 ನೂತನ ಕಬಡ್ಡಿ ಅಕಾಡೆಮಿಗಳ ಸ್ಥಾಪನೆ.`,
+        descEn: `State youth services department sanctions dedicated rural kabaddi coaching centers across North Karnataka districts.`,
+        examTakeaway: 'Traditional Indigenous Sports of India, Asian Games Kabaddi Rules & Sports Infrastructure.',
+        examTakeawayKn: 'ಭಾರತದ ಸಾಂಪ್ರದಾಯಿಕ ಕ್ರೀಡೆಗಳು ಮತ್ತು ಕರ್ನಾಟಕ ಗ್ರಾಮೀಣ ಕ್ರೀಡಾಕೂಟಗಳು.'
+      },
+      {
+        id: `ca_p4_9`,
+        categoryKn: '🌐 ಅಂತಾರಾಷ್ಟ್ರೀಯ & ಜಾಗತಿಕ',
+        categoryEn: 'International Affairs',
+        tag: 'international',
+        headlineKn: `ಅಂತಾರಾಷ್ಟ್ರೀಯ ಸೌರ ಮೈತ್ರಿಕೂಟ (ISA): ಗುರುಗ್ರಾಮ ಪ್ರಧಾನ ಕಚೇರಿಯಲ್ಲಿ 116 ದೇಶಗಳ ಜಾಗತಿಕ ಸಮಾವೇಶ`,
+        headlineEn: `International Solar Alliance (ISA) General Assembly Convenes with 116 Member Nations`,
+        descKn: `'ಒಂದು ಸೂರ್ಯ, ಒಂದು ಜಗತ್ತು, ಒಂದು ಗ್ರಿಡ್' (OSOWOG) ಉಪಕ್ರಮದಡಿಯಲ್ಲಿ ಸೌರ ಇಂಧನ ಯೋಜನೆಗಳಿಗೆ \$1 ಟ್ರಿಲಿಯನ್ ಬಂಡವಾಳ ಕ್ರೋಢೀಕರಣ.`,
+        descEn: `India and France co-lead global solar energy deployment to accelerate universal clean electricity access.`,
+        examTakeaway: 'International Solar Alliance (ISA) Gurugram, OSOWOG Initiative & COP21 Paris Agreement.',
+        examTakeawayKn: 'ಅಂತಾರಾಷ್ಟ್ರೀಯ ಸೌರ ಮೈತ್ರಿಕೂಟ (ISA), OSOWOG ಯೋಜನೆ ಮತ್ತು ಪ್ಯಾರಿಸ್ ಹವಾಮಾನ ಒಪ್ಪಂದ.'
+      }
+    ],
+
+    // Pool 5: E-Governance, Cauvery Mekedatu & Bio-Conservation
+    [
+      {
+        id: `ca_p5_1`,
+        categoryKn: '🏛️ ಕರ್ನಾಟಕ ವಿಶೇಷ & ಆಡಳಿತ',
+        categoryEn: 'Karnataka State Affairs',
+        tag: 'current_affairs',
+        headlineKn: `ಕರ್ನಾಟಕ 'ದಿಶಾಂಕ್' (Dishaank) & 'ಕಾವೇರಿ 2.0' ಪೋರ್ಟಲ್‌ಗಳ ಸಂಪೂರ್ಣ ಡಿಜಿಟಲೀಕರಣ`,
+        headlineEn: `Karnataka Dishaank & Kaveri 2.0 Land & Property Portals Fully Integrated`,
+        descKn: `ರಾಜ್ಯದ ನಾಗರಿಕರು ತಮ್ಮ ಮೊಬೈಲ್ ಮೂಲಕವೇ ಯಾವುದೇ ಜಮೀನಿನ ಸರ್ವೇ ನಂಬರ್, ಭೂನಕ್ಷೆ ಮತ್ತು ಸಬ್-ರಿಜಿಸ್ಟ್ರಾರ್ ಇ-ಖಾತೆ ಪಡೆಯಲು ಅನುಕೂಲ.`,
+        descEn: `KSRSAC geo-referenced satellite maps enable real-time survey verification and zero-touch digital property registrations.`,
+        examTakeaway: 'E-Governance Initiatives of Karnataka: Bhoomi, Kaveri 2.0, Dishaank, Seva Sindhu.',
+        examTakeawayKn: 'ಕರ್ನಾಟಕದ ಇ-ಆಡಳಿತ ಉಪಕ್ರಮಗಳು: ಭೂಮಿ, ಕಾವೇರಿ 2.0, ದಿಶಾಂಕ್ ಮತ್ತು ಸೇವಾ ಸಿಂಧು.'
+      },
+      {
+        id: `ca_p5_2`,
+        categoryKn: '⚖️ ಸಂವಿಧಾನ & ಶಾಸನಗಳು',
+        categoryEn: 'Indian Polity & Law',
+        tag: 'polity',
+        headlineKn: `ಸಂವಿಧಾನದ 280ನೇ ವಿಧಿ: 16ನೇ ಹಣಕಾಸು ಆಯೋಗದ (Finance Commission) ರಾಜ್ಯಗಳ ಪಾಲಿನ ಸಮಿತಿ ರಚನೆ`,
+        headlineEn: `16th Finance Commission Formulates Terms of Reference for Tax Devolution to States`,
+        descKn: `ಡಾ. ಅರವಿಂದ ಪನಗರಿಯಾ ಅವರ ಅಧ್ಯಕ್ಷತೆಯಲ್ಲಿ ರಾಜ್ಯಗಳ ಆದಾಯ ಹಂಚಿಕೆ ಮತ್ತು ವಿಪತ್ತು ನಿರ್ವಹಣಾ ನಿಧಿಗಳ ಪರಿಶೀಲನೆ ಆರಂಭ.`,
+        descEn: `Constitutional panel evaluates horizontal and vertical tax distribution criteria between Union and States for 2026-31.`,
+        examTakeaway: 'Article 280 Finance Commission, Vertical/Horizontal Devolution Criteria & Fiscal Federalism.',
+        examTakeawayKn: 'ಸಂವಿಧಾನದ 280ನೇ ವಿಧಿ, 16ನೇ ಹಣಕಾಸು ಆಯೋಗ ಮತ್ತು ಕೇಂದ್ರ-ರಾಜ್ಯ ಹಣಕಾಸು ಸಂಬಂಧಗಳು.'
+      },
+      {
+        id: `ca_p5_3`,
+        categoryKn: '📜 ಇತಿಹಾಸ & ಪರಂಪರೆ',
+        categoryEn: 'History & Heritage',
+        tag: 'history',
+        headlineKn: `ಮೈಸೂರು ಒಡೆಯರ ಕಾಲದ ಆಡಳಿತ ಸುಧಾರಣೆಗಳು & ಪ್ರಜಾ ಪ್ರತಿನಿಧಿ ಸಭೆಯ ಐತಿಹಾಸಿಕ ವಿಶ್ಲೇಷಣೆ`,
+        headlineEn: `Mysuru Wodeyars & Historical Evolution of Praja Pratinidhi Sabha Analyzed`,
+        descKn: `1881 ರಲ್ಲಿ ರಂಗಾಚಾರ್ಲು ದಿವಾನಗಿರಿಯಲ್ಲಿ ಸ್ಥಾಪಿತವಾದ ಭಾರತದ ಪ್ರಪ್ರಥಮ ಪ್ರಜಾಪ್ರತಿನಿಧಿ ಸಭೆಯ ಪ್ರಜಾಪ್ರಭುತ್ವ ಪರಂಪರೆಯ ಅವಲೋಕನ.`,
+        descEn: `Symposium highlights progressive reforms under Chamarajendra Wodeyar X and Nalwadi Krishnaraja Wodeyar.`,
+        examTakeaway: 'Mysuru Kingdom, Nalwadi Krishnaraja Wodeyar, Praja Pratinidhi Sabha & Modern Mysuru.',
+        examTakeawayKn: 'ಮೈಸೂರು ಒಡೆಯರು, ನಾಲ್ವಡಿ ಕೃಷ್ಣರಾಜ ಒಡೆಯರು, ಪ್ರಜಾ ಪ್ರತಿನಿಧಿ ಸಭೆ ಮತ್ತು ಆಧುನಿಕ ಮೈಸೂರು ನಿರ್ಮಾಣ.'
+      },
+      {
+        id: `ca_p5_4`,
+        categoryKn: '💰 ಆರ್ಥಿಕತೆ & ನೀತಿಗಳು',
+        categoryEn: 'Economy & Banking',
+        tag: 'economy',
+        headlineKn: `ಮುಕ್ತ ಡಿಜಿಟಲ್ ವಾಣಿಜ್ಯ ಜಾಲ (ONDC): ಕರ್ನಾಟಕದ ಸ್ವಸಹಾಯ ಸಂಘಗಳ ಉತ್ಪನ್ನಗಳಿಗೆ ಜಾಗತಿಕ ಮಾರುಕಟ್ಟೆ`,
+        headlineEn: `Open Network for Digital Commerce (ONDC) Onboards 10,000 Karnataka SHG Enterprises`,
+        descKn: `ಸಣ್ಣ ವ್ಯಾಪಾರಿಗಳು ಮತ್ತು ಮಹಿಳಾ ಉದ್ಯಮಿಗಳಿಗೆ ಇ-ಕಾಮರ್ಸ್ ಕಮಿಷನ್ ರಹಿತ ನೇರ ಆನ್‌ಲೈನ್ ಮಾರಾಟ ವೇದಿಕೆ ಕಲ್ಪಿಸಲಾಗಿದೆ.`,
+        descEn: `State livelihood mission integrates rural artisans and organic produce directly on open-protocol e-marketplaces.`,
+        examTakeaway: 'ONDC E-Commerce Architecture, DPI (Digital Public Infrastructure) & Financial Inclusion.',
+        examTakeawayKn: 'ಡಿಜಿಟಲ್ ಸಾರ್ವಜನಿಕ ಮೂಲಸೌಕರ್ಯ (DPI), ONDC ಮತ್ತು ಗ್ರಾಮೀಣ ಮಹಿಳಾ ಸ್ವಸಹಾಯ ಸಂಘಗಳು.'
+      },
+      {
+        id: `ca_p5_5`,
+        categoryKn: '✍️ ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ',
+        categoryEn: 'Kannada Language & Literature',
+        tag: 'kannada',
+        headlineKn: `ಡಾ. ಶಿವರಾಮ ಕಾರಂತ ಯಕ್ಷಗಾನ ಸಂಶೋಧನಾ ಕೇಂದ್ರದಿಂದ ಪ್ರಾಚೀನ ಯಕ್ಷಗಾನ ಪ್ರಸಂಗಗಳ ರಾಷ್ಟ್ರೀಯ ಆರ್ಕೈವ್`,
+        headlineEn: `National Digital Archive of Ancient Yakshagana Prasangas Launched in Udupi`,
+        descKn: `'ಮೂಕಜ್ಜಿಯ ಕನಸುಗಳು' ಜ್ಞಾನಪೀಠ ಪುರಸ್ಕೃತ ಕಾರಂತರ ಯಕ್ಷಗಾನ ರಂಗಭೂಮಿ ಸುಧಾರಣೆಗಳು ಮತ್ತು ಕರಾವಳಿ ಜನಪದ ಕಲೆಯ ಸಂರಕ್ಷಣೆ.`,
+        descEn: `Comprehensive documentation preserves Tenkutittu and Badagutittu performance texts spanning three centuries.`,
+        examTakeaway: 'K. Shivaram Karanth, Mookajjiya Kanasugalu, Yakshagana Forms (Badagu & Tenku).',
+        examTakeawayKn: 'ಡಾ. ಶಿವರಾಮ ಕಾರಂತ, ಮೂಕಜ್ಜಿಯ ಕನಸುಗಳು, ಯಕ್ಷಗಾನ ಪರಂಪರೆ (ಬಡಗು ಮತ್ತು ತೆಂಕು ತಿಟ್ಟು).'
+      },
+      {
+        id: `ca_p5_6`,
+        categoryKn: '🌍 ಭೂಗೋಳ & ಪರಿಸರ',
+        categoryEn: 'Geography & Environment',
+        tag: 'geography',
+        headlineKn: `ಕಾವೇರಿ-ಮೇಕೆದಾಟು ಸಮತೋಲನ ಜಲಾಶಯ ಯೋಜನೆ ಮತ್ತು ಎತ್ತಿನಹೊಳೆ ಕುಡಿಯುವ ನೀರಿನ ಯೋಜನೆ ಪ್ರಗತಿ`,
+        headlineEn: `Technical Review of Cauvery Mekedatu Balancing Reservoir & Yettinahole Drinking Water Projects`,
+        descKn: `ಬೆಂಗಳೂರು ಹಾಗೂ ಕೋಲಾರ, ಚಿಕ್ಕಬಳ್ಳಾಪುರ, ತುಮಕೂರು ಜಿಲ್ಲೆಗಳಿಗೆ ಕುಡಿಯುವ ನೀರು ಒದಗಿಸುವ ಯೋಜನೆಯ ಕಾಮಗಾರಿ ಪರಿಶೀಲನೆ.`,
+        descEn: `State irrigation department finalizes environmental safeguards for inter-basin drinking water distribution.`,
+        examTakeaway: 'Cauvery River Basin, Inter-State River Water Disputes Act 1956 & River Water Tribunals.',
+        examTakeawayKn: 'ಕಾವೇರಿ ನದಿ ಕಣಿವೆ, ಅಂತಾರಾಜ್ಯ ನದಿ ನೀರು ವಿವಾದ ಕಾಯ್ದೆ 1956 ಮತ್ತು ಕರ್ನಾಟಕದ ಜಲ ಯೋಜನೆಗಳು.'
+      },
+      {
+        id: `ca_p5_7`,
+        categoryKn: '🔬 ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ',
+        categoryEn: 'Science & Technology',
+        tag: 'science',
+        headlineKn: `ಭಾರತೀಯ ಖಾಸಗಿ ಬಾಹ್ಯಾಕಾಶ ನವೋದ್ಯಮಗಳಿಂದ ನೂತನ ಉಪಗ್ರಹ ಉಡಾವಣಾ ವೇದಿಕೆಗಳ ಅಭಿವೃದ್ಧಿ`,
+        headlineEn: `Indian Private Aerospace Space-Tech Startups Achieve Sub-Orbital Guided Rocket Firings`,
+        descKn: `ಇಸ್ರೋದ IN-SPACe ಸಹಯೋಗದೊಂದಿಗೆ ದೇಶೀಯ 3D ಮುದ್ರಿತ ಕ್ರಯೋಜೆನಿಕ್ ಇಂಜಿನ್‌ಗಳ ಪರೀಕ್ಷೆ ಯಶಸ್ವಿ.`,
+        descEn: `IN-SPACe authorization empowers private space tech enterprises to deliver low-cost commercial nano-satellite payloads.`,
+        examTakeaway: 'IN-SPACe, NewSpace India Limited (NSIL), Indian Space Policy 2023.',
+        examTakeawayKn: 'ಇನ್-ಸ್ಪೇಸ್ (IN-SPACe), ಎನ್‌ಎಸ್‌ಐಎಲ್ (NSIL) ಮತ್ತು ಭಾರತೀಯ ಬಾಹ್ಯಾಕಾಶ ನೀತಿ 2023.'
+      },
+      {
+        id: `ca_p5_8`,
+        categoryKn: '🏆 ಕ್ರೀಡೆ & ಪ್ರಶಸ್ತಿಗಳು',
+        categoryEn: 'Sports & Awards',
+        tag: 'sports',
+        headlineKn: `ಡೈಮಂಡ್ ಲೀಗ್ ಜಾವೆಲಿನ್ ಥ್ರೋ: ಭಾರತಕ್ಕೆ ಸತತ ಪದಕಗಳ ಕೀರ್ತಿ ಮತ್ತು ರಾಷ್ಟ್ರೀಯ ಅಥ್ಲೆಟಿಕ್ಸ್ ಉತ್ಸವ`,
+        headlineEn: `Diamond League Athletics: Javelin & Track Stars Extend Historic Global Medal Run`,
+        descKn: `ನೀರೆಜ್ ಚೋಪ್ರಾ ಅವರ ನಾಯಕತ್ವದಲ್ಲಿ ಭಾರತೀಯ ಅಥ್ಲೀಟ್‌ಗಳು ಜಾಗತಿಕ ಟ್ರ್ಯಾಕ್ ಮತ್ತು ಫೀಲ್ಡ್ ಕ್ರೀಡೆಗಳಲ್ಲಿ ಹೊಸ ಮೈಲಿಗಲ್ಲು ಸ್ಥಾಪಿಸಿದ್ದಾರೆ.`,
+        descEn: `Historic 88m+ throws and sprint personal bests secure top qualification ranks for upcoming World Championships.`,
+        examTakeaway: 'World Athletics Championships, Diamond League Circuit & Olympic Gold Records.',
+        examTakeawayKn: 'ವಿಶ್ವ ಅಥ್ಲೆಟಿಕ್ಸ್ ಚಾಂಪಿಯನ್‌ಶಿಪ್, ಡೈಮಂಡ್ ಲೀಗ್ ಮತ್ತು ಭಾರತೀಯ ಕ್ರೀಡಾ ದಾಖಲೆಗಳು.'
+      },
+      {
+        id: `ca_p5_9`,
+        categoryKn: '🌐 ಅಂತಾರಾಷ್ಟ್ರೀಯ & ಜಾಗತಿಕ',
+        categoryEn: 'International Affairs',
+        tag: 'international',
+        headlineKn: `ಆಸಿಯಾನ್-ಭಾರತ (ASEAN-India) ಶೃಂಗಸಭೆ: ಇಂಡೋ-ಪೆಸಿಫಿಕ್ ಸಾಗರ ಸಹಕಾರ ಮತ್ತು ವ್ಯಾಪಾರ ಒಪ್ಪಂದ`,
+        headlineEn: `ASEAN-India Summit Reaffirms Comprehensive Strategic Partnership in Indo-Pacific`,
+        descKn: `ಆಗ್ನೇಯ ಏಷ್ಯಾ ರಾಷ್ಟ್ರಗಳ ಒಕ್ಕೂಟದೊಂದಿಗೆ ಮುಕ್ತ ವ್ಯಾಪಾರ ಒಪ್ಪಂದ (AITIGA) ಪರಿಷ್ಕರಣೆ ಮತ್ತು ಸಾಗರ ಭದ್ರತೆ ಒಪ್ಪಂದ.`,
+        descEn: `High-level dialogue bolsters supply chain resilience, maritime connectivity, and digital fintech linkages.`,
+        examTakeaway: 'ASEAN 10 Member Nations, Act East Policy, Indo-Pacific Oceans Initiative (IPOI).',
+        examTakeawayKn: 'ಆಸಿಯಾನ್ (ASEAN) ಒಕ್ಕೂಟ, ಭಾರತದ ಆಕ್ಟ್ ಈಸ್ಟ್ ನೀತಿ ಮತ್ತು ಇಂಡೋ-ಪೆಸಿಫಿಕ್ ಸಾಗರ ಪಾಲುದಾರಿಕೆ.'
+      }
+    ]
+  ];
+
+  // 1-Click Gemini AI Engine for Daily 50-Item Content Refresh across 9 Subjects with True Dynamic Rotation
+  const generateAiDailyContent = async ({ topic = 'Karnataka Competitive Exams', subjectFilter = 'all', poolIndex = null, cyclePool = true } = {}) => {
+    const today = new Date().toISOString().split('T')[0];
+    const dayOfMonth = new Date().getDate();
+
+    // Determine pool index: either manual, cycle saved index, or calculate from date
+    let selectedPoolIdx = 0;
+    try {
+      const savedPoolIdx = parseInt(localStorage.getItem('adhyayana_ca_pool_idx') || '0', 10);
+      if (poolIndex !== null && poolIndex !== undefined) {
+        selectedPoolIdx = poolIndex % DYNAMIC_CURRENT_AFFAIRS_POOLS.length;
+      } else if (cyclePool) {
+        selectedPoolIdx = (savedPoolIdx + 1) % DYNAMIC_CURRENT_AFFAIRS_POOLS.length;
+      } else {
+        selectedPoolIdx = dayOfMonth % DYNAMIC_CURRENT_AFFAIRS_POOLS.length;
+      }
+      localStorage.setItem('adhyayana_ca_pool_idx', String(selectedPoolIdx));
+    } catch (e) {
+      selectedPoolIdx = dayOfMonth % DYNAMIC_CURRENT_AFFAIRS_POOLS.length;
+    }
+
+    const activePool = DYNAMIC_CURRENT_AFFAIRS_POOLS[selectedPoolIdx] || DYNAMIC_CURRENT_AFFAIRS_POOLS[0];
+    const allSubjectNews = activePool.map((item, idx) => ({
+      ...item,
+      id: `ca_gen_${Date.now()}_${idx + 1}`
+    }));
 
     // 50 High-Yield Exam Questions across all 9 Karnataka Exam Subjects
     const master50QuestionsBank = [
@@ -4528,11 +5145,14 @@ export const DataProvider = ({ children }) => {
     // Shuffle questions so student gets fresh ordering on each click
     allSubjectQuestions = allSubjectQuestions.sort(() => Math.random() - 0.5);
 
+    const dateFormattedKn = new Date().toLocaleDateString('kn-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dateFormattedEn = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
     const newCapsule = {
       id: `ca_${today.replace(/-/g, '_')}`,
       date: today,
-      titleKn: `ದೈನಂದಿನ ಪ್ರಮುಖ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳ ಕ್ಯಾಪ್ಸೂಲ್ (${dateFormatted})`,
-      titleEn: `Daily High-Yield Current Affairs Capsule (${today})`,
+      titleKn: `ದೈನಂದಿನ ಪ್ರಮುಖ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳ ಕ್ಯಾಪ್ಸೂಲ್ (${dateFormattedKn})`,
+      titleEn: `Daily High-Yield Current Affairs Capsule (${dateFormattedEn})`,
       audioText: allSubjectNews.map((n, i) => `${i + 1}. ${n.headlineKn}. ${n.descKn}`).join(' '),
       items: allSubjectNews,
       points: allSubjectNews.map(n => ({
@@ -4553,22 +5173,521 @@ export const DataProvider = ({ children }) => {
     const newDailyQuiz = {
       id: `quiz_${today.replace(/-/g, '_')}`,
       date: today,
-      titleKn: `ಇಂದಿನ ದೈನಂದಿನ 50 ಪ್ರಶ್ನೆಗಳ ರಾಪಿಡ್ ಕ್ವಿಜ್ (${dateFormatted})`,
-      titleEn: `Daily 50-Question Rapid Practice Quiz (${today})`,
+      titleKn: `ಇಂದಿನ ದೈನಂದಿನ 50 ಪ್ರಶ್ನೆಗಳ ರಾಪಿಡ್ ಕ್ವಿಜ್ (${dateFormattedKn})`,
+      titleEn: `Daily 50-Question Rapid Practice Quiz (${dateFormattedEn})`,
       questions: allSubjectQuestions
     };
+
+    // 8 Fresh Subject Flashcard Decks for Today
+    const freshDailyFlashcards = [
+      {
+        id: 'deck_polity',
+        deckNameKn: `ಸಂವಿಧಾನದ ಪ್ರಮುಖ ವಿಧಿಗಳು (${dateFormattedKn})`,
+        deckNameEn: `Indian Constitution Key Articles (${dateFormattedEn})`,
+        subject: 'Indian Polity & Constitution',
+        color: 'emerald',
+        icon: 'Shield',
+        cards: [
+          {
+            id: `fc_p_1_${Date.now()}`,
+            frontKn: 'ಸಂವಿಧಾನದ 21A ವಿಧಿ ಯಾವುದಕ್ಕೆ ಸಂಬಂಧಿಸಿದೆ?',
+            frontEn: 'What does Article 21A of Indian Constitution guarantee?',
+            backKn: '6 ರಿಂದ 14 ವರ್ಷ ವಯಸ್ಸಿನ ಎಲ್ಲಾ ಮಕ್ಕಳಿಗೆ ಉಚಿತ ಮತ್ತು ಕಡ್ಡಾಯ ಪ್ರಾಥಮಿಕ ಶಿಕ್ಷಣದ ಹಕ್ಕು (86ನೇ ತಿದ್ದುಪಡಿ ಕಾಯ್ದೆ 2002).',
+            backEn: 'Right to Free and Compulsory Education for all children aged 6 to 14 years (86th Amendment Act, 2002).',
+            category: 'ಮೂಲಭೂತ ಹಕ್ಕುಗಳು (Part III)'
+          },
+          {
+            id: `fc_p_2_${Date.now()}`,
+            frontKn: 'ಸಂವಿಧಾನದ 32ನೇ ವಿಧಿಯನ್ನು ಡಾ. ಬಿ.ಆರ್. ಅಂಬೇಡ್ಕರ್ ಅವರು ಏನೆಂದು ಕರೆದಿದ್ದಾರೆ?',
+            frontEn: 'How did Dr. B.R. Ambedkar describe Article 32?',
+            backKn: '"ಸಂವಿಧಾನದ ಹೃದಯ ಮತ್ತು ಆತ್ಮ" (Heart and Soul of the Constitution) - ಸಾಂವಿಧಾನಿಕ ಪರಿಹಾರಗಳ ಹಕ್ಕು (ರಿಟ್ ಅರ್ಜಿಗಳು).',
+            backEn: '"Heart and Soul of the Constitution" - Right to Constitutional Remedies (5 Prerogative Writs).',
+            category: 'ಸಾಂವಿಧಾನಿಕ ಪರಿಹಾರಗಳು'
+          },
+          {
+            id: `fc_p_3_${Date.now()}`,
+            frontKn: 'ಸಮಾನ ನಾಗರಿಕ ಸಂಹಿತೆ (Uniform Civil Code) ಯಾವ ವಿಧಿಯಲ್ಲಿದೆ?',
+            frontEn: 'Which Article directs the state towards Uniform Civil Code (UCC)?',
+            backKn: '44ನೇ ವಿಧಿ (ರಾಜ್ಯ ನಿರ್ದೇಶಕ ತತ್ವಗಳು - Part IV).',
+            backEn: 'Article 44 under Directive Principles of State Policy (DPSP - Part IV).',
+            category: 'ರಾಜ್ಯ ನಿರ್ದೇಶಕ ತತ್ವಗಳು'
+          },
+          {
+            id: `fc_p_4_${Date.now()}`,
+            frontKn: 'ರಾಷ್ಟ್ರಪತಿಗಳ ಕ್ಷಮಾದಾನ ಅಧಿಕಾರ (Pardoning Power) ಯಾವ ವಿಧಿಯಲ್ಲಿದೆ?',
+            frontEn: 'Which Article empowers the President of India to grant Pardons?',
+            backKn: '72ನೇ ವಿಧಿ (ರಾಜ್ಯಪಾಲರಿಗೆ 161ನೇ ವಿಧಿ ಅನ್ವಯಿಸುತ್ತದೆ).',
+            backEn: 'Article 72 (Governor holds corresponding pardoning powers under Article 161).',
+            category: 'ಕಾರ್ಯಾಂಗ (Union Executive)'
+          },
+          {
+            id: `fc_p_5_${Date.now()}`,
+            frontKn: 'ರಾಜ್ಯ ತುರ್ತು ಪರಿಸ್ಥಿತಿ (ರಾಷ್ಟ್ರಪತಿ ಆಳ್ವಿಕೆ) ಯಾವ ವಿಧಿಯಡಿ ಘೋಷಿಸಲಾಗುತ್ತದೆ?',
+            frontEn: 'Which Article governs President Rule in States (State Emergency)?',
+            backKn: '356ನೇ ವಿಧಿ (ರಾಷ್ಟ್ರೀಯ ತುರ್ತುಸ್ಥಿತಿ: 352, ಆರ್ಥಿಕ ತುರ್ತುಸ್ಥಿತಿ: 360).',
+            backEn: 'Article 356 (National Emergency: 352, Financial Emergency: 360).',
+            category: 'ತುರ್ತು ಪರಿಸ್ಥಿತಿಗಳು (Part XVIII)'
+          }
+        ]
+      },
+      {
+        id: 'deck_history',
+        deckNameKn: `ಕರ್ನಾಟಕ ಇತಿಹಾಸ & ರಾಜವಂಶಗಳು (${dateFormattedKn})`,
+        deckNameEn: `Karnataka Dynasties & Eras (${dateFormattedEn})`,
+        subject: 'Karnataka History',
+        color: 'amber',
+        icon: 'Landmark',
+        cards: [
+          {
+            id: `fc_h_1_${Date.now()}`,
+            frontKn: 'ಕರ್ನಾಟಕದ ಪ್ರಪ್ರಥಮ ಕನ್ನಡ ಶಾಸನ ಯಾವುದು ಮತ್ತು ಯಾರ ಕಾಲದ್ದು?',
+            frontEn: 'Which is the earliest recorded Kannada inscription?',
+            backKn: 'ಹಲ್ಮಿಡಿ ಶಾಸನ (ಕ್ರಿ.ಶ. 450) - ಕದಂಬ ವಂಶದ ಕಾಕುಸ್ಥವರ್ಮನ ಆಳ್ವಿಕೆ (ಹಾಸನ ಜಿಲ್ಲೆ ಬೇಲೂರು ತಾಲೂಕು).',
+            backEn: 'Halmidi Inscription (c. 450 CE) - Kadamba King Kakusthavarma (Belur taluk, Hassan).',
+            category: 'ಶಾಸನಗಳು & ಸಾಹಿತ್ಯ'
+          },
+          {
+            id: `fc_h_2_${Date.now()}`,
+            frontKn: 'ಬಾದಾಮಿ ಚಾಲುಕ್ಯರ ಪ್ರಸಿದ್ಧ ದೊರೆ ಇಮ್ಮಡಿ ಪುಲಕೇಶಿಯ ಜಯಭೇರಿಯನ್ನು ವಿವರಿಸುವ ಶಾಸನ ಯಾವುದು?',
+            frontEn: 'Which inscription records Pulakeshin II victory over Harshavardhana?',
+            backKn: 'ಐಹೊಳೆ ಶಾಸನ (ಕ್ರಿ.ಶ. 634) - ರವಿಕೀರ್ತಿ ರಚಿಸಿದ ಸಂಸ್ಕೃತ ಪ್ರಶಸ್ತಿ.',
+            backEn: 'Aihole Inscription (634 CE) composed by court poet Ravikirti in Sanskrit.',
+            category: 'ಬಾದಾಮಿ ಚಾಲುಕ್ಯರು'
+          },
+          {
+            id: `fc_h_3_${Date.now()}`,
+            frontKn: 'ಕವಿರಾಜಮಾರ್ಗ ಕೃತಿಯನ್ನು ರಚಿಸಿದವರು ಯಾರು ಮತ್ತು ಯಾರ ಆಸ್ಥಾನದವರು?',
+            frontEn: 'Who authored Kavirajamarga and under which Rashtrakuta King?',
+            backKn: 'ಶ್ರೀವಿಜಯ (ಅಮೋಘವರ್ಷ ನೃಪತುಂಗನ ಪ್ರೋತ್ಸಾಹದೊಂದಿಗೆ, ಕ್ರಿ.ಶ. 850).',
+            backEn: 'Srivijaya (patronized by Rashtrakuta Emperor Amoghavarsha Nrupatunga, 850 CE).',
+            category: 'ರಾಷ್ಟ್ರಕೂಟರು'
+          },
+          {
+            id: `fc_h_4_${Date.now()}`,
+            frontKn: 'ವಿಜಯನಗರ ಸಾಮ್ರಾಜ್ಯ ಸ್ಥಾಪನೆಯಾದ ವರ್ಷ ಮತ್ತು ಸ್ಥಾಪಕರು ಯಾರು?',
+            frontEn: 'When was the Vijayanagara Empire established and by whom?',
+            backKn: 'ಕ್ರಿ.ಶ. 1336 - ಹರಿಹರ ಮತ್ತು ಬುಕ್ಕರಾಯ (ವಿದ್ಯಾರಣ್ಯರ ಆಶೀರ್ವಾದದೊಂದಿಗೆ).',
+            backEn: '1336 CE by Harihara I and Bukka Raya I with blessings of Saint Vidyaranya.',
+            category: 'ವಿಜಯನಗರ ಸಾಮ್ರಾಜ್ಯ'
+          },
+          {
+            id: `fc_h_5_${Date.now()}`,
+            frontKn: 'ಕರ್ನಾಟಕದ ಮೊದಲ ಸ್ವಾತಂತ್ರ್ಯ ಹೋರಾಟಗಾರ್ತಿ ಕಿತ್ತೂರು ರಾಣಿ ಚೆನ್ನಮ್ಮ ಬ್ರಿಟಿಷರ ವಿರುದ್ಧ ಹೋರಾಡಿದ ವರ್ಷ ಯಾವುದು?',
+            frontEn: 'When did Kittur Rani Chennamma lead the armed rebellion against British?',
+            backKn: '1824 ರಲ್ಲಿ (ಥ್ಯಾಕರೆ ವಿರುದ್ಧ ಕಿತ್ತೂರು ಕೋಟೆಯ ರಕ್ಷಣೆ).',
+            backEn: '1824 CE against Collector St John Thackeray defending Kittur sovereignty.',
+            category: 'ಕರ್ನಾಟಕ ಸ್ವಾತಂತ್ರ್ಯ ಸಂಗ್ರಾಮ'
+          }
+        ]
+      },
+      {
+        id: 'deck_science',
+        deckNameKn: `ಸಾಮಾನ್ಯ ವಿಜ್ಞಾನ & ಪರಿಸರ (${dateFormattedKn})`,
+        deckNameEn: `General Science & Space (${dateFormattedEn})`,
+        subject: 'General Science & Tech',
+        color: 'blue',
+        icon: 'Zap',
+        cards: [
+          {
+            id: `fc_s_1_${Date.now()}`,
+            frontKn: 'ಬೆಳಕಿನ ವೇಗ ನಿರ್ವಾತದಲ್ಲಿ (Speed of Light in Vacuum) ಎಷ್ಟು?',
+            frontEn: 'What is the exact speed of light in vacuum?',
+            backKn: '3 × 10⁸ ಮೀಟರ್/ಸೆಕೆಂಡ್ (ಸುಮಾರು 3 ಲಕ್ಷ ಕಿ.ಮೀ/ಸೆಕೆಂಡ್).',
+            backEn: '3 × 10⁸ m/s (approx 300,000 km/s).',
+            category: 'ಭೌತಶಾಸ್ತ್ರ (Physics)'
+          },
+          {
+            id: `fc_s_2_${Date.now()}`,
+            frontKn: 'ಮಾನವನ ದೇಹದ ರಕ್ತದ ಸಾಮಾನ್ಯ pH ಮೌಲ್ಯ ಎಷ್ಟು?',
+            frontEn: 'What is the normal physiological pH of human blood?',
+            backKn: '7.35 ರಿಂದ 7.45 (ಸ್ವಲ್ಪ ಕ್ಷಾರೀಯ / Slightly Alkaline).',
+            backEn: '7.35 to 7.45 (slightly alkaline buffer system).',
+            category: 'ರಸಾಯನಶಾಸ್ತ್ರ & ಜೀವಶಾಸ್ತ್ರ'
+          },
+          {
+            id: `fc_s_3_${Date.now()}`,
+            frontKn: 'ಓಝೋನ್ ಪದರವನ್ನು ಅಳೆಯುವ ಮಾನದಂಡ ಯಾವುದು?',
+            frontEn: 'What unit is used to measure atmospheric ozone concentration?',
+            backKn: 'ಡಾಬ್ಸನ್ ಯುನಿಟ್ (Dobson Unit - DU).',
+            backEn: 'Dobson Units (DU). 1 DU = 0.01 mm thickness at standard temp and pressure.',
+            category: 'ಪರಿಸರ ವಿಜ್ಞಾನ (Ecology)'
+          },
+          {
+            id: `fc_s_4_${Date.now()}`,
+            frontKn: 'ಪವರ್ ಹೌಸ್ ಆಫ್ ದಿ ಸೆಲ್ (ಜೀವಕೋಶದ ಶಕ್ತಿ ಕೇಂದ್ರ) ಯಾವುದು?',
+            frontEn: 'Which cell organelle is known as the Powerhouse of the Cell?',
+            backKn: 'ಮೈಟೋಕಾಂಡ್ರಿಯಾ (Mitochondria) - ಇದು ATP ರೂಪದಲ್ಲಿ ಶಕ್ತಿಯನ್ನು ಉತ್ಪಾದಿಸುತ್ತದೆ.',
+            backEn: 'Mitochondria - generates cellular energy currency ATP via oxidative phosphorylation.',
+            category: 'ಜೀವಶಾಸ್ತ್ರ (Biology)'
+          }
+        ]
+      },
+      {
+        id: 'deck_economy',
+        deckNameKn: `ಭಾರತ & ಕರ್ನಾಟಕ ಆರ್ಥಿಕತೆ (${dateFormattedKn})`,
+        deckNameEn: `Indian & Karnataka Economy (${dateFormattedEn})`,
+        subject: 'Indian Economy',
+        color: 'purple',
+        icon: 'DollarSign',
+        cards: [
+          {
+            id: `fc_e_1_${Date.now()}`,
+            frontKn: 'ಭಾರತೀಯ ರಿಸರ್ವ್ ಬ್ಯಾಂಕ್ (RBI) ಸ್ಥಾಪನೆಯಾದ ವರ್ಷ ಮತ್ತು ರಾಷ್ಟ್ರೀಕರಣಗೊಂಡ ವರ್ಷ ಯಾವುದು?',
+            frontEn: 'When was RBI established and when was it nationalized?',
+            backKn: 'ಸ್ಥಾಪನೆ: 1 ಏಪ್ರಿಲ್ 1935 (ಹಿಲ್ಟನ್ ಯಂಗ್ ಆಯೋಗ). ರಾಷ್ಟ್ರೀಕರಣ: 1 ಜನವರಿ 1949.',
+            backEn: 'Established: 1 April 1935 (Hilton Young Commission). Nationalized: 1 Jan 1949.',
+            category: 'ಬ್ಯಾಂಕಿಂಗ್ (Banking & Monetary Policy)'
+          },
+          {
+            id: `fc_e_2_${Date.now()}`,
+            frontKn: 'ಭಾರತದಲ್ಲಿ ಜಿಎಸ್‌ಟಿ (GST) ಜಾರಿಗೆ ಬಂದ ಐತಿಹಾಸಿಕ ದಿನಾಂಕ ಯಾವುದು?',
+            frontEn: 'When was Goods and Services Tax (GST) implemented in India?',
+            backKn: '1 ಜುಲೈ 2017 (101ನೇ ಸಾಂವಿಧಾನಿಕ ತಿದ್ದುಪಡಿ ಕಾಯ್ದೆ 2016).',
+            backEn: '1 July 2017 (101st Constitutional Amendment Act, 2016).',
+            category: 'ತೆರಿಗೆ ವ್ಯವಸ್ಥೆ (Taxation)'
+          },
+          {
+            id: `fc_e_3_${Date.now()}`,
+            frontKn: 'ನೀತಿ ಆಯೋಗ (NITI Aayog) ಯಾವ ದಿನಾಂಕದಂದು ಸ್ಥಾಪನೆಯಾಯಿತು ಮತ್ತು ಇದರ ಅಧ್ಯಕ್ಷರು ಯಾರು?',
+            frontEn: 'When was NITI Aayog established and who is its ex-officio Chairman?',
+            backKn: '1 ಜನವರಿ 2015 - ಭಾರತದ ಪ್ರಧಾನ ಮಂತ್ರಿಗಳು ಇದರ ಪದನಿಮಿತ್ತ ಅಧ್ಯಕ್ಷರಾಗಿರುತ್ತಾರೆ.',
+            backEn: '1 January 2015 - Prime Minister of India is the ex-officio Chairperson.',
+            category: 'ಯೋಜನಾ ಆಯೋಗ & ನೀತಿ ಆಯೋಗ'
+          }
+        ]
+      },
+      {
+        id: 'deck_kannada',
+        deckNameKn: `ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ (${dateFormattedKn})`,
+        deckNameEn: `Kannada Grammar & Literature (${dateFormattedEn})`,
+        subject: 'Kannada Grammar & Literature',
+        color: 'rose',
+        icon: 'BookOpen',
+        cards: [
+          {
+            id: `fc_k_1_${Date.now()}`,
+            frontKn: 'ಕನ್ನಡಕ್ಕೆ ಮೊದಲ ಜ್ಞಾನಪೀಠ ಪ್ರಶಸ್ತಿ ತಂದುಕೊಟ್ಟ ಕೃತಿ ಮತ್ತು ಕವಿ ಯಾರು?',
+            frontEn: 'Which literary work won the first Jnanpith Award for Kannada?',
+            backKn: '"ಶ್ರೀ ರಾಮಾಯಣ ದರ್ಶನಂ" ಮಹಾಕಾವ್ಯಕ್ಕಾಗಿ ರಾಷ್ಟ್ರಕವಿ ಕುವೆಂಪು ಅವರಿಗೆ (1967).',
+            backEn: '"Sri Ramayana Darshanam" epic authored by Rashtrakavi Kuvempu (1967).',
+            category: 'ಜ್ಞಾನಪೀಠ ಪ್ರಶಸ್ತಿಗಳು'
+          },
+          {
+            id: `fc_k_2_${Date.now()}`,
+            frontKn: 'ಕನ್ನಡ ವರ್ಣಮಾಲೆಯಲ್ಲಿರುವ ಒಟ್ಟು ಅಕ್ಷರಗಳು ಎಷ್ಟು ಮತ್ತು ಅವುಗಳ ವಿಭಾಗಗಳಾವುವು?',
+            frontEn: 'How many letters are in standard Kannada alphabet?',
+            backKn: 'ಒಟ್ಟು 49 ಅಕ್ಷರಗಳು: ಸ್ವರಗಳು 13, ಯೋಗವಾಹಗಳು 2, ವ್ಯಂಜನಗಳು 34.',
+            backEn: 'Total 49 letters: 13 Swaras (Vowels), 2 Yogavahas, 34 Vyanjanas (Consonants).',
+            category: 'ಕನ್ನಡ ವರ್ಣಮಾಲೆ'
+          },
+          {
+            id: `fc_k_3_${Date.now()}`,
+            frontKn: '"ಮಳೆಗಾಲ" ಪದವು ಯಾವ ಸಂಧಿಗೆ ಉದಾಹರಣೆಯಾಗಿದೆ?',
+            frontEn: 'Which Kannada Sandhi is exemplified by the word "Malegala"?',
+            backKn: 'ಆದೇಶ ಸಂಧಿ (ಮಳೆ + ಕಾಲ = ಮಳೆಗಾಲ, ಕ-ತ-ಪ ಗಳಿಗೆ ಗ-ದ-ಬ ಆದೇಶ).',
+            backEn: 'Adesha Sandhi (Male + Kala = Malegala: K changes to G).',
+            category: 'ಕನ್ನಡ ಸಂಧಿಗಳು'
+          }
+        ]
+      },
+      {
+        id: 'deck_geography',
+        deckNameKn: `ಕರ್ನಾಟಕ & ಭಾರತದ ಭೂಗೋಳ (${dateFormattedKn})`,
+        deckNameEn: `Geography & Environment (${dateFormattedEn})`,
+        subject: 'Geography & Environment',
+        color: 'teal',
+        icon: 'Globe',
+        cards: [
+          {
+            id: `fc_g_1_${Date.now()}`,
+            frontKn: 'ಕರ್ನಾಟಕದ ಅತ್ಯಂತ ಎತ್ತರವಾದ ಶಿಖರ ಯಾವುದು ಮತ್ತು ಯಾವ ಜಿಲ್ಲೆಯಲ್ಲಿದೆ?',
+            frontEn: 'Which is the highest mountain peak in Karnataka?',
+            backKn: 'ಮುಳ್ಳಯ್ಯನಗಿರಿ (1,930 ಮೀಟರ್ / 6,330 ಅಡಿ) - ಚಿಕ್ಕಮಗಳೂರು ಜಿಲ್ಲೆ (ಬಾಬಾಬುಡನ್‌ಗಿರಿ ಶ್ರೇಣಿ).',
+            backEn: 'Mullayanagiri Peak (1,930 m / 6,330 ft) in Chikkamagaluru district.',
+            category: 'ಪರ್ವತ ಶಿಖರಗಳು'
+          },
+          {
+            id: `fc_g_2_${Date.now()}`,
+            frontKn: 'ಜೋಗ ಜಲಪಾತ (ಗೇರುಸೊಪ್ಪೆ) ಯಾವ ನದಿಯಿಂದ ನಿರ್ಮಾಣವಾಗಿದೆ ಮತ್ತು ಯಾವ ಜಿಲ್ಲೆಯಲ್ಲಿದೆ?',
+            frontEn: 'Jog Falls is formed by which river in Karnataka?',
+            backKn: 'ಶರಾವತಿ ನದಿ (ಶಿವಮೊಗ್ಗ ಜಿಲ್ಲೆ, ಸಾಗರ ತಾಲೂಕು - 253 ಮೀಟರ್ ಎತ್ತರ).',
+            backEn: 'Sharavathi River in Shivamogga district (253 meters vertical drop).',
+            category: 'ಜಲಪಾತಗಳು & ನದಿಗಳು'
+          },
+          {
+            id: `fc_g_3_${Date.now()}`,
+            frontKn: 'ಕರ್ನಾಟಕದ ಮೊದಲ ರಾಷ್ಟ್ರೀಯ ಉದ್ಯಾನವನ (National Park) ಯಾವುದು?',
+            frontEn: 'Which is the first National Park designated in Karnataka?',
+            backKn: 'ಬಂಡೀಪುರ ರಾಷ್ಟ್ರೀಯ ಉದ್ಯಾನವನ (1974 ರಲ್ಲಿ ಪ್ರಾಜೆಕ್ಟ್ ಟೈಗರ್ ಅಡಿಯಲ್ಲಿ ಸ್ಥಾಪನೆ).',
+            backEn: 'Bandipur National Park established under Project Tiger in 1974.',
+            category: 'ರಾಷ್ಟ್ರೀಯ ಉದ್ಯಾನವನಗಳು'
+          }
+        ]
+      },
+      {
+        id: 'deck_sports',
+        deckNameKn: `ಕ್ರೀಡೆ & ರಾಷ್ಟ್ರೀಯ ಪ್ರಶಸ್ತಿಗಳು (${dateFormattedKn})`,
+        deckNameEn: `Sports & Awards (${dateFormattedEn})`,
+        subject: 'Sports & Awards',
+        color: 'amber',
+        icon: 'Trophy',
+        cards: [
+          {
+            id: `fc_sp_1_${Date.now()}`,
+            frontKn: 'ಭಾರತದ ಅತ್ಯುನ್ನತ ಕ್ರೀಡಾ ಗೌರವ ಪ್ರಶಸ್ತಿ ಯಾವುದು?',
+            frontEn: 'What is India’s highest sporting honor award?',
+            backKn: 'ಮೇಜರ್ ಧ್ಯಾನ್‌ಚಂದ್ ಖೇಲ್ ರತ್ನ ಪ್ರಶಸ್ತಿ (ಹಿಂದೆ ರಾಜೀವ್ ಗಾಂಧಿ ಖೇಲ್ ರತ್ನ).',
+            backEn: 'Major Dhyan Chand Khel Ratna Award (formerly Rajiv Gandhi Khel Ratna).',
+            category: 'ಕ್ರೀಡಾ ಪ್ರಶಸ್ತಿಗಳು'
+          },
+          {
+            id: `fc_sp_2_${Date.now()}`,
+            frontKn: 'ಒಲಿಂಪಿಕ್ಸ್ ಇತಿಹಾಸದಲ್ಲಿ ವೈಯಕ್ತಿಕ ಚಿನ್ನದ ಪದಕ ಗೆದ್ದ ಮೊದಲ ಭಾರತೀಯ ಅಥ್ಲೀಟ್ ಯಾರು?',
+            frontEn: 'Who is the first Indian to win an individual Olympic Gold Medal?',
+            backKn: 'ಅಭಿನವ್ ಬಿಂದ್ರಾ (2008 ಬೀಜಿಂಗ್ ಒಲಿಂಪಿಕ್ಸ್ - 10 ಮೀಟರ್ ಏರ್ ರೈಫಲ್ ಶೂಟಿಂಗ್).',
+            backEn: 'Abhinav Bindra (2008 Beijing Olympics, 10m Air Rifle shooting).',
+            category: 'ಒಲಿಂಪಿಕ್ಸ್ ಇತಿಹಾಸ'
+          }
+        ]
+      },
+      {
+        id: 'deck_international',
+        deckNameKn: `ಅಂತಾರಾಷ್ಟ್ರೀಯ ಸಂಸ್ಥೆಗಳು & ಶೃಂಗಸಭೆಗಳು (${dateFormattedKn})`,
+        deckNameEn: `International Affairs (${dateFormattedEn})`,
+        subject: 'International Affairs',
+        color: 'indigo',
+        icon: 'Compass',
+        cards: [
+          {
+            id: `fc_in_1_${Date.now()}`,
+            frontKn: 'ವಿಶ್ವ ಆರೋಗ್ಯ ಸಂಸ್ಥೆ (WHO) ಮತ್ತು ವಿಶ್ವ ವ್ಯಾಪಾರ ಸಂಸ್ಥೆಯ (WTO) ಕೇಂದ್ರ ಕಚೇರಿ ಎಲ್ಲಿದೆ?',
+            frontEn: 'Where are the headquarters of WHO and WTO located?',
+            backKn: 'ಜಿನೀವಾ, ಸ್ವಿಟ್ಜರ್‌ಲ್ಯಾಂಡ್ (Geneva, Switzerland).',
+            backEn: 'Geneva, Switzerland.',
+            category: 'ಅಂತಾರಾಷ್ಟ್ರೀಯ ಸಂಸ್ಥೆಗಳು'
+          },
+          {
+            id: `fc_in_2_${Date.now()}`,
+            frontKn: 'ಅಂತಾರಾಷ್ಟ್ರೀಯ ನ್ಯಾಯಾಲಯ (ICJ) ಯಾವ ನಗರದಲ್ಲಿದೆ?',
+            frontEn: 'Where is the International Court of Justice (ICJ) located?',
+            backKn: 'ದಿ ಹೇಗ್, ನೆದರ್‌ಲ್ಯಾಂಡ್ಸ್ (Peace Palace, The Hague, Netherlands).',
+            backEn: 'The Hague, Netherlands (Peace Palace).',
+            category: 'ನ್ಯಾಯಾಂಗ & ವಿಶ್ವಸಂಸ್ಥೆ'
+          }
+        ]
+      }
+    ];
 
     // Update state & persistence
     setCurrentAffairs(prev => [newCapsule, ...(prev || []).filter(c => c.date !== today)]);
     setDailyQuiz(newDailyQuiz);
+    setFlashcards(freshDailyFlashcards);
 
     try {
       localStorage.setItem(STORAGE_KEYS.DAILY_QUIZ, JSON.stringify(newDailyQuiz));
       localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify([newCapsule]));
+      localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(freshDailyFlashcards));
     } catch (e) {}
 
-    return { success: true, capsule: newCapsule, quiz: newDailyQuiz };
+    // Cloud push to Supabase app_settings so all students across Karnataka receive fresh content
+    try {
+      if (supabase) {
+        supabase.from('app_settings').upsert({
+          key: 'daily_current_affairs',
+          value: [newCapsule],
+          updated_at: new Date().toISOString()
+        }).then();
+
+        supabase.from('app_settings').upsert({
+          key: 'daily_quiz_settings',
+          value: newDailyQuiz,
+          updated_at: new Date().toISOString()
+        }).then();
+
+        supabase.from('app_settings').upsert({
+          key: 'daily_flashcards',
+          value: freshDailyFlashcards,
+          updated_at: new Date().toISOString()
+        }).then();
+      }
+    } catch (err) {
+      console.warn('Daily content Supabase sync notice:', err);
+    }
+
+    return { success: true, capsule: newCapsule, quiz: newDailyQuiz, flashcards: freshDailyFlashcards };
   };
+
+  // Live Government & State RSS News Feeds Engine (PIB India, DD News, State Affairs)
+  const fetchLiveGovtNewsFeeds = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const dateFormattedKn = new Date().toLocaleDateString('kn-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dateFormattedEn = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Official Exam-Relevant RSS Feeds
+    const FEED_ENDPOINTS = [
+      {
+        url: 'https://www.thehindu.com/news/national/karnataka/feeder/default.rss',
+        sourceName: 'The Hindu (Karnataka Regional & State Policies)',
+        defaultCategoryKn: '🏛️ ಕರ್ನಾಟಕ ವಿಶೇಷ & ಆಡಳಿತ',
+        defaultCategoryEn: 'Karnataka State Affairs',
+        defaultTag: 'current_affairs'
+      },
+      {
+        url: 'https://pib.gov.in/RssMain.aspx?ModId=6',
+        sourceName: 'PIB India (Press Information Bureau - Union Cabinet & Policies)',
+        defaultCategoryKn: '⚖️ ಕೇಂದ್ರ ನೀತಿಗಳು & ಶಾಸನಗಳು',
+        defaultCategoryEn: 'National Policy & Governance',
+        defaultTag: 'polity'
+      },
+      {
+        url: 'https://ddnews.gov.in/en/feed/',
+        sourceName: 'DD News (National Development & Science)',
+        defaultCategoryKn: '🔬 ವಿಜ್ಞಾನ & ರಾಷ್ಟ್ರೀಯ ಪ್ರಗತಿ',
+        defaultCategoryEn: 'Science & National Affairs',
+        defaultTag: 'science'
+      }
+    ];
+
+    let liveItems = [];
+
+    for (const feed of FEED_ENDPOINTS) {
+      try {
+        const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
+            const parsed = data.items.slice(0, 4).map((item, idx) => {
+              const cleanDesc = (item.description || item.content || '')
+                .replace(/<[^>]*>?/gm, '')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&amp;/g, '&')
+                .trim();
+              
+              const titleText = (item.title || '').trim();
+              const lowerText = (titleText + ' ' + cleanDesc).toLowerCase();
+
+              // Smart Categorization based on syllabus
+              let categoryKn = feed.defaultCategoryKn;
+              let categoryEn = feed.defaultCategoryEn;
+              let tag = feed.defaultTag;
+
+              if (lowerText.includes('karnataka') || lowerText.includes('bengaluru') || lowerText.includes('kpsc') || lowerText.includes('mysuru') || lowerText.includes('belagavi')) {
+                categoryKn = '🏛️ ಕರ್ನಾಟಕ ವಿಶೇಷ & ಆಡಳಿತ';
+                categoryEn = 'Karnataka State Affairs';
+                tag = 'current_affairs';
+              } else if (lowerText.includes('court') || lowerText.includes('act') || lowerText.includes('bill') || lowerText.includes('constitution') || lowerText.includes('law') || lowerText.includes('parliament')) {
+                categoryKn = '⚖️ ಸಂವಿಧಾನ & ಶಾಸನಗಳು';
+                categoryEn = 'Indian Polity & Law';
+                tag = 'polity';
+              } else if (lowerText.includes('isro') || lowerText.includes('space') || lowerText.includes('satellite') || lowerText.includes('tech') || lowerText.includes('ai') || lowerText.includes('science') || lowerText.includes('drdo')) {
+                categoryKn = '🔬 ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ';
+                categoryEn = 'Science & Technology';
+                tag = 'science';
+              } else if (lowerText.includes('rbi') || lowerText.includes('gst') || lowerText.includes('bank') || lowerText.includes('economy') || lowerText.includes('budget') || lowerText.includes('gdp') || lowerText.includes('rupee') || lowerText.includes('tax')) {
+                categoryKn = '💰 ಆರ್ಥಿಕತೆ & ನೀತಿಗಳು';
+                categoryEn = 'Economy & Banking';
+                tag = 'economy';
+              } else if (lowerText.includes('cricket') || lowerText.includes('medal') || lowerText.includes('olympic') || lowerText.includes('badminton') || lowerText.includes('trophy') || lowerText.includes('khel') || lowerText.includes('games')) {
+                categoryKn = '🏆 ಕ್ರೀಡೆ & ಪ್ರಶಸ್ತಿಗಳು';
+                categoryEn = 'Sports & Awards';
+                tag = 'sports';
+              } else if (lowerText.includes('forest') || lowerText.includes('wildlife') || lowerText.includes('river') || lowerText.includes('climate') || lowerText.includes('tiger') || lowerText.includes('rain') || lowerText.includes('monsoon')) {
+                categoryKn = '🌍 ಭೂಗೋಳ & ಪರಿಸರ';
+                categoryEn = 'Geography & Environment';
+                tag = 'geography';
+              } else if (lowerText.includes('un') || lowerText.includes('summit') || lowerText.includes('brics') || lowerText.includes('g20') || lowerText.includes('global') || lowerText.includes('foreign') || lowerText.includes('treaty')) {
+                categoryKn = '🌐 ಅಂತಾರಾಷ್ಟ್ರೀಯ & ಜಾಗತಿಕ';
+                categoryEn = 'International Affairs';
+                tag = 'international';
+              }
+
+              return {
+                id: `ca_live_${Date.now()}_${idx}`,
+                categoryKn,
+                categoryEn,
+                tag,
+                headlineKn: titleText,
+                headlineEn: titleText,
+                descKn: cleanDesc.slice(0, 240) + (cleanDesc.length > 240 ? '...' : ''),
+                descEn: cleanDesc.slice(0, 240) + (cleanDesc.length > 240 ? '...' : ''),
+                examTakeaway: `Source: ${feed.sourceName}. High relevance for KPSC, FDA, SDA & State exams.`,
+                examTakeawayKn: `ಮೂಲ: ${feed.sourceName}. KPSC, KSP, FDA/SDA ಪರೀಕ್ಷೆಗಳಿಗೆ ನೇರ ಪರೀಕ್ಷಾ ಪ್ರಸ್ತುತತೆ.`,
+                pubDate: item.pubDate || new Date().toISOString(),
+                link: item.link || '',
+                isLiveGovtFeed: true
+              };
+            });
+            liveItems = [...liveItems, ...parsed];
+          }
+        }
+      } catch (feedErr) {
+        console.warn(`Feed fetch notice for ${feed.sourceName}:`, feedErr);
+      }
+    }
+
+    // If live items fetched, package into new capsule
+    if (liveItems.length >= 3) {
+      const selectedLive = liveItems.slice(0, 9);
+      const newLiveCapsule = {
+        id: `ca_live_${today.replace(/-/g, '_')}`,
+        date: today,
+        isLiveGovtFeed: true,
+        source: 'PIB India, DD News & State Press Releases',
+        titleKn: `📡 ಲೈವ್ ಸರ್ಕಾರಿ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳ ಕ್ಯಾಪ್ಸೂಲ್ (${dateFormattedKn})`,
+        titleEn: `📡 Live Official Govt Current Affairs Capsule (${dateFormattedEn})`,
+        audioText: selectedLive.map((n, i) => `${i + 1}. ${n.headlineKn}. ${n.descKn}`).join(' '),
+        items: selectedLive,
+        points: selectedLive.map(n => ({
+          id: n.id,
+          category: n.categoryEn,
+          categoryKn: n.categoryKn,
+          categoryEn: n.categoryEn,
+          tag: n.tag,
+          title: n.headlineEn,
+          titleKn: n.headlineKn,
+          content: n.descEn,
+          contentKn: n.descKn,
+          examTakeaway: n.examTakeaway,
+          examTakeawayKn: n.examTakeawayKn,
+          link: n.link,
+          isLiveGovtFeed: true
+        }))
+      };
+
+      setCurrentAffairs(prev => [newLiveCapsule, ...(prev || []).filter(c => c.date !== today)]);
+      try {
+        localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify([newLiveCapsule]));
+        if (supabase) {
+          supabase.from('app_settings').upsert({
+            key: 'daily_current_affairs',
+            value: [newLiveCapsule],
+            updated_at: new Date().toISOString()
+          }).then();
+        }
+      } catch (e) {}
+
+      return { success: true, count: selectedLive.length, capsule: newLiveCapsule, isLive: true };
+    }
+
+    // Fallback: cycle AI pool if RSS is offline
+    return await generateAiDailyContent({ cyclePool: true });
+  };
+
+  // Automatic Daily Content Check on Application Startup & Day Change
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const latestCaDate = currentAffairs?.[0]?.date;
+    const latestQuizDate = dailyQuiz?.date;
+
+    // Check if daily content is outdated or missing
+    if (!latestCaDate || latestCaDate !== todayStr || !latestQuizDate || latestQuizDate !== todayStr) {
+      console.log(`[Adhyayana] Auto-fetching Daily Govt RSS Feeds & Quiz for: ${todayStr}`);
+      fetchLiveGovtNewsFeeds().catch(() => {
+        generateAiDailyContent({ topic: 'Karnataka Competitive Exams', subjectFilter: 'all' });
+      });
+    }
+  }, []);
 
   // Add Feedback / Rating
   const addFeedback = useCallback(async (feedbackData) => {
@@ -4867,6 +5986,7 @@ export const DataProvider = ({ children }) => {
         setLiveMockTest,
         updateLiveMockTest,
         generateAiDailyContent,
+        fetchLiveGovtNewsFeeds,
         feedbacks,
         addFeedback,
         togglePushFeedbackToHome,

@@ -419,6 +419,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     parseGoogleSheetCSV,
     fetchLiveGoogleSheetCSV,
     generateAiDailyContent,
+    fetchLiveGovtNewsFeeds,
     feedbacks = [],
     togglePushFeedbackToHome,
     deleteFeedback,
@@ -428,10 +429,13 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     footerConfig,
     updateFooterConfig,
     liveMockTest,
-    updateLiveMockTest
+    updateLiveMockTest,
+    currentAffairs = [],
+    dailyQuiz,
+    flashcards = []
   } = useData();
 
-  const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | live_mock | analytics | access | notices | broadcast | reviews | requests
+  const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | live_mock | analytics | access | notices | broadcast | reviews | requests | daily_content
   const [notification, setNotification] = useState('');
   const [copiedSql, setCopiedSql] = useState(false);
   const [seedResult, setSeedResult] = useState('');
@@ -1639,21 +1643,40 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {/* 1-Click AI Daily Content Generator Button */}
+          {/* 1-Click Live PIB & Govt RSS Feed Sync Button */}
           <button
-            onClick={() => {
-              const res = generateAiDailyContent();
+            onClick={async () => {
+              const res = await fetchLiveGovtNewsFeeds();
+              const firstHeadline = res?.capsule?.items?.[0]?.headlineKn || res?.capsule?.points?.[0]?.titleKn || '';
               showToast(
                 lang === 'kn' 
-                  ? '✨ ಇಂದಿನ 5 ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು & 10 ಪ್ರಶ್ನೆಗಳ ರಸಪ್ರಶ್ನೆ AI ಮೂಲಕ ರಚನೆಯಾಗಿದೆ!' 
-                  : '✨ 5 Current Affairs & 10-Q Daily Quiz Auto-Generated with AI!'
+                  ? `📡 ಲೈವ್ ಸರ್ಕಾರಿ ಪ್ರಕಟಣೆಗಳು (PIB & DD News) ಸಿಂಕ್ ಆಗಿವೆ! (${firstHeadline.slice(0, 30)}...)` 
+                  : `📡 Live Official Govt Releases (PIB/DD News) Synced! (${firstHeadline.slice(0, 30)}...)`
               );
             }}
-            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all hover:scale-105"
-            title="Auto generate today's Current Affairs & Daily Quiz with AI"
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer"
+            title="Fetch real-time live official press releases from PIB India & DD News RSS"
+          >
+            <Zap className="w-4 h-4 fill-current" />
+            <span>{lang === 'kn' ? '📡 1-ಕ್ಲಿಕ್ ಲೈವ್ ಸರ್ಕಾರಿ ಸುದ್ದಿ (PIB Live)' : '📡 1-Click Live PIB Feed'}</span>
+          </button>
+
+          {/* 1-Click AI Daily Content Generator Button with True Pool Cycle */}
+          <button
+            onClick={async () => {
+              const res = await generateAiDailyContent({ cyclePool: true });
+              const firstHeadline = res?.capsule?.items?.[0]?.headlineKn || res?.capsule?.points?.[0]?.titleKn || '';
+              showToast(
+                lang === 'kn' 
+                  ? `✨ ಹೊಸ ದಿನಪತ್ರಿಕೆ & ರಸಪ್ರಶ್ನೆ ಸೆಟ್ ರಚನೆಯಾಗಿದೆ! (${firstHeadline.slice(0, 32)}...)` 
+                  : `✨ Fresh Daily News & Quiz Set Loaded! (${firstHeadline.slice(0, 32)}...)`
+              );
+            }}
+            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer"
+            title="Auto generate fresh rotating Current Affairs & Daily Quiz with AI"
           >
             <Sparkles className="w-4 h-4 text-slate-950" />
-            <span>{lang === 'kn' ? '✨ 1-ಕ್ಲಿಕ್ AI ದಿನಪತ್ರಿಕೆ & ರಸಪ್ರಶ್ನೆ ರಚಿಸಿ' : '✨ 1-Click AI Daily Content'}</span>
+            <span>{lang === 'kn' ? '✨ 1-ಕ್ಲಿಕ್ AI ದಿನಪತ್ರಿಕೆ ರಚಿಸಿ' : '✨ 1-Click AI Content'}</span>
           </button>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-900/60 border border-purple-700 text-xs text-purple-200">
@@ -1823,6 +1846,18 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
         >
           <MessageSquare className="w-4 h-4 shrink-0 text-emerald-400" />
           <span>10. Student Requests ({(studyRequests || []).length}) 💬</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('daily_content')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
+            activeTab === 'daily_content'
+              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow-md ring-2 ring-amber-400/50'
+              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 hover:bg-amber-100'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
+          <span>11. Daily News & Quiz ⚡ ({(currentAffairs?.[0]?.items?.length || currentAffairs?.[0]?.points?.length || 9)})</span>
         </button>
       </div>
 
@@ -6650,6 +6685,267 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
               </div>
             </div>
 
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 11: DAILY CURRENT AFFAIRS, DAILY QUIZ & FLASHCARDS MANAGER */}
+      {activeTab === 'daily_content' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Top Control Bar */}
+          <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-purple-500/15 p-6 rounded-3xl border border-amber-500/30 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 uppercase tracking-wider">
+                    ⚡ Live Daily Content Engine
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                    📅 {new Date().toLocaleDateString('kn-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-slate-100">
+                  {lang === 'kn' ? 'ದೈನಂದಿನ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು & ರಸಪ್ರಶ್ನೆ ನಿರ್ವಹಣೆ' : 'Daily Current Affairs, Quiz & Flashcards Hub'}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  {lang === 'kn' 
+                    ? '9 ವಿಷಯಗಳ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು, 50 ಪ್ರಶ್ನೆಗಳ ದೈನಂದಿನ ಕ್ವಿಜ್ ಮತ್ತು 8 ವಿಷಯಗಳ ಫ್ಲ್ಯಾಶ್‌ಕಾರ್ಡ್‌ಗಳನ್ನು 1-ಕ್ಲಿಕ್‌ನಲ್ಲಿ ಹೊಸ ಸೆಟ್‌ಗೆ ಬದಲಾಯಿಸಿ ಅಥವಾ ಲೈವ್ ಅಪ್‌ಡೇಟ್ ಮಾಡಿ.'
+                    : 'Manage 9-subject current affairs, 50-Q daily practice quiz, and 8 subject flashcard decks with instant pool rotation.'}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await fetchLiveGovtNewsFeeds();
+                    const firstTitle = res?.capsule?.items?.[0]?.headlineKn || res?.capsule?.points?.[0]?.titleKn || '';
+                    showToast(
+                      lang === 'kn' 
+                        ? `📡 ಲೈವ್ ಸರ್ಕಾರಿ ಪ್ರಕಟಣೆಗಳು (PIB & DD News) ಸಿಂಕ್ ಆಗಿವೆ! (${firstTitle.slice(0, 30)}...)` 
+                        : `📡 Live Official Govt Releases (PIB/DD News) Synced! (${firstTitle.slice(0, 30)}...)`
+                    );
+                  }}
+                  className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs rounded-2xl shadow-lg transition-all flex items-center gap-2 hover:scale-105 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 fill-current" />
+                  <span>{lang === 'kn' ? '📡 1-ಕ್ಲಿಕ್ ಲೈವ್ ಸರ್ಕಾರಿ ಫೀಡ್ಸ್ (PIB & DD News)' : '📡 1-Click Live PIB Govt Feeds'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await generateAiDailyContent({ cyclePool: true });
+                    const firstTitle = res?.capsule?.items?.[0]?.headlineKn || res?.capsule?.points?.[0]?.titleKn || '';
+                    showToast(
+                      lang === 'kn' 
+                        ? `🎉 ಮುಂದಿನ ಹೊಸ ಸೆಟ್ ಯಶಸ್ವಿಯಾಗಿ ಲೋಡ್ ಆಗಿದೆ! (${firstTitle.slice(0, 30)}...)` 
+                        : `🎉 Next Dynamic News & Quiz Set Activated! (${firstTitle.slice(0, 30)}...)`
+                    );
+                  }}
+                  className="px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs rounded-2xl shadow-lg transition-all flex items-center gap-2 hover:scale-105 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-slate-950" />
+                  <span>{lang === 'kn' ? '🎲 AI ಸಿಲಬಸ್ ಪೂಲ್ ರೊಟೇಷನ್' : '🎲 AI Syllabus Pools'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await syncFromSupabase();
+                    showToast(lang === 'kn' ? '☁️ ಕ್ಲೌಡ್‌ನಿಂದ ಡೇಟಾ ಸಿಂಕ್ ಆಗಿದೆ!' : '☁️ Synced with Supabase cloud!');
+                  }}
+                  className="px-3.5 py-3 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs rounded-2xl transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4 text-purple-500" />
+                  <span>{lang === 'kn' ? 'ಕ್ಲೌಡ್ ಸಿಂಕ್' : 'Cloud Sync'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Live Feed Sources Status Bar */}
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-2 flex-wrap text-[11px]">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span className="font-bold text-emerald-800 dark:text-emerald-300">
+                  ಅಧಿಕೃತ ಲೈವ್ ಫೀಡ್ ಚಾನೆಲ್‌ಗಳು:
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap font-semibold text-slate-600 dark:text-slate-400 text-[10px]">
+                <span className="px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  🟢 PIB India Press Release
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-teal-100 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-300 dark:border-teal-800">
+                  🟢 DD News National & Regional
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
+                  🟢 Karnataka Regional Policies
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3 bg-white/70 dark:bg-slate-900/70 rounded-2xl border border-amber-400/20 text-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">ಪ್ರಚಲಿತ ಸುದ್ದಿಗಳು</span>
+                <span className="text-lg font-black text-amber-600 dark:text-amber-400">
+                  {currentAffairs?.[0]?.items?.length || currentAffairs?.[0]?.points?.length || 9} Cards
+                </span>
+              </div>
+
+              <div className="p-3 bg-white/70 dark:bg-slate-900/70 rounded-2xl border border-purple-400/20 text-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">ದೈನಂದಿನ ಕ್ವಿಜ್ ಪ್ರಶ್ನೆಗಳು</span>
+                <span className="text-lg font-black text-purple-600 dark:text-purple-400">
+                  {dailyQuiz?.questions?.length || 50} Qs (9 Subjects)
+                </span>
+              </div>
+
+              <div className="p-3 bg-white/70 dark:bg-slate-900/70 rounded-2xl border border-emerald-400/20 text-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">3D ಫ್ಲ್ಯಾಶ್‌ಕಾರ್ಡ್ ಡೆಕ್‌ಗಳು</span>
+                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                  {flashcards?.length || 8} Decks (32 Cards)
+                </span>
+              </div>
+
+              <div className="p-3 bg-white/70 dark:bg-slate-900/70 rounded-2xl border border-blue-400/20 text-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">ರೊಟೇಷನ್ ಪೂಲ್ ಸ್ಥಿತಿ</span>
+                <span className="text-lg font-black text-blue-600 dark:text-blue-400">
+                  6 Multi-Day Pools 🟢
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Current Affairs Cards Grid */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-amber-500" />
+                <span>{lang === 'kn' ? 'ಇಂದಿನ ಸಕ್ರಿಯ 9 ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳ ಕಾರ್ಡ್‌ಗಳು' : 'Active 9 Current Affairs Cards for Today'}</span>
+              </h4>
+              <span className="text-xs text-slate-500">
+                (ಮುಖಪುಟದಲ್ಲಿ ಲೈವ್ ಆಗಿ ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ ಕಾಣಿಸುತ್ತಿದೆ)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(
+                currentAffairs?.[0]?.items || 
+                currentAffairs?.[0]?.points || 
+                []
+              ).map((item, idx) => (
+                <div 
+                  key={item.id || idx}
+                  className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-amber-500/50 transition-all space-y-2.5 flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                        {item.categoryKn || item.categoryEn || item.category || 'ವಿಷಯ'}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        #{idx + 1}
+                      </span>
+                    </div>
+
+                    <h5 className="text-xs font-black text-slate-900 dark:text-slate-100 leading-snug">
+                      {item.headlineKn || item.titleKn || item.title || item.headlineEn}
+                    </h5>
+
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-3">
+                      {item.descKn || item.contentKn || item.descEn || item.content}
+                    </p>
+                  </div>
+
+                  {/* Exam Takeaway */}
+                  {(item.examTakeawayKn || item.examTakeaway) && (
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200/60 dark:border-amber-900/40 text-[10px] text-amber-900 dark:text-amber-200">
+                      <strong>🎯 ಪರೀಕ್ಷಾ ಅಂಶ:</strong> {item.examTakeawayKn || item.examTakeaway}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Daily Quiz & Flashcards Mini Inspector */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
+            {/* Daily Quiz Preview */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 flex items-center justify-center font-bold text-xs">
+                    ❓
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 dark:text-slate-100">
+                      {lang === 'kn' ? 'ಇಂದಿನ ದೈನಂದಿನ ರಸಪ್ರಶ್ನೆ (Daily Quiz)' : 'Daily Practice Quiz Bank'}
+                    </h4>
+                    <p className="text-[10px] text-slate-500">
+                      {dailyQuiz?.questions?.length || 50} ಪ್ರಶ್ನೆಗಳು ಸಿದ್ಧವಾಗಿವೆ
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  Active
+                </span>
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {(dailyQuiz?.questions || []).slice(0, 5).map((q, qIdx) => (
+                  <div key={q.id || qIdx} className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs space-y-1">
+                    <p className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
+                      {qIdx + 1}. {q.questionKn || q.question}
+                    </p>
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      ✓ ಉತ್ತರ: {q.options?.[q.correctAnswer] || 'Option A'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Flashcards Preview */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                    🗂️
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 dark:text-slate-100">
+                      {lang === 'kn' ? '3D ಮೆಮೊರಿ ಫ್ಲ್ಯಾಶ್‌ಕಾರ್ಡ್ಸ್‌ (Flashcards Hub)' : '3D Memory Flashcard Decks'}
+                    </h4>
+                    <p className="text-[10px] text-slate-500">
+                      {flashcards?.length || 8} ವಿಷಯವಾರು ಡೆಕ್‌ಗಳು ಸಕ್ರಿಯವಾಗಿವೆ
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                  8 Decks Ready
+                </span>
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {(flashcards || []).map((deck, dIdx) => (
+                  <div key={deck.id || dIdx} className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
+                        {deck.deckNameKn || deck.deckNameEn || deck.subject}
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        {deck.cards?.length || 0} ಸ್ಮಾರ್ಟ್ ಕಾರ್ಡ್‌ಗಳು • {deck.subject}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                      3D Flip
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
         </div>

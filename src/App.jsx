@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider, useData } from './context/DataContext';
+import { PwaProvider } from './context/PwaContext';
 
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { GoogleAuthModal } from './components/GoogleAuthModal';
 import { CheckoutModal } from './components/CheckoutModal';
+import { PwaInstallModal } from './components/PwaInstallModal';
+import { PwaFloatingBanner } from './components/PwaFloatingBanner';
 
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
@@ -87,6 +90,10 @@ const MainApp = () => {
         onPurchaseSuccess={handlePurchaseSuccess}
       />
 
+      {/* PWA App Install Modal & Floating Banner */}
+      <PwaInstallModal />
+      <PwaFloatingBanner />
+
       {/* Header / Navbar - Hide during full-screen test and notes reader */}
       {currentView !== 'test_player' && currentView !== 'notes_viewer' && (
         <Navbar
@@ -99,7 +106,7 @@ const MainApp = () => {
       )}
 
       {/* Main Dynamic View Content */}
-      <main className="flex-grow">
+      <main className={`flex-grow ${currentView !== 'test_player' && currentView !== 'notes_viewer' ? 'pb-16 md:pb-0' : ''}`}>
         {currentView === 'home' && (
           <HomePage
             onNavigate={(v) => setCurrentView(v)}
@@ -217,9 +224,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <DataProvider>
-          <MainApp />
-        </DataProvider>
+        <PwaProvider>
+          <DataProvider>
+            <MainApp />
+          </DataProvider>
+        </PwaProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
