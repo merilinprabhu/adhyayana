@@ -138,7 +138,7 @@ export const DEFAULT_HOME_SECTIONS = [
   {
     id: 'live_mock_test',
     type: 'live_mock_test',
-    isVisible: true,
+    isVisible: false,
     titleKn: '🏆 ಆಲ್-ಕರ್ನಾಟಕ ಲೈವ್ ಮಾಕ್ ಟೆಸ್ಟ್ (State-Level Live Test Window)',
     titleEn: '🏆 All-Karnataka Live State Mock Exam Window',
     subtitleKn: 'ರಾಜ್ಯ ಮಟ್ಟದ ಲೈವ್ ಪರೀಕ್ಷೆ ಬರೆದು ನಿಮ್ಮ ರಾಜ್ಯ ಶ್ರೇಯಾಂಕ (State Rank) ಮತ್ತು ಪರ್ಸೆಂಟೈಲ್ ತಿಳಿಯಿರಿ.',
@@ -789,14 +789,17 @@ export const INITIAL_LIVE_MOCK_TEST = {
   id: 'live_state_mock_01',
   titleKn: '🏆 ಕರ್ನಾಟಕ ರಾಜ್ಯ ಮಟ್ಟದ ಮೆಗಾ ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆ 2026',
   titleEn: '🏆 Karnataka State-Level Mega Live Mock Exam 2026',
-  descriptionKn: 'KAS, PSI, Group-C ಮತ್ತು VAO ಆಕಾಂಕ್ಷಿಗಳಿಗೆ 100 ಪ್ರಶ್ನೆಗಳ ಸಮಗ್ರ ರಾಜ್ಯಮಟ್ಟದ ಪರೀಕ್ಷೆ. ರಾಜ್ಯ ಶ್ರೇಯಾಂಕ ಮತ್ತು ಪರ್ಸೆಂಟೈಲ್ ಲಭ್ಯ.',
-  descriptionEn: 'State-wide 100-Question comprehensive live simulation for KAS, PSI, Group-C aspirants with percentile report.',
-  startTime: new Date(Date.now() + 1800000).toISOString(),
-  durationMinutes: 60,
-  totalMarks: 100,
-  totalQuestions: 50,
+  descriptionKn: 'KAS, PSI, Group-C ಮತ್ತು VAO ಆಕಾಂಕ್ಷಿಗಳಿಗೆ ಸಮಗ್ರ ರಾಜ್ಯಮಟ್ಟದ ಪರೀಕ್ಷೆ. ರಾಜ್ಯ ಶ್ರೇಯಾಂಕ ಮತ್ತು ಪರ್ಸೆಂಟೈಲ್ ಲಭ್ಯ.',
+  descriptionEn: 'State-wide comprehensive live simulation for KAS, PSI, Group-C aspirants with percentile report.',
+  startTime: 'Sunday 10:00 AM - 12:00 PM',
+  durationMinutes: 120,
+  totalMarks: 200,
+  totalQuestions: 100,
+  negativeMarking: 0.25,
   registeredCount: 1420,
-  isLiveNow: true,
+  isActive: false,
+  isLiveNow: false,
+  selectedTestId: '',
   badge: 'STATE-WIDE LIVE',
   prizes: [
     { rank: '1st Rank', rewardKn: '₹5,000 ಸ್ಕಾಲರ್‌ಶಿಪ್ + ಆಲ್-ಇನ್-ಒನ್ ಮೆಗಾ ಪಾಸ್', rewardEn: '₹5,000 Cash Scholarship + Mega Pass' },
@@ -1132,10 +1135,10 @@ export const DataProvider = ({ children }) => {
         
         const merged = parsed.map(sec => {
           const defaultSec = DEFAULT_HOME_SECTIONS.find(d => d.id === sec.id || d.type === sec.type);
-          const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'live_mock_test', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
+          const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
           return {
             ...sec,
-            isVisible: isCoreStudySec ? true : (sec.isVisible !== undefined ? sec.isVisible : true),
+            isVisible: isCoreStudySec ? true : (sec.isVisible !== undefined ? sec.isVisible : (sec.type === 'live_mock_test' ? false : true)),
             items: (defaultSec && defaultSec.items && (!sec.items || sec.items.length === 0)) ? defaultSec.items : (sec.items || defaultSec?.items)
           };
         });
@@ -1521,10 +1524,10 @@ export const DataProvider = ({ children }) => {
               const missingDefaults = DEFAULT_HOME_SECTIONS.filter(d => !existingIds.has(d.id) && !existingIds.has(d.type));
               const merged = s.value.map(sec => {
                 const defaultSec = DEFAULT_HOME_SECTIONS.find(d => d.id === sec.id || d.type === sec.type);
-                const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'live_mock_test', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
+                const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
                 return {
                   ...sec,
-                  isVisible: isCoreStudySec ? true : (sec.isVisible !== undefined ? sec.isVisible : true),
+                  isVisible: isCoreStudySec ? true : (sec.isVisible !== undefined ? sec.isVisible : (sec.type === 'live_mock_test' ? false : true)),
                   items: (defaultSec && defaultSec.items && (!sec.items || sec.items.length === 0)) ? defaultSec.items : (sec.items || defaultSec?.items)
                 };
               });
@@ -1533,15 +1536,20 @@ export const DataProvider = ({ children }) => {
                 missingDefaults.forEach(defSec => {
                   const ctaIdx = merged.findIndex(item => item.type === 'cta_banner' || item.id === 'cta_banner');
                   if (ctaIdx !== -1) {
-                    merged.splice(ctaIdx, 0, { ...defSec, isVisible: true });
+                    merged.splice(ctaIdx, 0, { ...defSec, isVisible: defSec.type === 'live_mock_test' ? false : true });
                   } else {
-                    merged.push({ ...defSec, isVisible: true });
+                    merged.push({ ...defSec, isVisible: defSec.type === 'live_mock_test' ? false : true });
                   }
                 });
               }
 
               setHomeSections(merged);
               localStorage.setItem(STORAGE_KEYS.HOME_SECTIONS, JSON.stringify(merged));
+            } else if (s.key === 'live_mock_test_settings' && s.value && typeof s.value === 'object') {
+              setLiveMockTest(prev => ({ ...prev, ...s.value }));
+              try {
+                localStorage.setItem(STORAGE_KEYS.LIVE_MOCK_TEST, JSON.stringify(s.value));
+              } catch (e) {}
             } else if (s.key === 'feedbacks_data' && Array.isArray(s.value) && s.value.length > 0) {
               setFeedbacks(prev => {
                 const map = new Map(s.value.map(item => [item.id, item]));
@@ -1578,6 +1586,13 @@ export const DataProvider = ({ children }) => {
             id: p.id,
             email: (p.email || '').toLowerCase().trim(),
             name: p.name || (p.email ? p.email.split('@')[0] : 'Student'),
+            phone: p.phone || p.phoneNumber || '',
+            district: p.district || '',
+            qualification: p.qualification || '',
+            medium: p.medium || '',
+            prepStage: p.prep_stage || p.prepStage || '',
+            gender: p.gender || '',
+            profileCompleted: p.profile_completed !== undefined ? p.profile_completed : (p.profileCompleted || false),
             role: p.role || 'student',
             targetExam: p.target_exam || p.targetExam || 'KPSC KAS',
             status: p.status || 'ACTIVE',
@@ -1736,6 +1751,10 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PURCHASES, JSON.stringify(purchases));
   }, [purchases]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+  }, [profiles]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
@@ -3800,6 +3819,12 @@ export const DataProvider = ({ children }) => {
       try {
         localStorage.setItem(STORAGE_KEYS.LIVE_MOCK_TEST, JSON.stringify(updated));
       } catch (e) {}
+
+      if (supabase) {
+        supabase.from('app_settings').upsert({ key: 'live_mock_test_settings', value: updated }).then().catch(err => {
+          console.warn('Live mock test cloud save notice:', err);
+        });
+      }
       return updated;
     });
   };

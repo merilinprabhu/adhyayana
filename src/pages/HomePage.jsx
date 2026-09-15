@@ -2274,18 +2274,18 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
         );
 
       case 'live_mock_test':
-        const mockTest = liveMockTest || {
-          id: 'kpsc_state_mock_live',
-          title: 'All-Karnataka KPSC KAS & PSI Mega Scholarship Mock Test 2026',
-          titleKn: 'ಕರ್ನಾಟಕ ರಾಜ್ಯ ಮಟ್ಟದ KPSC KAS & PSI ಮೆಗಾ ಸ್ಕಾಲರ್‌ಶಿಪ್ ಮಾಕ್ ಟೆಸ್ಟ್ 2026',
-          startTime: 'Sunday 10:00 AM - 12:00 PM',
-          durationMinutes: 120,
-          totalQuestions: 100,
-          totalMarks: 200,
-          negativeMarking: 0.25,
-          participantsCount: 1420,
-          isActive: true
-        };
+        // Only render if developer has explicitly published/activated the live mock test
+        if (!liveMockTest || !liveMockTest.isActive) {
+          return null;
+        }
+
+        const mockTest = liveMockTest;
+        const assignedTest = mockTest.selectedTestId
+          ? tests.find(t => t.id === mockTest.selectedTestId)
+          : null;
+        const mockQuestions = assignedTest?.questions?.length > 0
+          ? assignedTest.questions
+          : (mockTest.questions?.length > 0 ? mockTest.questions : []);
 
         return (
           <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -2297,22 +2297,33 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white uppercase tracking-wider animate-pulse flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                      STATE-WIDE LIVE TEST
+                      {mockTest.badge || 'STATE-WIDE LIVE TEST'}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                      👥 {mockTest.participantsCount}+ Registered
+                      👥 {mockTest.participantsCount || mockTest.registeredCount || 0}+ Registered
                     </span>
+                    {assignedTest && (
+                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                        📚 {assignedTest.title}
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="text-base sm:text-xl font-black text-slate-100 leading-snug">
-                    {lang === 'kn' && mockTest.titleKn ? mockTest.titleKn : mockTest.title}
+                    {lang === 'kn' && mockTest.titleKn ? mockTest.titleKn : (mockTest.title || mockTest.titleEn)}
                   </h3>
 
+                  {(mockTest.descriptionKn || mockTest.descriptionEn || mockTest.description) && (
+                    <p className="text-xs text-slate-300 line-clamp-2">
+                      {lang === 'kn' ? (mockTest.descriptionKn || mockTest.description) : (mockTest.descriptionEn || mockTest.description)}
+                    </p>
+                  )}
+
                   <div className="flex items-center gap-3 text-[11px] text-indigo-200 flex-wrap font-semibold">
-                    <span>⏱️ {mockTest.durationMinutes || 120} Mins</span>
-                    <span>❓ {mockTest.totalQuestions || 100} Qs</span>
-                    <span>🎯 {mockTest.totalMarks || 200} Marks (-0.25 Neg)</span>
-                    <span>🏆 Top 10 Win Free Pass</span>
+                    <span>⏱️ {mockTest.durationMinutes || (assignedTest?.durationMinutes || 120)} Mins</span>
+                    <span>❓ {mockQuestions.length > 0 ? mockQuestions.length : (mockTest.totalQuestions || 100)} Qs</span>
+                    <span>🎯 {mockTest.totalMarks || (assignedTest?.totalMarks || 200)} Marks (-0.25 Neg)</span>
+                    <span>🏆 {lang === 'kn' ? 'ರಾಜ್ಯ ಶ್ರೇಯಾಂಕ & ಬಹುಮಾನಗಳು' : 'State Rank & Prizes'}</span>
                   </div>
                 </div>
 
@@ -2331,18 +2342,18 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     onClick={() => {
                       const testObj = {
                         id: mockTest.id || 'live_state_mock',
-                        title: mockTest.title,
-                        titleKn: mockTest.titleKn,
-                        durationMinutes: mockTest.durationMinutes || 120,
-                        totalMarks: mockTest.totalMarks || 200,
-                        negativeMarking: mockTest.negativeMarking || 0.25,
+                        title: mockTest.title || (lang === 'kn' ? mockTest.titleKn : mockTest.titleEn),
+                        titleKn: mockTest.titleKn || mockTest.title,
+                        durationMinutes: Number(mockTest.durationMinutes) || (assignedTest?.durationMinutes || 120),
+                        totalMarks: Number(mockTest.totalMarks) || (assignedTest?.totalMarks || 200),
+                        negativeMarking: Number(mockTest.negativeMarking) || (assignedTest?.negativeMarking || 0.25),
                         isFree: true,
                         price: 0,
-                        questions: tests[0]?.questions || []
+                        questions: mockQuestions
                       };
                       if (onSelectTest) onSelectTest(testObj);
                     }}
-                    className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black rounded-lg text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 hover:scale-[1.02] transition-all"
+                    className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black rounded-lg text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 hover:scale-[1.02] transition-all cursor-pointer"
                   >
                     <PlayCircle className="w-3.5 h-3.5" />
                     <span>{lang === 'kn' ? 'ಲೈವ್ ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Enter Live Mock Test'}</span>

@@ -62,7 +62,10 @@ import {
   MessageCircle,
   Star,
   MessageSquarePlus,
-  MapPin
+  MapPin,
+  Trophy,
+  PlayCircle,
+  Target
 } from 'lucide-react';
 
 const SUPABASE_SCHEMA_SQL = `-- ADHYAYANA (ಅಧ್ಯಯನ) Complete Production Database Schema for Supabase
@@ -420,10 +423,12 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     updateStudyRequestStatus,
     deleteStudyRequest,
     footerConfig,
-    updateFooterConfig
+    updateFooterConfig,
+    liveMockTest,
+    updateLiveMockTest
   } = useData();
 
-  const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | analytics | access | notices | broadcast | reviews | requests
+  const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | live_mock | analytics | access | notices | broadcast | reviews | requests
   const [notification, setNotification] = useState('');
   const [copiedSql, setCopiedSql] = useState(false);
   const [seedResult, setSeedResult] = useState('');
@@ -596,6 +601,64 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     explanation: '',
     subject: 'General Knowledge'
   });
+
+  // State-wide Mega Live Mock Exam Configuration Form
+  const [liveMockForm, setLiveMockForm] = useState(() => ({
+    id: liveMockTest?.id || 'live_state_mock_01',
+    title: liveMockTest?.title || '🏆 Karnataka State-Level Mega Live Mock Exam 2026',
+    titleKn: liveMockTest?.titleKn || '🏆 ಕರ್ನಾಟಕ ರಾಜ್ಯ ಮಟ್ಟದ ಮೆಗಾ ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆ 2026',
+    titleEn: liveMockTest?.titleEn || '🏆 Karnataka State-Level Mega Live Mock Exam 2026',
+    descriptionKn: liveMockTest?.descriptionKn || 'KAS, PSI, Group-C ಮತ್ತು VAO ಆಕಾಂಕ್ಷಿಗಳಿಗೆ ಸಮಗ್ರ ರಾಜ್ಯಮಟ್ಟದ ಪರೀಕ್ಷೆ. ರಾಜ್ಯ ಶ್ರೇಯಾಂಕ ಮತ್ತು ಪರ್ಸೆಂಟೈಲ್ ಲಭ್ಯ.',
+    descriptionEn: liveMockTest?.descriptionEn || 'State-wide comprehensive live simulation for KAS, PSI, Group-C aspirants with percentile report.',
+    startTime: liveMockTest?.startTime || 'Sunday 10:00 AM - 12:00 PM',
+    durationMinutes: liveMockTest?.durationMinutes || 120,
+    totalMarks: liveMockTest?.totalMarks || 200,
+    totalQuestions: liveMockTest?.totalQuestions || 100,
+    negativeMarking: liveMockTest?.negativeMarking || 0.25,
+    registeredCount: liveMockTest?.registeredCount || 1420,
+    isActive: !!liveMockTest?.isActive,
+    badge: liveMockTest?.badge || 'STATE-WIDE LIVE',
+    selectedTestId: liveMockTest?.selectedTestId || '',
+    prizes: liveMockTest?.prizes || [
+      { rank: '1st Rank', rewardKn: '₹5,000 ಸ್ಕಾಲರ್‌ಶಿಪ್ + ಆಲ್-ಇನ್-ಒನ್ ಮೆಗಾ ಪಾಸ್', rewardEn: '₹5,000 Cash Scholarship + Mega Pass' },
+      { rank: '2nd - 5th Rank', rewardKn: 'ಉಚಿತ 1-ವರ್ಷದ ಎಲ್ಲಾ ಪರೀಕ್ಷಾ ಸರಣಿ', rewardEn: 'Free 1-Year All Course Access' },
+      { rank: 'Top 100', rewardKn: 'ಡಿಜಿಟಲ್ ಮೆರಿಟ್ ಪ್ರಮಾಣಪತ್ರ (Merit Certificate)', rewardEn: 'Certified State Merit Certificate' }
+    ]
+  }));
+
+  useEffect(() => {
+    if (liveMockTest) {
+      setLiveMockForm(prev => ({
+        ...prev,
+        ...liveMockTest,
+        isActive: !!liveMockTest.isActive
+      }));
+    }
+  }, [liveMockTest]);
+
+  const handleSaveLiveMock = (forceActiveStatus = null) => {
+    const updatedStatus = forceActiveStatus !== null ? forceActiveStatus : liveMockForm.isActive;
+    const selectedAssignedTest = tests.find(t => t.id === liveMockForm.selectedTestId);
+
+    const updated = {
+      ...liveMockForm,
+      isActive: updatedStatus,
+      durationMinutes: Number(liveMockForm.durationMinutes) || 120,
+      totalMarks: Number(liveMockForm.totalMarks) || 200,
+      totalQuestions: selectedAssignedTest?.questions?.length || Number(liveMockForm.totalQuestions) || 100,
+      negativeMarking: Number(liveMockForm.negativeMarking) || 0.25,
+      registeredCount: Number(liveMockForm.registeredCount) || 1420
+    };
+
+    setLiveMockForm(updated);
+    updateLiveMockTest(updated);
+
+    if (updatedStatus) {
+      showToast(lang === 'kn' ? '🚀 ರಾಜ್ಯ ಮಟ್ಟದ ಮೆಗಾ ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಮುಖಪುಟದಲ್ಲಿ ಪ್ರಕಟಿಸಲಾಗಿದೆ!' : '🚀 State-Level Mega Live Mock Exam Published Live on Home Page!');
+    } else {
+      showToast(lang === 'kn' ? '⏸️ ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆಯನ್ನು ಮುಖಪುಟದಿಂದ ಯಶಸ್ವಿಯಾಗಿ ತೆಗೆದುಹಾಕಲಾಗಿದೆ/ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ.' : '⏸️ Live Mock Exam Un-published and Hidden from Home Page.');
+    }
+  };
 
   const showToast = (msg) => {
     setNotification(msg);
@@ -1669,6 +1732,18 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
         >
           <FileText className="w-4 h-4 shrink-0" />
           <span>4. Notes ({notes.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('live_mock')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
+            activeTab === 'live_mock'
+              ? 'bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 text-white shadow-md ring-2 ring-rose-500/50'
+              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 hover:bg-rose-100'
+          }`}
+        >
+          <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
+          <span>🏆 Mega Live Mock ({liveMockTest?.isActive ? 'LIVE 🟢' : 'OFF ⚪'})</span>
         </button>
 
         <button
@@ -3556,6 +3631,13 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
           userMap.set(email, {
             email,
             name: p.name || email.split('@')[0],
+            phone: p.phone || p.phoneNumber || '',
+            district: p.district || '',
+            qualification: p.qualification || '',
+            medium: p.medium || '',
+            prepStage: p.prep_stage || p.prepStage || '',
+            gender: p.gender || '',
+            profileCompleted: p.profile_completed !== undefined ? p.profile_completed : (p.profileCompleted || false),
             role: p.role || 'student',
             targetExam: p.targetExam || p.target_exam || 'KPSC KAS',
             status: p.status || 'ACTIVE',
@@ -3571,6 +3653,11 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
           const existing = userMap.get(email) || {
             email,
             name: user.name || email.split('@')[0],
+            phone: user.phone || '',
+            district: user.district || '',
+            qualification: user.qualification || '',
+            medium: user.medium || '',
+            prepStage: user.prepStage || '',
             role: user.role || 'student',
             targetExam: user.targetExam || 'KPSC KAS',
             status: 'ACTIVE',
@@ -3579,6 +3666,12 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
             lastActive: user.lastLogin || new Date().toISOString()
           };
           existing.role = user.role || existing.role;
+          if (user.name) existing.name = user.name;
+          if (user.phone) existing.phone = user.phone;
+          if (user.district) existing.district = user.district;
+          if (user.qualification) existing.qualification = user.qualification;
+          if (user.medium) existing.medium = user.medium;
+          if (user.prepStage) existing.prepStage = user.prepStage;
           if (user.targetExam) existing.targetExam = user.targetExam;
           userMap.set(email, existing);
         }
@@ -3914,18 +4007,29 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                     .map((usr) => {
                       const isSuspended = usr.status === 'SUSPENDED';
                       const isDev = usr.role === 'developer';
-                      const userWaUrl = `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
-                        `ನಮಸ್ಕಾರ ${usr.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.`
-                      )}`;
+                      const cleanStudentPhone = (usr.phone || '').replace(/\D/g, '');
+                      const userWaUrl = cleanStudentPhone 
+                        ? `https://wa.me/91${cleanStudentPhone}?text=${encodeURIComponent(
+                            `ನಮಸ್ಕಾರ ${usr.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.`
+                          )}`
+                        : `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
+                            `ನಮಸ್ಕಾರ ${usr.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.`
+                          )}`;
 
                       return (
                         <div
                           key={usr.email}
-                          className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-purple-50/30 dark:hover:bg-slate-800/50 transition-all"
+                          className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-purple-50/30 dark:hover:bg-slate-800/50 transition-all border-b border-slate-100 dark:border-slate-800 last:border-0"
                         >
-                          {/* Student Identity */}
-                          <div className="flex items-center gap-3.5">
-                            <div className={`w-11 h-11 rounded-2xl text-white flex items-center justify-center font-black text-base shadow-md ${
+                          {/* Student Identity (Clickable to open student management modal) */}
+                          <div 
+                            onClick={() => {
+                              setSelectedUserEmail(usr.email);
+                              setUserModalTab('purchases');
+                            }}
+                            className="flex items-center gap-3.5 cursor-pointer group flex-grow"
+                          >
+                            <div className={`w-11 h-11 rounded-2xl text-white flex items-center justify-center font-black text-base shadow-md transition-transform group-hover:scale-105 ${
                               isDev 
                                 ? 'bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/20' 
                                 : isSuspended
@@ -3936,7 +4040,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                             </div>
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">{usr.email}</span>
+                                <span className="font-bold text-slate-900 dark:text-slate-100 text-sm group-hover:text-purple-600 transition-colors">
+                                  {usr.name || usr.email.split('@')[0]}
+                                </span>
+                                <span className="text-xs text-slate-400 font-mono">({usr.email})</span>
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                   isDev
                                     ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
@@ -3946,17 +4053,32 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                                 </span>
                                 {isSuspended ? (
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-300">
-                                    ⛔ SUSPENDED (ಅಮಾನತು)
+                                    ⛔ SUSPENDED
                                   </span>
                                 ) : (
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                    🟢 ACTIVE (ಸಕ್ರಿಯ)
+                                    🟢 ACTIVE
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                Target: <strong className="text-purple-600 dark:text-purple-400">{usr.targetExam || 'KPSC KAS'}</strong> • Last Active: <span className="font-mono text-slate-700 dark:text-slate-300">{usr.lastActive ? new Date(usr.lastActive).toLocaleDateString() : 'Recent'}</span>
-                              </p>
+                              <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                {usr.phone && (
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold flex items-center gap-1">
+                                    📞 {usr.phone}
+                                  </span>
+                                )}
+                                {usr.district && (
+                                  <span className="px-2 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                                    📍 {usr.district.split('(')[0].trim()}
+                                  </span>
+                                )}
+                                <span>
+                                  Target: <strong className="text-purple-600 dark:text-purple-400">{usr.targetExam || 'KPSC KAS'}</strong>
+                                </span>
+                                <span className="text-slate-400">
+                                  • Last Active: <span className="font-mono text-slate-700 dark:text-slate-300">{usr.lastActive ? new Date(usr.lastActive).toLocaleDateString() : 'Recent'}</span>
+                                </span>
+                              </div>
                             </div>
                           </div>
 
@@ -4018,8 +4140,9 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                         {selectedUser.email.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-black text-white">{selectedUser.email}</h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base font-black text-white">{selectedUser.name || selectedUser.email.split('@')[0]}</h3>
+                          <span className="text-xs text-purple-300 font-mono">({selectedUser.email})</span>
                           {selectedUser.status === 'SUSPENDED' ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/40">
                               ⛔ SUSPENDED
@@ -4030,8 +4153,8 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-purple-200">
-                          {selectedUser.name} • Target Exam: <strong>{selectedUser.targetExam || 'KPSC KAS'}</strong>
+                        <p className="text-xs text-purple-200 mt-0.5">
+                          Target Exam: <strong className="text-white">{selectedUser.targetExam || 'KPSC KAS'}</strong>
                         </p>
                       </div>
                     </div>
@@ -4044,8 +4167,41 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                     </button>
                   </div>
 
+                  {/* Student Full Profile Information Banner */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">📱 Phone / Mobile</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 font-mono mt-0.5">
+                          {selectedUser.phone || 'Not Provided'}
+                        </p>
+                      </div>
+
+                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">📍 District (ಜಿಲ್ಲೆ)</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">
+                          {selectedUser.district || 'Karnataka'}
+                        </p>
+                      </div>
+
+                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">🎓 Qualification</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">
+                          {selectedUser.qualification || 'Graduate'}
+                        </p>
+                      </div>
+
+                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">📖 Medium & Stage</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">
+                          {selectedUser.medium === 'en' ? 'English' : 'Kannada'} • {selectedUser.prepStage?.split('(')[0] || 'Prep'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Account Action Bar */}
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2">
                       {selectedUser.status === 'SUSPENDED' ? (
                         <button
@@ -4065,17 +4221,27 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                         </button>
                       )}
 
-                      <a
-                        href={`https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
-                          `ನಮಸ್ಕಾರ ${selectedUser.name}, ನಿಮ್ಮ ಅಧ್ಯಯನ ಖಾತೆಗೆ ಸಂಬಂಧಿಸಿದಂತೆ:`
-                        )}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>WhatsApp Chat</span>
-                      </a>
+                      {(() => {
+                        const studentPhoneClean = (selectedUser.phone || '').replace(/\D/g, '');
+                        const waLink = studentPhoneClean
+                          ? `https://wa.me/91${studentPhoneClean}?text=${encodeURIComponent(
+                              `ನಮಸ್ಕಾರ ${selectedUser.name}, ನಿಮ್ಮ ಅಧ್ಯಯನ ಖಾತೆಗೆ ಸಂಬಂಧಿಸಿದಂತೆ:`
+                            )}`
+                          : `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
+                              `ನಮಸ್ಕಾರ ${selectedUser.name}, ನಿಮ್ಮ ಅಧ್ಯಯನ ಖಾತೆಗೆ ಸಂಬಂಧಿಸಿದಂತೆ:`
+                            )}`;
+                        return (
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>WhatsApp Chat</span>
+                          </a>
+                        );
+                      })()}
                     </div>
 
                     <button
@@ -5867,6 +6033,457 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* TAB: MEGA LIVE MOCK EXAM MANAGER (ರಾಜ್ಯ ಮಟ್ಟದ ಮೆಗಾ ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆ ನಿರ್ವಹಣೆ) */}
+      {activeTab === 'live_mock' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* Top Status & Master Switch Header */}
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white border border-indigo-500/30 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                    liveMockForm.isActive 
+                      ? 'bg-emerald-500 text-slate-950 animate-pulse' 
+                      : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${liveMockForm.isActive ? 'bg-slate-950 animate-ping' : 'bg-slate-400'}`}></span>
+                    {liveMockForm.isActive ? 'LIVE ON HOME PAGE 🟢' : 'CURRENTLY OFF / HIDDEN ⚪'}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                    🏆 STATE-LEVEL MEGA MOCK ENGINE
+                  </span>
+                </div>
+
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  {lang === 'kn' ? '🏆 ರಾಜ್ಯ ಮಟ್ಟದ ಮೆಗಾ ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆ ನಿರ್ವಹಣೆ' : '🏆 State-Level Mega Live Mock Exam Manager'}
+                </h2>
+                <p className="text-xs sm:text-sm text-indigo-200 max-w-2xl">
+                  {lang === 'kn' 
+                    ? 'ಡೆವಲಪರ್ ಕಂಟ್ರೋಲ್: ನೀವು ಬಯಸಿದಾಗ ಮಾತ್ರ ಈ ಪರೀಕ್ಷೆಯನ್ನು ಮುಖಪುಟದಲ್ಲಿ ಪ್ರಕಟಿಸಬಹುದು ಅಥವಾ ತೆಗೆದುಹಾಕಬಹುದು. ಯಾವುದೇ ಟೆಸ್ಟ್ ಅನ್ನು ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆಯನ್ನಾಗಿ ನೇಮಿಸಿ.'
+                    : 'Developer Control: Publish or remove the Mega Live Mock exam from the Home Page whenever you want. Assign any specific test with custom schedule & prizes.'}
+                </p>
+              </div>
+
+              {/* Instant Toggle Button */}
+              <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => handleSaveLiveMock(!liveMockForm.isActive)}
+                  className={`w-full sm:w-auto px-6 py-3.5 rounded-2xl font-black text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-105 cursor-pointer ${
+                    liveMockForm.isActive
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/30'
+                      : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 shadow-emerald-500/30'
+                  }`}
+                >
+                  {liveMockForm.isActive ? (
+                    <>
+                      <XCircle className="w-5 h-5" />
+                      <span>{lang === 'kn' ? '⏸️ ಮುಖಪುಟದಿಂದ ತೆಗೆದುಹಾಕಿ (Unpublish / Hide)' : '⏸️ Unpublish from Home'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-5 h-5 fill-current" />
+                      <span>{lang === 'kn' ? '🚀 ಮುಖಪುಟದಲ್ಲಿ ಪ್ರಕಟಿಸಿ (Publish LIVE)' : '🚀 Publish LIVE on Home'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Form & Real-Time Preview Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            {/* Left: Configuration Form (7 cols) */}
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              
+              {/* 1. Test Linking Section */}
+              <div className="space-y-3 border-b border-slate-100 dark:border-slate-800 pb-5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-purple-600" />
+                    <span>1. {lang === 'kn' ? 'ಯಾವ ಟೆಸ್ಟ್ ಅನ್ನು ಲೈವ್ ಪರೀಕ್ಷೆಯನ್ನಾಗಿ ನೇಮಿಸಬೇಕು? (Assign Base Test)' : 'Assign Base Test for Questions'}</span>
+                  </label>
+                  {liveMockForm.selectedTestId && (
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      ✓ ಟೆಸ್ಟ್ ಲಿಂಕ್ ಆಗಿದೆ
+                    </span>
+                  )}
+                </div>
+
+                <select
+                  value={liveMockForm.selectedTestId || ''}
+                  onChange={(e) => {
+                    const testId = e.target.value;
+                    const selectedT = tests.find(t => t.id === testId);
+                    setLiveMockForm(prev => ({
+                      ...prev,
+                      selectedTestId: testId,
+                      totalQuestions: selectedT?.questions?.length || prev.totalQuestions,
+                      durationMinutes: selectedT?.durationMinutes || prev.durationMinutes,
+                      totalMarks: selectedT?.totalMarks || prev.totalMarks,
+                      negativeMarking: selectedT?.negativeMarking !== undefined ? selectedT.negativeMarking : prev.negativeMarking
+                    }));
+                  }}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">-- {lang === 'kn' ? 'ಯಾವುದೇ ಪರೀಕ್ಷೆ ಆಯ್ಕೆ ಮಾಡಿ (Select a Test from Catalog)' : 'Select from existing tests'} --</option>
+                  {tests.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.title} {t.titleKn ? `(${t.titleKn})` : ''} - [{t.questions?.length || 0} Qs, {t.durationMinutes}m]
+                    </option>
+                  ))}
+                </select>
+
+                {liveMockForm.selectedTestId && (() => {
+                  const selT = tests.find(t => t.id === liveMockForm.selectedTestId);
+                  if (!selT) return null;
+                  return (
+                    <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-2xl border border-purple-200 dark:border-purple-800 text-xs flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-purple-950 dark:text-purple-200">{selT.title}</p>
+                        <p className="text-[11px] text-purple-700 dark:text-purple-400">
+                          ಪ್ರಶ್ನೆಗಳು: {selT.questions?.length || 0} | ಅವಧಿ: {selT.durationMinutes} min | ಅಂಕಗಳು: {selT.totalMarks}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLiveMockForm(prev => ({
+                            ...prev,
+                            titleKn: selT.titleKn || prev.titleKn,
+                            titleEn: selT.title || prev.titleEn,
+                            durationMinutes: selT.durationMinutes || prev.durationMinutes,
+                            totalMarks: selT.totalMarks || prev.totalMarks,
+                            totalQuestions: selT.questions?.length || prev.totalQuestions,
+                            negativeMarking: selT.negativeMarking !== undefined ? selT.negativeMarking : prev.negativeMarking
+                          }));
+                          showToast(lang === 'kn' ? 'ಟೆಸ್ಟ್ ವಿವರಗಳನ್ನು ನಕಲಿಸಲಾಗಿದೆ!' : 'Test details synced into mock config!');
+                        }}
+                        className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[11px] font-bold shrink-0"
+                      >
+                        ಸ್ವಯಂ ತುಂಬಿಸಿ (Sync)
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* 2. Title and Description */}
+              <div className="space-y-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Edit3 className="w-4 h-4 text-purple-600" />
+                  <span>2. {lang === 'kn' ? 'ಪರೀಕ್ಷೆಯ ಶೀರ್ಷಿಕೆ & ವಿವರಣೆ (Exam Info)' : 'Exam Titles & Description'}</span>
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      ಕನ್ನಡ ಶೀರ್ಷಿಕೆ (Kannada Title) *
+                    </label>
+                    <input
+                      type="text"
+                      value={liveMockForm.titleKn || ''}
+                      onChange={(e) => setLiveMockForm({ ...liveMockForm, titleKn: e.target.value })}
+                      placeholder="🏆 ಕರ್ನಾಟಕ ರಾಜ್ಯ ಮಟ್ಟದ ಮೆಗಾ ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆ 2026"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      ಇಂಗ್ಲಿಷ್ ಶೀರ್ಷಿಕೆ (English Title) *
+                    </label>
+                    <input
+                      type="text"
+                      value={liveMockForm.titleEn || liveMockForm.title || ''}
+                      onChange={(e) => setLiveMockForm({ ...liveMockForm, titleEn: e.target.value, title: e.target.value })}
+                      placeholder="🏆 Karnataka State-Level Mega Live Mock Exam 2026"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-semibold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                    ವಿವರಣೆ (Kannada Description)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={liveMockForm.descriptionKn || ''}
+                    onChange={(e) => setLiveMockForm({ ...liveMockForm, descriptionKn: e.target.value })}
+                    placeholder="KAS, PSI, Group-C ಮತ್ತು VAO ಆಕಾಂಕ್ಷಿಗಳಿಗೆ 100 ಪ್ರಶ್ನೆಗಳ ಸಮಗ್ರ ರಾಜ್ಯಮಟ್ಟದ ಪರೀಕ್ಷೆ. ರಾಜ್ಯ ಶ್ರೇಯಾಂಕ ಮತ್ತು ಪರ್ಸೆಂಟೈಲ್ ಲಭ್ಯ."
+                    className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      ಬ್ಯಾಡ್ಜ್ ಪಠ್ಯ (Badge Text)
+                    </label>
+                    <input
+                      type="text"
+                      value={liveMockForm.badge || ''}
+                      onChange={(e) => setLiveMockForm({ ...liveMockForm, badge: e.target.value })}
+                      placeholder="STATE-WIDE LIVE"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      ನೋಂದಾಯಿತ ಅಭ್ಯರ್ಥಿಗಳ ಸಂಖ್ಯೆ (Mock Registered Count)
+                    </label>
+                    <input
+                      type="number"
+                      value={liveMockForm.registeredCount || 1420}
+                      onChange={(e) => setLiveMockForm({ ...liveMockForm, registeredCount: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Schedule, Timing & Scoring */}
+              <div className="space-y-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-purple-600" />
+                  <span>3. {lang === 'kn' ? 'ವೇಳಾಪಟ್ಟಿ & ಅಂಕಗಳ ನಿಯಮ (Timing & Scoring)' : 'Schedule & Scoring Rules'}</span>
+                </label>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                    ವೇಳಾಪಟ್ಟಿ ವಿಂಡೋ ವಿವರ (Scheduled Window Text)
+                  </label>
+                  <input
+                    type="text"
+                    value={liveMockForm.startTime || ''}
+                    onChange={(e) => setLiveMockForm({ ...liveMockForm, startTime: e.target.value })}
+                    placeholder="Sunday 10:00 AM - 12:00 PM (ಅಥವಾ 24/7 Practice)"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-semibold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      ಅವಧಿ (ನಿಮಿಷ)
+                    </label>
+                    <input
+                      type="number"
+                      value={liveMockForm.durationMinutes || 120}
+                      onChange={(e) => setLiveMockForm({ ...liveMockForm, durationMinutes: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      ಒಟ್ಟು ಪ್ರಶ್ನೆಗಳು
+                    </label>
+                    <input
+                      type="number"
+                      value={liveMockForm.totalQuestions || 100}
+                      onChange={(e) => setLiveMockForm({ ...liveMockForm, totalQuestions: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      ಒಟ್ಟು ಅಂಕಗಳು
+                    </label>
+                    <input
+                      type="number"
+                      value={liveMockForm.totalMarks || 200}
+                      onChange={(e) => setLiveMockForm({ ...liveMockForm, totalMarks: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      ಋಣಾತ್ಮಕ ಅಂಕ (Neg)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.05"
+                      value={liveMockForm.negativeMarking !== undefined ? liveMockForm.negativeMarking : 0.25}
+                      onChange={(e) => setLiveMockForm({ ...liveMockForm, negativeMarking: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Scholarship & Prize Details */}
+              <div className="space-y-3">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-purple-600" />
+                  <span>4. {lang === 'kn' ? 'ಬಹುಮಾನ & ಸ್ಕಾಲರ್‌ಶಿಪ್ ವಿವರಗಳು (Prizes & Rewards)' : 'Prize Rewards'}</span>
+                </label>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">
+                      🥇 1st Rank ಬಹುಮಾನ:
+                    </label>
+                    <input
+                      type="text"
+                      value={liveMockForm.prizes?.[0]?.rewardKn || ''}
+                      onChange={(e) => {
+                        const newPrizes = [...(liveMockForm.prizes || [])];
+                        newPrizes[0] = { rank: '1st Rank', rewardKn: e.target.value, rewardEn: e.target.value };
+                        setLiveMockForm({ ...liveMockForm, prizes: newPrizes });
+                      }}
+                      placeholder="₹5,000 ಸ್ಕಾಲರ್‌ಶಿಪ್ + ಆಲ್-ಇನ್-ಒನ್ ಮೆಗಾ ಪಾಸ್"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                      🥈 2nd - 5th Rank ಬಹುಮಾನ:
+                    </label>
+                    <input
+                      type="text"
+                      value={liveMockForm.prizes?.[1]?.rewardKn || ''}
+                      onChange={(e) => {
+                        const newPrizes = [...(liveMockForm.prizes || [])];
+                        newPrizes[1] = { rank: '2nd - 5th Rank', rewardKn: e.target.value, rewardEn: e.target.value };
+                        setLiveMockForm({ ...liveMockForm, prizes: newPrizes });
+                      }}
+                      placeholder="ಉಚಿತ 1-ವರ್ಷದ ಎಲ್ಲಾ ಪರೀಕ್ಷಾ ಸರಣಿ"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                      🎖️ Top 100 ಬಹುಮಾನ:
+                    </label>
+                    <input
+                      type="text"
+                      value={liveMockForm.prizes?.[2]?.rewardKn || ''}
+                      onChange={(e) => {
+                        const newPrizes = [...(liveMockForm.prizes || [])];
+                        newPrizes[2] = { rank: 'Top 100', rewardKn: e.target.value, rewardEn: e.target.value };
+                        setLiveMockForm({ ...liveMockForm, prizes: newPrizes });
+                      }}
+                      placeholder="ಡಿಜಿಟಲ್ ಮೆರಿಟ್ ಪ್ರಮಾಣಪತ್ರ (Merit Certificate)"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSaveLiveMock(true)}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02]"
+                >
+                  <Zap className="w-4 h-4 fill-current" />
+                  <span>{lang === 'kn' ? '🚀 ಉಳಿಸಿ & ಮುಖಪುಟದಲ್ಲಿ ಲೈವ್ ಪ್ರಕಟಿಸಿ (Publish LIVE)' : 'Save & Publish LIVE to Home'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveLiveMock(false)}
+                  className="py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{lang === 'kn' ? '💾 ಕರಡಾಗಿ ಉಳಿಸಿ (Save Draft / Keep Hidden)' : 'Save as Draft (Hidden)'}</span>
+                </button>
+              </div>
+
+            </div>
+
+            {/* Right: Real-time Live Preview (5 cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="bg-slate-100 dark:bg-slate-800/80 p-4 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Eye className="w-4 h-4 text-purple-500" />
+                    <span>{lang === 'kn' ? 'ಮುಖಪುಟದಲ್ಲಿ ಹೇಗೆ ಕಾಣಿಸುತ್ತದೆ? (Live Preview)' : 'Home Page Live Preview'}</span>
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                    liveMockForm.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                  }`}>
+                    {liveMockForm.isActive ? 'VISIBLE ON HOME' : 'HIDDEN FROM HOME'}
+                  </span>
+                </div>
+
+                {/* Simulated Home Card */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 border border-indigo-500/30 shadow-xl space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white uppercase tracking-wider flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                        {liveMockForm.badge || 'STATE-WIDE LIVE'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                        👥 {liveMockForm.registeredCount || 1420}+ Registered
+                      </span>
+                    </div>
+
+                    <h3 className="text-sm font-black text-slate-100 leading-snug">
+                      {lang === 'kn' && liveMockForm.titleKn ? liveMockForm.titleKn : (liveMockForm.title || liveMockForm.titleEn)}
+                    </h3>
+
+                    <p className="text-[11px] text-slate-300 line-clamp-2">
+                      {liveMockForm.descriptionKn || liveMockForm.descriptionEn || ''}
+                    </p>
+
+                    <div className="flex items-center gap-2 text-[10px] text-indigo-200 flex-wrap font-semibold pt-1">
+                      <span>⏱️ {liveMockForm.durationMinutes || 120} Mins</span>
+                      <span>❓ {liveMockForm.totalQuestions || 100} Qs</span>
+                      <span>🎯 {liveMockForm.totalMarks || 200} Marks</span>
+                    </div>
+                  </div>
+
+                  {/* Simulated Action Box */}
+                  <div className="bg-slate-800/90 p-3 rounded-xl border border-indigo-400/20 text-center space-y-2">
+                    <div>
+                      <span className="text-[8px] font-bold text-amber-400 uppercase tracking-wider block">
+                        SCHEDULED WINDOW
+                      </span>
+                      <p className="text-[11px] font-black text-white">
+                        {liveMockForm.startTime || 'Open 24/7 Practice'}
+                      </p>
+                    </div>
+
+                    <div className="w-full py-2 px-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black rounded-lg text-[11px] flex items-center justify-center gap-1 shadow-md">
+                      <PlayCircle className="w-3.5 h-3.5" />
+                      <span>{lang === 'kn' ? 'ಲೈವ್ ಟೆಸ್ಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Enter Live Mock Test'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Prize Summary Box */}
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-800/40 text-xs space-y-1.5">
+                  <p className="font-black text-amber-900 dark:text-amber-200 text-[11px] flex items-center gap-1">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                    <span>ಬಹುಮಾನಗಳ ಸಾರಾಂಶ:</span>
+                  </p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300">
+                    🥇 1st: {liveMockForm.prizes?.[0]?.rewardKn || '₹5,000 ಸ್ಕಾಲರ್‌ಶಿಪ್'}
+                  </p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300">
+                    🥈 2-5: {liveMockForm.prizes?.[1]?.rewardKn || 'ಉಚಿತ 1-ವರ್ಷದ ಕೋರ್ಸ್'}
+                  </p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300">
+                    🎖️ Top 100: {liveMockForm.prizes?.[2]?.rewardKn || 'ಮೆರಿಟ್ ಪ್ರಮಾಣಪತ್ರ'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       )}
 

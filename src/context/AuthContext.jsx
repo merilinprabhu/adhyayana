@@ -270,6 +270,38 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  const updateUserProfile = async (profileData) => {
+    if (!user) return;
+    const updated = {
+      ...user,
+      ...profileData,
+      profileCompleted: true
+    };
+    setUser(updated);
+    try {
+      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updated));
+      if (supabase) {
+        await supabase.from('profiles').upsert({
+          id: updated.uid,
+          email: updated.email,
+          name: updated.name,
+          phone: updated.phone || null,
+          district: updated.district || null,
+          qualification: updated.qualification || null,
+          prep_stage: updated.prepStage || null,
+          medium: updated.medium || null,
+          target_exam: updated.targetExam || null,
+          role: updated.role || 'student',
+          last_login: new Date().toISOString(),
+          status: 'ACTIVE'
+        });
+      }
+    } catch (e) {
+      console.warn('Profile update notice:', e);
+    }
+    return updated;
+  };
+
   const enrollExam = (examId) => {
     if (!user) return;
     if (!user.enrolledExams.includes(examId)) {
@@ -323,6 +355,7 @@ export const AuthProvider = ({ children }) => {
         toggleRole,
         enrollExam,
         isEnrolled,
+        updateUserProfile,
         isAuthModalOpen,
         setIsAuthModalOpen,
         authError,

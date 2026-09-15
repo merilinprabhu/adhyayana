@@ -7,6 +7,7 @@ import { Footer } from './components/Footer';
 import { GoogleAuthModal } from './components/GoogleAuthModal';
 import { CheckoutModal } from './components/CheckoutModal';
 
+import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { ExamCatalog } from './pages/ExamCatalog';
 import { ExamDetail } from './pages/ExamDetail';
@@ -18,7 +19,7 @@ import { DeveloperAdmin } from './pages/DeveloperAdmin';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainApp = () => {
-  const { isAuthenticated, isDeveloper, setIsAuthModalOpen, triggerGoogleOAuthLogin } = useAuth();
+  const { user, isAuthenticated, isDeveloper, setIsAuthModalOpen, triggerGoogleOAuthLogin } = useAuth();
   const { lang, exams, tests, notes } = useData();
 
   // Navigation View Router
@@ -38,6 +39,16 @@ const MainApp = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentView, selectedExam, selectedTest, selectedNote]);
+
+  // If user is not logged in, enforce the Login Page FIRST
+  if (!isAuthenticated && !user) {
+    return <LoginPage />;
+  }
+
+  // If user is logged in but hasn't completed their personal details, show Details form
+  if (user && !user.profileCompleted && !user.isAuthorizedAdmin) {
+    return <LoginPage initialMode="details" />;
+  }
 
   const handleOpenAuth = () => {
     setIsAuthModalOpen(true);
