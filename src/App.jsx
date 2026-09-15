@@ -45,11 +45,6 @@ const MainApp = () => {
     return <LoginPage />;
   }
 
-  // If user is logged in but hasn't completed their personal details, show Details form
-  if (user && !user.profileCompleted && !user.isAuthorizedAdmin) {
-    return <LoginPage initialMode="details" />;
-  }
-
   const handleOpenAuth = () => {
     setIsAuthModalOpen(true);
   };

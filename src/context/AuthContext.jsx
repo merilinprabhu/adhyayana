@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   // Format verified Supabase User
-  const establishUserSession = (supabaseUser) => {
+  const establishUserSession = (supabaseUser, dbProfileOverride = null) => {
     const email = (supabaseUser.email || '').trim().toLowerCase();
     const meta = supabaseUser.user_metadata || {};
     
@@ -67,36 +67,130 @@ export const AuthProvider = ({ children }) => {
 
     const name = meta.full_name || meta.name || email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
+    // Recover any cached profile data from localStorage
+    let cachedProfile = null;
+    try {
+      const savedSession = localStorage.getItem(STORAGE_SESSION_KEY);
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        if ((parsed.email || '').trim().toLowerCase() === email) {
+          cachedProfile = parsed;
+        }
+      }
+      if (!cachedProfile) {
+        const savedProfiles = localStorage.getItem('adhyayana_profiles_v2');
+        if (savedProfiles) {
+          const list = JSON.parse(savedProfiles);
+          const found = list.find(p => (p.email || '').trim().toLowerCase() === email);
+          if (found) cachedProfile = found;
+        }
+      }
+    } catch (e) {}
+
+    const dbProf = dbProfileOverride;
+    const phoneVal = dbProf?.phone || cachedProfile?.phone || meta.phone || '';
+    const districtVal = dbProf?.district || cachedProfile?.district || meta.district || 'ಬೆಂಗಳೂರು ನಗರ (Bengaluru Urban)';
+    const qualVal = dbProf?.qualification || cachedProfile?.qualification || meta.qualification || 'Degree / Graduate (ಪದವಿ)';
+    const medVal = dbProf?.medium || cachedProfile?.medium || meta.medium || 'ಕನ್ನಡ ಮಾಧ್ಯಮ (Kannada Medium)';
+    const prepVal = dbProf?.prep_stage || dbProf?.prepStage || cachedProfile?.prepStage || meta.prep_stage || 'ಹರಿಕಾರ (Beginner / Starting Now)';
+    const targetExVal = dbProf?.target_exam || dbProf?.targetExam || cachedProfile?.targetExam || meta.target_exam || 'KPSC KAS';
+
+    const hasCompletedProfile = Boolean(
+      isAuthorized || 
+      dbProf?.profile_completed === true || 
+      dbProf?.profileCompleted === true || 
+      meta.profile_completed === true || 
+      meta.profileCompleted === true ||
+      cachedProfile?.profileCompleted === true || 
+      (phoneVal && String(phoneVal).trim().length >= 10)
+    );
+
     const activeUser = {
       uid: supabaseUser.id || 'usr_' + btoa(email).slice(0, 16),
-      name: name,
+      name: dbProf?.name || cachedProfile?.name || name,
       email: email,
-      photoURL: meta.avatar_url || meta.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
-      role: isAuthorized ? 'developer' : 'student',
+      phone: phoneVal,
+      district: districtVal,
+      qualification: qualVal,
+      medium: medVal,
+      prepStage: prepVal,
+      targetExam: targetExVal,
+      profileCompleted: hasCompletedProfile,
+      photoURL: meta.avatar_url || meta.picture || cachedProfile?.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+      role: isAuthorized ? 'developer' : (dbProf?.role || cachedProfile?.role || 'student'),
       isAuthorizedAdmin: isAuthorized,
       badge: isAuthorized ? 'Platform Administrator' : 'Verified Aspirant',
       emailVerified: true,
       provider: supabaseUser.app_metadata?.provider || 'supabase_auth',
       verifiedAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
-      targetExam: meta.target_exam || 'KPSC KAS',
-      enrolledExams: user?.enrolledExams || [],
+      enrolledExams: cachedProfile?.enrolledExams || user?.enrolledExams || [],
     };
 
-    // Auto sync user to profiles table so Developer Admin can manage all registered users
+    // Auto sync user to profiles table without overwriting completed profile data
     try {
-      supabase.from('profiles').upsert({
-        id: activeUser.uid,
-        email: activeUser.email,
-        name: activeUser.name,
-        role: activeUser.role,
-        target_exam: activeUser.targetExam,
-        last_login: activeUser.lastLogin,
-        status: 'ACTIVE'
-      }).then(() => {}).catch(e => console.warn('Profile sync notice:', e));
+      if (supabase) {
+        supabase.from('profiles').select('*').eq('email', email).maybeSingle().then(({ data: remoteProf }) => {
+          if (remoteProf) {
+            const remoteCompleted = Boolean(
+              isAuthorized ||
+              remoteProf.profile_completed === true ||
+              remoteProf.profileCompleted === true ||
+              (remoteProf.phone && String(remoteProf.phone).trim().length >= 10)
+            );
+            setUser(prev => {
+              if (!prev || (prev.email || '').trim().toLowerCase() !== email) return prev;
+              const isCompleted = Boolean(
+                isAuthorized ||
+                prev.profileCompleted ||
+                remoteCompleted ||
+                (prev.phone && String(prev.phone).trim().length >= 10) ||
+                (remoteProf.phone && String(remoteProf.phone).trim().length >= 10)
+              );
+              const merged = {
+                ...prev,
+                name: prev.name || remoteProf.name,
+                phone: prev.phone || remoteProf.phone,
+                district: prev.district || remoteProf.district,
+                qualification: prev.qualification || remoteProf.qualification,
+                medium: prev.medium || remoteProf.medium,
+                prepStage: prev.prepStage || remoteProf.prep_stage,
+                targetExam: prev.targetExam || remoteProf.target_exam,
+                profileCompleted: isCompleted,
+                role: isAuthorized ? 'developer' : (remoteProf.role || prev.role || 'student'),
+                status: remoteProf.status || 'ACTIVE'
+              };
+              try {
+                localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(merged));
+              } catch (e) {}
+              return merged;
+            });
+          } else {
+            // First time profile creation in table
+            supabase.from('profiles').upsert({
+              id: activeUser.uid,
+              email: activeUser.email,
+              name: activeUser.name,
+              phone: activeUser.phone || null,
+              district: activeUser.district || null,
+              qualification: activeUser.qualification || null,
+              prep_stage: activeUser.prepStage || null,
+              medium: activeUser.medium || null,
+              target_exam: activeUser.targetExam || null,
+              role: activeUser.role,
+              profile_completed: hasCompletedProfile,
+              last_login: activeUser.lastLogin,
+              status: 'ACTIVE'
+            }).catch(e => console.warn('Profile sync notice:', e));
+          }
+        }).catch(e => console.warn('Profile query notice:', e));
+      }
     } catch (e) {}
 
     setUser(activeUser);
+    try {
+      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(activeUser));
+    } catch (e) {}
     setIsAuthModalOpen(false);
     setIsAuthenticating(false);
     setAuthError(null);
@@ -134,10 +228,19 @@ export const AuthProvider = ({ children }) => {
     const password = (passwordInput || '').trim();
 
     try {
+      // Check Supabase profiles table in parallel for existing profile
+      let existingProfile = null;
+      try {
+        if (supabase) {
+          const { data: prof } = await supabase.from('profiles').select('*').eq('email', email).maybeSingle();
+          if (prof) existingProfile = prof;
+        }
+      } catch (e) {}
+
       // 1. Attempt standard Supabase password login
       const data = await signInWithEmail(email, password);
       if (data?.user) {
-        const active = establishUserSession(data.user);
+        const active = establishUserSession(data.user, existingProfile);
         setAuthSuccess('ಲಾಗಿನ್ ಯಶಸ್ವಿಯಾಗಿದೆ! (Signed in successfully)');
         return { success: true, user: active };
       }
@@ -271,33 +374,53 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUserProfile = async (profileData) => {
-    if (!user) return;
+    let currentUser = user;
+    if (!currentUser) {
+      try {
+        const saved = localStorage.getItem(STORAGE_SESSION_KEY);
+        if (saved) currentUser = JSON.parse(saved);
+      } catch (e) {}
+    }
+    if (!currentUser) return null;
+
     const updated = {
-      ...user,
+      ...currentUser,
       ...profileData,
       profileCompleted: true
     };
     setUser(updated);
+
     try {
       localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updated));
-      if (supabase) {
-        await supabase.from('profiles').upsert({
-          id: updated.uid,
-          email: updated.email,
-          name: updated.name,
-          phone: updated.phone || null,
-          district: updated.district || null,
-          qualification: updated.qualification || null,
-          prep_stage: updated.prepStage || null,
-          medium: updated.medium || null,
-          target_exam: updated.targetExam || null,
-          role: updated.role || 'student',
-          last_login: new Date().toISOString(),
-          status: 'ACTIVE'
-        });
+      const savedProfList = localStorage.getItem('adhyayana_profiles_v2');
+      let list = savedProfList ? JSON.parse(savedProfList) : [];
+      const cleanEmail = (updated.email || '').trim().toLowerCase();
+      const existingIdx = list.findIndex(p => (p.email || '').trim().toLowerCase() === cleanEmail);
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...updated };
+      } else {
+        list.push(updated);
       }
-    } catch (e) {
-      console.warn('Profile update notice:', e);
+      localStorage.setItem('adhyayana_profiles_v2', JSON.stringify(list));
+    } catch (e) {}
+
+    // Non-blocking sync to Supabase Cloud
+    if (supabase) {
+      supabase.from('profiles').upsert({
+        id: updated.uid,
+        email: updated.email,
+        name: updated.name,
+        phone: updated.phone || null,
+        district: updated.district || null,
+        qualification: updated.qualification || null,
+        prep_stage: updated.prepStage || null,
+        medium: updated.medium || null,
+        target_exam: updated.targetExam || null,
+        role: updated.role || 'student',
+        profile_completed: true,
+        last_login: new Date().toISOString(),
+        status: 'ACTIVE'
+      }).then(() => {}).catch(e => console.warn('Supabase profile sync notice:', e));
     }
     return updated;
   };

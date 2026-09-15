@@ -76,19 +76,17 @@ export const LoginPage = ({ initialMode = null }) => {
 
   const { lang, setLang } = useData();
 
+  const isProfileDone = Boolean(
+    user?.isAuthorizedAdmin ||
+    user?.profileCompleted ||
+    (user?.phone && String(user.phone).replace(/\D/g, '').length >= 10)
+  );
+
   // Mode: 'login' | 'register' | 'forgot' | 'details'
   const [authMode, setAuthMode] = useState(() => {
     if (initialMode) return initialMode;
-    if (user && !user.profileCompleted && !user.isAuthorizedAdmin) return 'details';
     return 'login';
   });
-
-  // Automatically switch to details form if user logged in but profile is not completed
-  useEffect(() => {
-    if (user && !user.profileCompleted && !user.isAuthorizedAdmin) {
-      setAuthMode('details');
-    }
-  }, [user]);
 
   // Auth Form Fields
   const [email, setEmail] = useState('');
@@ -122,12 +120,7 @@ export const LoginPage = ({ initialMode = null }) => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) return;
-    const res = await loginWithEmail(email, password);
-    if (res?.success) {
-      if (!res.user?.profileCompleted && !res.user?.isAuthorizedAdmin) {
-        setAuthMode('details');
-      }
-    }
+    await loginWithEmail(email, password);
   };
 
   const handleRegisterSubmit = async (e) => {
@@ -177,7 +170,8 @@ export const LoginPage = ({ initialMode = null }) => {
       setAuthError(lang === 'kn' ? 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.' : 'Please enter your full name.');
       return;
     }
-    if (!detailsForm.phone.trim() || detailsForm.phone.replace(/\D/g, '').length < 10) {
+    const cleanPhone = detailsForm.phone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
       setAuthError(lang === 'kn' ? 'ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ.' : 'Please enter a valid 10-digit mobile number.');
       return;
     }
@@ -187,7 +181,7 @@ export const LoginPage = ({ initialMode = null }) => {
 
     await updateUserProfile({
       name: detailsForm.name.trim(),
-      phone: detailsForm.phone.trim(),
+      phone: cleanPhone,
       district: detailsForm.district,
       targetExam: detailsForm.targetExam,
       qualification: detailsForm.qualification,
@@ -761,6 +755,18 @@ export const LoginPage = ({ initialMode = null }) => {
                 >
                   <Zap className="w-4 h-4 fill-current" />
                   <span>{lang === 'kn' ? '🚀 ವಿವರಗಳನ್ನು ಉಳಿಸಿ & ಮುಖಪುಟಕ್ಕೆ ಪ್ರವೇಶಿಸಿ' : 'Save Details & Enter Study Hub 🚀'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await logout();
+                    setAuthMode('login');
+                  }}
+                  className="w-full mt-2 py-2 text-xs font-semibold text-slate-400 hover:text-red-400 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>{lang === 'kn' ? '← ಬೇರೆ ಖಾತೆಯೊಂದಿಗೆ ಲಾಗಿನ್ ಮಾಡಿ' : '← Sign in with different account'}</span>
                 </button>
               </form>
             )}

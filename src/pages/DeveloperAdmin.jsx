@@ -65,7 +65,10 @@ import {
   MapPin,
   Trophy,
   PlayCircle,
-  Target
+  Target,
+  ArrowLeft,
+  GraduationCap,
+  Gift
 } from 'lucide-react';
 
 const SUPABASE_SCHEMA_SQL = `-- ADHYAYANA (ಅಧ್ಯಯನ) Complete Production Database Schema for Supabase
@@ -825,19 +828,23 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
   };
 
   // Handle User Modal Direct Grant
-  const handleModalGrantAccess = async (e, studentEmail) => {
-    e.preventDefault();
+  const handleModalGrantAccess = async (e, studentEmail, overrideItemId, overrideValidity, overrideRemarks) => {
+    if (e?.preventDefault) e.preventDefault();
     if (!studentEmail) return;
+    const targetItemId = overrideItemId || userModalGrantForm.itemId || 'ALL_COURSES';
+    const targetValidity = overrideValidity || userModalGrantForm.validityDuration || '365';
+    const targetRemarks = overrideRemarks !== undefined ? overrideRemarks : (userModalGrantForm.remarks || '');
+
     let selectedTitle = 'All Courses Lifetime Pass';
     let itemType = 'all';
 
-    if (userModalGrantForm.itemId === 'ALL_COURSES') {
+    if (targetItemId === 'ALL_COURSES') {
       selectedTitle = 'All Courses & Modules (Full Pass)';
       itemType = 'all';
     } else {
-      const selectedEx = exams.find(ex => ex.id === userModalGrantForm.itemId);
-      const selectedT = tests.find(t => t.id === userModalGrantForm.itemId);
-      const selectedN = notes.find(n => n.id === userModalGrantForm.itemId);
+      const selectedEx = exams.find(ex => ex.id === targetItemId);
+      const selectedT = tests.find(t => t.id === targetItemId);
+      const selectedN = notes.find(n => n.id === targetItemId);
       if (selectedEx) {
         selectedTitle = selectedEx.title;
         itemType = 'exam';
@@ -852,11 +859,11 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
 
     await grantStudentAccess(
       studentEmail,
-      userModalGrantForm.itemId,
+      targetItemId,
       selectedTitle,
       itemType,
-      userModalGrantForm.validityDuration || '365',
-      userModalGrantForm.remarks || ''
+      targetValidity,
+      targetRemarks
     );
 
     showToast(
@@ -3776,6 +3783,627 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
           return true;
         });
 
+        // If a specific student is selected by developer, render DEDICATED SEPARATE FULL-PAGE VIEW instead of popup!
+        if (selectedUser) {
+          const studentCleanPhone = (selectedUser.phone || '').replace(/\D/g, '');
+          const waChatLink = studentCleanPhone
+            ? `https://wa.me/91${studentCleanPhone}?text=${encodeURIComponent(
+                `ನಮಸ್ಕಾರ ${selectedUser.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ:`
+              )}`
+            : `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
+                `ನಮಸ್ಕಾರ ${selectedUser.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ:`
+              )}`;
+
+          return (
+            <div className="space-y-6 animate-in fade-in pb-12">
+              {/* Back to All Students Directory Top Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <button
+                  onClick={() => setSelectedUserEmail(null)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all self-start shadow-sm"
+                >
+                  <ArrowLeft className="w-4 h-4 text-purple-600" />
+                  <span>{lang === 'kn' ? '← ಎಲ್ಲಾ ವಿದ್ಯಾರ್ಥಿಗಳ ಪಟ್ಟಿಗೆ ಮರಳಿ (Back to Students)' : '← Back to All Students'}</span>
+                </button>
+
+                {/* Status & Actions Right Strip */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedUser.status === 'SUSPENDED' ? (
+                    <button
+                      onClick={() => handleActivateStudentAccount(selectedUser.email)}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{lang === 'kn' ? 'ಖಾತೆ ಸಕ್ರಿಯಗೊಳಿಸಿ (Activate Account)' : 'Activate Account'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleSuspendStudentAccount(selectedUser.email)}
+                      className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>{lang === 'kn' ? 'ಖಾತೆ ಅಮಾನತುಗೊಳಿಸಿ (Suspend Account)' : 'Suspend Account'}</span>
+                    </button>
+                  )}
+
+                  <a
+                    href={waChatLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>WhatsApp Chat</span>
+                  </a>
+
+                  {studentCleanPhone && (
+                    <a
+                      href={`tel:${studentCleanPhone}`}
+                      className="px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call</span>
+                    </a>
+                  )}
+
+                  <button
+                    onClick={() => handleRemoveUser(selectedUser.email)}
+                    className="px-3 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{lang === 'kn' ? 'ದಾಖಲೆ ಅಳಿಸಿ (Delete)' : 'Delete'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Student Hero Profile Banner */}
+              <div className="relative overflow-hidden p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-950 via-purple-950 to-slate-900 text-white shadow-xl border border-purple-900/40">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-purple-500 via-indigo-500 to-emerald-500 text-white flex items-center justify-center font-black text-2xl shadow-xl shadow-purple-900/50 border-2 border-purple-400">
+                      {selectedUser.email.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          selectedUser.role === 'developer'
+                            ? 'bg-amber-400 text-slate-950 font-bold'
+                            : 'bg-purple-500 text-white'
+                        }`}>
+                          {selectedUser.role === 'developer' ? '👑 Lead Faculty / Admin' : '🎓 Verified Aspirant'}
+                        </span>
+                        {selectedUser.status === 'SUSPENDED' ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/30 text-red-300 border border-red-500/50">
+                            ⛔ SUSPENDED
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/30 text-emerald-300 border border-emerald-500/50">
+                            🟢 ACTIVE
+                          </span>
+                        )}
+                        <span className="text-[10px] text-purple-300 font-mono">
+                          ID: {selectedUser.email}
+                        </span>
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-black text-white">
+                        {selectedUser.name || selectedUser.email.split('@')[0]}
+                      </h2>
+                      <p className="text-xs text-purple-200 mt-0.5">
+                        Target Exam: <strong className="text-white">{selectedUser.targetExam || 'KPSC KAS'}</strong> • Last Active: <span className="font-mono text-purple-300">{selectedUser.lastActive ? new Date(selectedUser.lastActive).toLocaleString() : 'Recent'}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setUserModalTab('grant')}
+                    className="px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-slate-950 font-black text-xs rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all self-start sm:self-auto"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{lang === 'kn' ? '➕ ಹೊಸ ಕೋರ್ಸ್/ಪಾಸ್ ನೀಡಿ' : '➕ Grant Access / Pass'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Aspirant Personal Profile & Study Preferences Full Grid */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-purple-600" />
+                    <span>{lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿ ವೈಯಕ್ತಿಕ ವಿವರಗಳು & ಪರೀಕ್ಷಾ ಗುರಿ (Personal Profile)' : 'Student Profile & Contact Details'}</span>
+                  </h3>
+                  <span className="text-xs text-slate-400 font-mono">Verified Database Record</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-purple-500" />
+                      {lang === 'kn' ? 'ಮೊಬೈಲ್ / WhatsApp' : 'Phone / Mobile'}
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-slate-100 font-mono truncate">
+                      {selectedUser.phone || 'Not Provided'}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-purple-500" />
+                      {lang === 'kn' ? 'ಜಿಲ್ಲೆ (District)' : 'District'}
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                      {selectedUser.district || 'Karnataka'}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1 col-span-2 sm:col-span-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <Target className="w-3 h-3 text-purple-500" />
+                      {lang === 'kn' ? 'ಗುರಿ ಪರೀಕ್ಷೆ' : 'Target Exam'}
+                    </span>
+                    <p className="font-bold text-purple-600 dark:text-purple-400 truncate">
+                      {selectedUser.targetExam || 'KPSC KAS'}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <GraduationCap className="w-3 h-3 text-purple-500" />
+                      {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಹತೆ' : 'Qualification'}
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                      {selectedUser.qualification || 'Graduate'}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <BookOpen className="w-3 h-3 text-purple-500" />
+                      {lang === 'kn' ? 'ಮಾಧ್ಯಮ' : 'Medium'}
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                      {selectedUser.medium === 'en' ? 'English (ಇಂಗ್ಲಿಷ್)' : 'ಕನ್ನಡ (Kannada)'}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-purple-500" />
+                      {lang === 'kn' ? 'ಸಿದ್ಧತೆಯ ಹಂತ' : 'Stage'}
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                      {selectedUser.prepStage || 'ಆರಂಭಿಕ (Beginner)'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Key Performance Stat Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center font-bold">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium">{lang === 'kn' ? 'ಆಯ್ಕೆಮಾಡಿದ ಕೋರ್ಸ್‌ಗಳು' : 'Modules Opted'}</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{selectedUser.purchases.length}</p>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center font-bold">
+                    <PlayCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium">{lang === 'kn' ? 'ಬರೆದ ಪರೀಕ್ಷೆಗಳು' : 'Tests Attempted'}</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{selectedUser.attempts.length}</p>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center font-bold">
+                    <Target className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium">{lang === 'kn' ? 'ಸರಾಸರಿ ನಿಖರತೆ' : 'Avg Accuracy'}</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{selectedUser.avgAccuracy}%</p>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center font-bold">
+                    <Trophy className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium">{lang === 'kn' ? 'ಒಟ್ಟು ಅಂಕಗಳು' : 'Total Score'}</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{selectedUser.totalScore}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-Tabs Workspace */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                {/* Tab Navigation Header */}
+                <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 px-5 overflow-x-auto no-scrollbar">
+                  <button
+                    onClick={() => setUserModalTab('purchases')}
+                    className={`py-3.5 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                      userModalTab === 'purchases'
+                        ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-900'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>{lang === 'kn' ? 'ಖರೀದಿಸಿದ/ಆಯ್ಕೆಮಾಡಿದ ಕೋರ್ಸ್‌ಗಳು & ವ್ಯಾಲಿಡಿಟಿ' : 'Opted Courses & Validity'} ({selectedUser.purchases.length})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setUserModalTab('grant')}
+                    className={`py-3.5 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                      userModalTab === 'grant'
+                        ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-900'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{lang === 'kn' ? 'ಹೊಸ ಪ್ರವೇಶಾವಕಾಶ ನೀಡಿ (Grant New Access)' : 'Grant New Access'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setUserModalTab('attempts')}
+                    className={`py-3.5 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                      userModalTab === 'attempts'
+                        ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-900'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Activity className="w-4 h-4" />
+                    <span>{lang === 'kn' ? 'ಪರೀಕ್ಷಾ ಇತಿಹಾಸ & ಅಂಕಪಟ್ಟಿ (Test Attempts)' : 'Test Attempts & Scorecards'} ({selectedUser.attempts.length})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setUserModalTab('passes')}
+                    className={`py-3.5 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                      userModalTab === 'passes'
+                        ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-900'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Gift className="w-4 h-4" />
+                    <span>{lang === 'kn' ? 'ವಿಶೇಷ ಪಾಸ್‌ಗಳು & ಪರ್ಮಿಷನ್ (Special Passes)' : 'VIP Passes & Quick Permissions'}</span>
+                  </button>
+                </div>
+
+                {/* Sub-Tab Contents */}
+                <div className="p-6">
+                  {/* TAB 1: OPTED / PURCHASED TESTS & NOTES WITH VALIDITY */}
+                  {userModalTab === 'purchases' && (
+                    <div className="space-y-4">
+                      {selectedUser.purchases.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400 italic bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-3">
+                          <BookOpen className="w-12 h-12 mx-auto text-slate-300" />
+                          <p className="text-sm">{lang === 'kn' ? 'ಈ ವಿದ್ಯಾರ್ಥಿಗೆ ಇನ್ನೂ ಯಾವುದೇ ಕೋರ್ಸ್ ಅಥವಾ ನೋಟ್ಸ್ ಪ್ರವೇಶವಿಲ್ಲ.' : 'No modules enrolled or purchased yet for this student.'}</p>
+                          <button
+                            onClick={() => setUserModalTab('grant')}
+                            className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-2 shadow-lg shadow-purple-600/20"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>{lang === 'kn' ? 'ಈಗಲೇ ಪ್ರವೇಶಾವಕಾಶ ನೀಡಿ (Grant Access)' : 'Grant Access Now'}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        selectedUser.purchases.map((item) => {
+                          const isPending = item.status === 'PENDING_APPROVAL';
+                          const isDenied = item.status === 'DEACTIVATED' || item.status === 'SUSPENDED';
+                          const isRejected = item.status === 'REJECTED';
+                          const isActive = item.status === 'ACTIVE' || (!item.status && item.paymentId);
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="p-5 rounded-3xl border bg-white dark:bg-slate-900 shadow-sm space-y-4 border-slate-200 dark:border-slate-800"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-mono">
+                                      {item.itemType || 'MODULE'}
+                                    </span>
+                                    <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                                      {item.examTitle || item.examId}
+                                    </h4>
+                                  </div>
+                                  <p className="text-xs text-slate-400 mt-1 font-mono">
+                                    Ref/UTR: <strong className="text-purple-600">{item.utrNumber || item.paymentId || 'N/A'}</strong> • Paid: <strong>₹{item.amountPaid}</strong> ({item.paymentMethod || 'DIRECT'}) • Date: <span className="text-slate-600 dark:text-slate-300">{item.purchasedAt ? new Date(item.purchasedAt).toLocaleDateString() : 'N/A'}</span>
+                                  </p>
+                                </div>
+
+                                {/* Status Pill */}
+                                <div>
+                                  {isActive && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                      🟢 ACCESS ACTIVE (ಸಕ್ರಿಯ)
+                                    </span>
+                                  )}
+                                  {isPending && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse">
+                                      🟡 PENDING APPROVAL (ಬಾಕಿ)
+                                    </span>
+                                  )}
+                                  {isDenied && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
+                                      ⛔ ACCESS DENIED / SUSPENDED
+                                    </span>
+                                  )}
+                                  {isRejected && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
+                                      ❌ REJECTED
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Validity & Actions Strip */}
+                              <div className="p-4 bg-slate-50 dark:bg-slate-800/70 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                                {/* Set Validity Duration Dropdown & Live Badge */}
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-slate-500 font-semibold">{lang === 'kn' ? 'ವ್ಯಾಲಿಡಿಟಿ ಅವಧಿ:' : 'Validity Duration:'}</span>
+                                    <select
+                                      value={getPurchaseValidityValue(item.validUntil)}
+                                      onChange={(e) => handleSetPurchaseValidity(item.id, e.target.value, selectedUser.email, item.examTitle || item.examId)}
+                                      className="p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-bold text-xs text-purple-700 dark:text-purple-300 outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                                    >
+                                      <option value="30">📅 30 Days (1 Month)</option>
+                                      <option value="90">📅 90 Days (3 Months)</option>
+                                      <option value="180">📅 180 Days (6 Months)</option>
+                                      <option value="365">📅 365 Days (1 Year)</option>
+                                      <option value="LIFETIME">♾️ Lifetime Access (ಶಾಶ್ವತ ಪ್ರವೇಶ)</option>
+                                    </select>
+                                  </div>
+                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner">
+                                    {getPurchaseExpiryLabel(item.validUntil, lang)}
+                                  </span>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {isPending && (
+                                    <button
+                                      onClick={() => handleApprovePurchase(item.id, selectedUser.email, item.examTitle || item.examId, '365')}
+                                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                      <span>{lang === 'kn' ? 'ಅನುಮೋದಿಸಿ (Approve)' : 'Approve'}</span>
+                                    </button>
+                                  )}
+
+                                  {isActive && (
+                                    <button
+                                      onClick={() => handleSetPurchaseStatus(item.id, 'DEACTIVATED', selectedUser.email, item.examTitle || item.examId)}
+                                      className="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                                      title="Deny Access to this item"
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                      <span>{lang === 'kn' ? 'ಪ್ರವೇಶ ನಿರಾಕರಿಸಿ (Deny)' : 'Deny / Suspend'}</span>
+                                    </button>
+                                  )}
+
+                                  {isDenied && (
+                                    <button
+                                      onClick={() => handleSetPurchaseStatus(item.id, 'ACTIVE', selectedUser.email, item.examTitle || item.examId)}
+                                      className="px-3.5 py-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 border border-emerald-300 rounded-xl font-bold text-xs flex items-center gap-1.5"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                      <span>{lang === 'kn' ? 'ಪ್ರವೇಶ ನೀಡಿ (Restore)' : 'Restore Access'}</span>
+                                    </button>
+                                  )}
+
+                                  {isActive && (
+                                    <a
+                                      href={`https://wa.me/?text=${encodeURIComponent(
+                                        `🎉 *ನಮಸ್ಕಾರ ${selectedUser.name || 'ವಿದ್ಯಾರ್ಥಿ'}*,\nನಿಮ್ಮ *ಅಧ್ಯಯನ (ADHYAYANA)* ಖಾತೆಗೆ *"${item.examTitle || item.examId}"* ಪ್ರವೇಶವನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ!\n\n✅ *ಸ್ಥಿತಿ:* ಮಂಜೂರಾಗಿದೆ (Approved & Active)\n⏳ *ವ್ಯಾಲಿಡಿಟಿ:* ${getPurchaseExpiryLabel(item.validUntil, 'kn')}\n🌐 *ಲಾಗಿನ್ ಆಗಿ ಕಲಿಯಲು ಭೇಟಿ ನೀಡಿ:* ${window.location.origin}\n\nಧನ್ಯವಾದಗಳು ಮತ್ತು ನಿಮ್ಮ ಪರೀಕ್ಷಾ ಸಿದ್ಧತೆಗೆ ಶುಭವಾಗಲಿ! 🎯`
+                                      )}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                                      title="Send WhatsApp Approval Confirmation"
+                                    >
+                                      <MessageSquare className="w-4 h-4" />
+                                      <span>WhatsApp</span>
+                                    </a>
+                                  )}
+
+                                  <button
+                                    onClick={() => handleRevokeStudentAccess(selectedUser.email, item.id, item.examTitle || item.examId)}
+                                    className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs flex items-center gap-1.5 border border-red-200"
+                                    title="Revoke and delete this entitlement"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 2: GRANT NEW TEST / NOTE / COURSE DIRECTLY */}
+                  {userModalTab === 'grant' && (
+                    <form onSubmit={(e) => handleModalGrantAccess(e, selectedUser.email)} className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 max-w-2xl">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <Plus className="w-4 h-4 text-purple-600" />
+                        <span>{lang === 'kn' ? `"${selectedUser.name || selectedUser.email}" ಗೆ ಹೊಸ ಪ್ರವೇಶಾವಕಾಶ ನೀಡಿ` : `Grant New Access to ${selectedUser.email}`}</span>
+                      </h4>
+
+                      <div>
+                        <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1.5">
+                          {lang === 'kn' ? 'ವಿಷಯ / ಪರೀಕ್ಷೆ / ನೋಟ್ಸ್ ಆಯ್ಕೆಮಾಡಿ' : 'Select Item / Package'} *
+                        </label>
+                        <select
+                          value={userModalGrantForm.itemId}
+                          onChange={(e) => setUserModalGrantForm({ ...userModalGrantForm, itemId: e.target.value })}
+                          className="w-full p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                        >
+                          <option value="ALL_COURSES">🌟 {lang === 'kn' ? 'ಎಲ್ಲಾ ಕೋರ್ಸ್‌ಗಳು & ಟೆಸ್ಟ್‌ಗಳು (Full All-Access VIP Pass)' : 'All Courses & Tests (Full All-Access Pass)'}</option>
+                          
+                          <optgroup label="── Exam Packages ──">
+                            {exams.map((ex) => (
+                              <option key={ex.id} value={ex.id}>📚 {ex.title} (₹{ex.price})</option>
+                            ))}
+                          </optgroup>
+
+                          {tests.length > 0 && (
+                            <optgroup label="── Mock Tests ──">
+                              {tests.map((t) => (
+                                <option key={t.id} value={t.id}>📝 {t.title} ({t.isFree ? 'FREE' : `₹${t.price || 49}`})</option>
+                              ))}
+                            </optgroup>
+                          )}
+
+                          {notes.length > 0 && (
+                            <optgroup label="── Digital Notes ──">
+                              {notes.map((n) => (
+                                <option key={n.id} value={n.id}>📖 {n.title} ({n.isFree ? 'FREE' : `₹${n.price || 29}`})</option>
+                              ))}
+                            </optgroup>
+                          )}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1.5">
+                            {lang === 'kn' ? 'ವ್ಯಾಲಿಡಿಟಿ ಅವಧಿ' : 'Validity Duration'} *
+                          </label>
+                          <select
+                            value={userModalGrantForm.validityDuration}
+                            onChange={(e) => setUserModalGrantForm({ ...userModalGrantForm, validityDuration: e.target.value })}
+                            className="w-full p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-purple-700 dark:text-purple-300 outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                          >
+                            <option value="30">📅 30 Days (1 Month)</option>
+                            <option value="90">📅 90 Days (3 Months)</option>
+                            <option value="180">📅 180 Days (6 Months)</option>
+                            <option value="365">📅 365 Days (1 Year)</option>
+                            <option value="LIFETIME">♾️ Lifetime Access (ಶಾಶ್ವತ ಪ್ರವೇಶ)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1.5">
+                            {lang === 'kn' ? 'ಟಿಪ್ಪಣಿ (Remarks / Reason)' : 'Remarks (Optional)'}
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Offline UPI Payment / Special Scholarship"
+                            value={userModalGrantForm.remarks}
+                            onChange={(e) => setUserModalGrantForm({ ...userModalGrantForm, remarks: e.target.value })}
+                            className="w-full p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-bold shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>{lang === 'kn' ? '✓ ಪ್ರವೇಶಾವಕಾಶ ಸಕ್ರಿಯಗೊಳಿಸಿ (Grant Access Now)' : 'Grant Access Now'}</span>
+                      </button>
+                    </form>
+                  )}
+
+                  {/* TAB 3: TEST ATTEMPTS & SCORECARDS */}
+                  {userModalTab === 'attempts' && (
+                    <div className="space-y-3">
+                      {selectedUser.attempts.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400 italic bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-2">
+                          <Activity className="w-10 h-10 mx-auto text-slate-300" />
+                          <p>{lang === 'kn' ? 'ಈ ವಿದ್ಯಾರ್ಥಿ ಇನ್ನೂ ಯಾವುದೇ ಪರೀಕ್ಷೆಯನ್ನು ಬರೆದಿಲ್ಲ.' : 'No mock test attempts recorded yet for this student.'}</p>
+                        </div>
+                      ) : (
+                        selectedUser.attempts.map((att) => (
+                          <div
+                            key={att.id}
+                            className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm hover:border-purple-300 transition-all"
+                          >
+                            <div className="space-y-1">
+                              <h5 className="font-bold text-slate-900 dark:text-slate-100 text-sm">{att.testTitle}</h5>
+                              <p className="text-[11px] text-slate-400">
+                                {att.timestamp ? new Date(att.timestamp).toLocaleString() : 'Recent'} • Correct: <strong className="text-emerald-600 font-mono">{att.correctCount}</strong> • Wrong: <strong className="text-red-500 font-mono">{att.wrongCount}</strong> • Time Spent: <strong>{Math.round((att.timeSpentSeconds || 0) / 60)} Mins</strong>
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-4 self-end sm:self-auto">
+                              <div className="text-right">
+                                <span className="font-black text-purple-600 dark:text-purple-400 block text-base font-mono">{att.score} / {att.totalMarks} Marks</span>
+                                <span className={`text-[11px] font-bold ${
+                                  att.accuracy >= 75 ? 'text-emerald-600' : att.accuracy >= 50 ? 'text-amber-600' : 'text-slate-500'
+                                }`}>
+                                  {att.accuracy}% Accuracy
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 4: SPECIAL PASSES & QUICK ACTIONS */}
+                  {userModalTab === 'passes' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Lifetime VIP Pass Card */}
+                      <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800 space-y-3">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-sm">
+                          <Gift className="w-5 h-5" />
+                          <span>All-Access Lifetime VIP Pass</span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300">
+                          {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗೆ ಪೋರ್ಟಲ್‌ನಲ್ಲಿರುವ ಎಲ್ಲಾ ಕೋರ್ಸ್‌ಗಳು, ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ಅಣಕು ಪರೀಕ್ಷೆಗಳಿಗೆ ಜೀವಿತಾವಧಿಯ ಉಚಿತ ಪ್ರವೇಶಾವಕಾಶ ನೀಡುತ್ತದೆ.' : 'Grants full lifetime unlimited access to all exams, digital notes, and mock tests.'}
+                        </p>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Give All-Access Lifetime Pass to ${selectedUser.email}?`)) {
+                              await handleModalGrantAccess(null, selectedUser.email, 'ALL_COURSES', 'LIFETIME', 'Granted Lifetime VIP Pass');
+                            }
+                          }}
+                          className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-600/20 flex items-center gap-2"
+                        >
+                          <Gift className="w-4 h-4" />
+                          <span>{lang === 'kn' ? 'ಲೈಫ್‌ಟೈಮ್ VIP ಪಾಸ್ ನೀಡಿ' : 'Grant Lifetime Pass'}</span>
+                        </button>
+                      </div>
+
+                      {/* Mega Mock Test VIP Pass */}
+                      <div className="p-5 rounded-3xl bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border border-purple-200 dark:border-purple-800 space-y-3">
+                        <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-sm">
+                          <Trophy className="w-5 h-5" />
+                          <span>State Live Mock Test Free Pass</span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300">
+                          {lang === 'kn' ? 'ಕರ್ನಾಟಕ ರಾಜ್ಯ ಮಟ್ಟದ ಮೆಗಾ ಲೈವ್ ಮಾಕ್ ಪರೀಕ್ಷೆಗೆ ಈ ವಿದ್ಯಾರ್ಥಿಗೆ ಉಚಿತ ಪ್ರವೇಶಾವಕಾಶ ಕಲ್ಪಿಸಿ.' : 'Grants free direct VIP pass to the Karnataka State-Level Mega Live Mock Exam.'}
+                        </p>
+                        <button
+                          onClick={async () => {
+                            await handleModalGrantAccess(null, selectedUser.email, 'live_mock_mega_2026', '365', 'State Mega Live Mock Pass');
+                            alert('State Mega Mock Test Pass Granted!');
+                          }}
+                          className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 flex items-center gap-2"
+                        >
+                          <Trophy className="w-4 h-4" />
+                          <span>{lang === 'kn' ? 'ಮೆಗಾ ಮಾಕ್ ಟೆಸ್ಟ್ ಪಾಸ್ ನೀಡಿ' : 'Grant Mega Mock Pass'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-8">
             
@@ -4127,466 +4755,6 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                 )}
               </div>
             </div>
-
-            {/* 4. DEDICATED SELECTED STUDENT INSPECTION & ACCESS MODAL */}
-            {selectedUser && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
-                <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto max-h-[90vh] flex flex-col">
-                  
-                  {/* Modal Header */}
-                  <div className="bg-gradient-to-r from-slate-950 via-purple-950 to-slate-900 text-white p-5 flex items-center justify-between border-b border-purple-900/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center font-black text-lg shadow-md shadow-purple-500/30">
-                        {selectedUser.email.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base font-black text-white">{selectedUser.name || selectedUser.email.split('@')[0]}</h3>
-                          <span className="text-xs text-purple-300 font-mono">({selectedUser.email})</span>
-                          {selectedUser.status === 'SUSPENDED' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/40">
-                              ⛔ SUSPENDED
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                              🟢 ACTIVE
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-purple-200 mt-0.5">
-                          Target Exam: <strong className="text-white">{selectedUser.targetExam || 'KPSC KAS'}</strong>
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setSelectedUserEmail(null)}
-                      className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                    >
-                      <XCircle className="w-6 h-6" />
-                    </button>
-                  </div>
-
-                  {/* Student Full Profile Information Banner */}
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-xs">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase block">📱 Phone / Mobile</span>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 font-mono mt-0.5">
-                          {selectedUser.phone || 'Not Provided'}
-                        </p>
-                      </div>
-
-                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase block">📍 District (ಜಿಲ್ಲೆ)</span>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">
-                          {selectedUser.district || 'Karnataka'}
-                        </p>
-                      </div>
-
-                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase block">🎓 Qualification</span>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">
-                          {selectedUser.qualification || 'Graduate'}
-                        </p>
-                      </div>
-
-                      <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase block">📖 Medium & Stage</span>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">
-                          {selectedUser.medium === 'en' ? 'English' : 'Kannada'} • {selectedUser.prepStage?.split('(')[0] || 'Prep'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Account Action Bar */}
-                  <div className="p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      {selectedUser.status === 'SUSPENDED' ? (
-                        <button
-                          onClick={() => handleActivateStudentAccount(selectedUser.email)}
-                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>{lang === 'kn' ? 'ಖಾತೆ ಸಕ್ರಿಯಗೊಳಿಸಿ (Restore Account)' : 'Activate Account'}</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleSuspendStudentAccount(selectedUser.email)}
-                          className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>{lang === 'kn' ? 'ಖಾತೆ ಅಮಾನತುಗೊಳಿಸಿ (Suspend Account)' : 'Suspend Account'}</span>
-                        </button>
-                      )}
-
-                      {(() => {
-                        const studentPhoneClean = (selectedUser.phone || '').replace(/\D/g, '');
-                        const waLink = studentPhoneClean
-                          ? `https://wa.me/91${studentPhoneClean}?text=${encodeURIComponent(
-                              `ನಮಸ್ಕಾರ ${selectedUser.name}, ನಿಮ್ಮ ಅಧ್ಯಯನ ಖಾತೆಗೆ ಸಂಬಂಧಿಸಿದಂತೆ:`
-                            )}`
-                          : `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
-                              `ನಮಸ್ಕಾರ ${selectedUser.name}, ನಿಮ್ಮ ಅಧ್ಯಯನ ಖಾತೆಗೆ ಸಂಬಂಧಿಸಿದಂತೆ:`
-                            )}`;
-                        return (
-                          <a
-                            href={waLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-3.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
-                          >
-                            <Phone className="w-3.5 h-3.5" />
-                            <span>WhatsApp Chat</span>
-                          </a>
-                        );
-                      })()}
-                    </div>
-
-                    <button
-                      onClick={() => handleRemoveUser(selectedUser.email)}
-                      className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>{lang === 'kn' ? 'ದಾಖಲೆ ಅಳಿಸಿ (Delete Record)' : 'Delete Records'}</span>
-                    </button>
-                  </div>
-
-                  {/* Sub-Tabs Nav */}
-                  <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5">
-                    <button
-                      onClick={() => setUserModalTab('purchases')}
-                      className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all ${
-                        userModalTab === 'purchases'
-                          ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                          : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      <span>{lang === 'kn' ? 'ಖರೀದಿಸಿದ/ಆಯ್ಕೆಮಾಡಿದ ನೋಟ್ಸ್ & ಟೆಸ್ಟ್‌ಗಳು' : 'Opted Tests & Notes'} ({selectedUser.purchases.length})</span>
-                    </button>
-
-                    <button
-                      onClick={() => setUserModalTab('grant')}
-                      className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all ${
-                        userModalTab === 'grant'
-                          ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                          : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>{lang === 'kn' ? 'ಹೊಸ ಪ್ರವೇಶಾವಕಾಶ ನೀಡಿ (Grant New)' : 'Grant New Access'}</span>
-                    </button>
-
-                    <button
-                      onClick={() => setUserModalTab('attempts')}
-                      className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all ${
-                        userModalTab === 'attempts'
-                          ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                          : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      <Activity className="w-4 h-4" />
-                      <span>{lang === 'kn' ? 'ಪರೀಕ್ಷಾ ಇತಿಹಾಸ (Test Attempts)' : 'Test Attempts'} ({selectedUser.attempts.length})</span>
-                    </button>
-                  </div>
-
-                  {/* Modal Body Content */}
-                  <div className="p-5 overflow-y-auto space-y-4 flex-grow">
-                    
-                    {/* SUB-TAB 1: OPTED / PURCHASED TESTS & NOTES WITH VALIDITY & SUSPEND */}
-                    {userModalTab === 'purchases' && (
-                      <div className="space-y-3">
-                        {selectedUser.purchases.length === 0 ? (
-                          <div className="p-8 text-center text-slate-400 italic bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                            <p>{lang === 'kn' ? 'ಈ ವಿದ್ಯಾರ್ಥಿಗೆ ಇನ್ನೂ ಯಾವುದೇ ಕೋರ್ಸ್ ಅಥವಾ ನೋಟ್ಸ್ ಪ್ರವೇಶವಿಲ್ಲ.' : 'No modules enrolled or purchased yet for this student.'}</p>
-                            <button
-                              onClick={() => setUserModalTab('grant')}
-                              className="mt-3 px-4 py-2 bg-purple-600 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>{lang === 'kn' ? 'ಈಗಲೇ ಪ್ರವೇಶಾವಕಾಶ ನೀಡಿ' : 'Grant Access Now'}</span>
-                            </button>
-                          </div>
-                        ) : (
-                          selectedUser.purchases.map((item) => {
-                            const isPending = item.status === 'PENDING_APPROVAL';
-                            const isDenied = item.status === 'DEACTIVATED' || item.status === 'SUSPENDED';
-                            const isRejected = item.status === 'REJECTED';
-                            const isActive = item.status === 'ACTIVE' || (!item.status && item.paymentId);
-
-                            return (
-                              <div
-                                key={item.id}
-                                className="p-4 rounded-2xl border bg-white dark:bg-slate-900 shadow-sm space-y-3 border-slate-200 dark:border-slate-800"
-                              >
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                  <div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-mono">
-                                        {item.itemType || 'MODULE'}
-                                      </span>
-                                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                                        {item.examTitle || item.examId}
-                                      </h4>
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                                      Ref/UTR: <strong className="text-purple-600">{item.utrNumber || item.paymentId || 'N/A'}</strong> • Paid: <strong>₹{item.amountPaid}</strong> ({item.paymentMethod || 'DIRECT'})
-                                    </p>
-                                  </div>
-
-                                  {/* Status Pill */}
-                                  <div>
-                                    {isActive && (
-                                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                        🟢 ACCESS ACTIVE
-                                      </span>
-                                    )}
-                                    {isPending && (
-                                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 animate-pulse">
-                                        🟡 PENDING APPROVAL
-                                      </span>
-                                    )}
-                                    {isDenied && (
-                                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
-                                        ⛔ ACCESS DENIED / SUSPENDED
-                                      </span>
-                                    )}
-                                    {isRejected && (
-                                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
-                                        ❌ REJECTED
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Validity & Actions Strip */}
-                                <div className="p-3 bg-slate-50 dark:bg-slate-800/70 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-                                  
-                                  {/* Set Validity Duration Dropdown & Live Badge */}
-                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-slate-500 font-semibold">{lang === 'kn' ? 'ವ್ಯಾಲಿಡಿಟಿ:' : 'Validity:'}</span>
-                                      <select
-                                        value={getPurchaseValidityValue(item.validUntil)}
-                                        onChange={(e) => handleSetPurchaseValidity(item.id, e.target.value, selectedUser.email, item.examTitle || item.examId)}
-                                        className="p-1.5 rounded-lg border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-bold text-xs text-purple-700 dark:text-purple-300 outline-none focus:ring-2 focus:ring-purple-500"
-                                      >
-                                        <option value="30">📅 30 Days (1 Month)</option>
-                                        <option value="90">📅 90 Days (3 Months)</option>
-                                        <option value="180">📅 180 Days (6 Months)</option>
-                                        <option value="365">📅 365 Days (1 Year)</option>
-                                        <option value="LIFETIME">♾️ Lifetime Access</option>
-                                      </select>
-                                    </div>
-                                    <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
-                                      {getPurchaseExpiryLabel(item.validUntil, lang)}
-                                    </span>
-                                  </div>
-
-                                  {/* Action Buttons */}
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {isPending && (
-                                      <button
-                                        onClick={() => handleApprovePurchase(item.id, selectedUser.email, item.examTitle || item.examId, '365')}
-                                        className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1 shadow-sm"
-                                      >
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                        <span>{lang === 'kn' ? 'ಅನುಮೋದಿಸಿ (Approve)' : 'Approve'}</span>
-                                      </button>
-                                    )}
-
-                                    {/* Deny / Suspend Access to this item */}
-                                    {isActive && (
-                                      <button
-                                        onClick={() => handleSetPurchaseStatus(item.id, 'DEACTIVATED', selectedUser.email, item.examTitle || item.examId)}
-                                        className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl font-bold text-xs flex items-center gap-1 transition-all"
-                                        title="Deny Access to this item"
-                                      >
-                                        <XCircle className="w-3.5 h-3.5" />
-                                        <span>{lang === 'kn' ? 'ಪ್ರವೇಶ ನಿರಾಕರಿಸಿ (Deny)' : 'Deny / Suspend'}</span>
-                                      </button>
-                                    )}
-
-                                    {/* Restore Access */}
-                                    {isDenied && (
-                                      <button
-                                        onClick={() => handleSetPurchaseStatus(item.id, 'ACTIVE', selectedUser.email, item.examTitle || item.examId)}
-                                        className="px-3 py-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 border border-emerald-300 rounded-xl font-bold text-xs flex items-center gap-1"
-                                      >
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                        <span>{lang === 'kn' ? 'ಪ್ರವೇಶ ನೀಡಿ (Restore)' : 'Restore Access'}</span>
-                                      </button>
-                                    )}
-
-                                    {/* Send WhatsApp Confirmation Dispatcher */}
-                                    {isActive && (
-                                      <a
-                                        href={`https://wa.me/?text=${encodeURIComponent(
-                                          `🎉 *ನಮಸ್ಕಾರ ${selectedUser.name || 'ವಿದ್ಯಾರ್ಥಿ'}*,\nನಿಮ್ಮ *ಅಧ್ಯಯನ (ADHYAYANA)* ಖಾತೆಗೆ *"${item.examTitle || item.examId}"* ಪ್ರವೇಶವನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ!\n\n✅ *ಸ್ಥಿತಿ:* ಮಂಜೂರಾಗಿದೆ (Approved & Active)\n⏳ *ವ್ಯಾಲಿಡಿಟಿ:* ${getPurchaseExpiryLabel(item.validUntil, 'kn')}\n🌐 *ಲಾಗಿನ್ ಆಗಿ ಕಲಿಯಲು ಭೇಟಿ ನೀಡಿ:* ${window.location.origin}\n\nಧನ್ಯವಾದಗಳು ಮತ್ತು ನಿಮ್ಮ ಪರೀಕ್ಷಾ ಸಿದ್ಧತೆಗೆ ಶುಭವಾಗಲಿ! 🎯`
-                                        )}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1 transition-all"
-                                        title={lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗೆ WhatsApp ನಲ್ಲಿ ಅನುಮೋದನೆ ಸಂದೇಶ ಕಳುಹಿಸಿ' : 'Send WhatsApp Approval Confirmation'}
-                                      >
-                                        <MessageSquare className="w-3.5 h-3.5" />
-                                        <span>WhatsApp</span>
-                                      </a>
-                                    )}
-
-                                    {/* Revoke item */}
-                                    <button
-                                      onClick={() => handleRevokeStudentAccess(selectedUser.email, item.id, item.examTitle || item.examId)}
-                                      className="px-2.5 py-1.5 bg-red-50 text-red-600 rounded-xl font-bold text-xs flex items-center gap-1 border border-red-200"
-                                      title="Revoke and delete this entitlement"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
-
-                    {/* SUB-TAB 2: GRANT NEW TEST / NOTE / COURSE DIRECTLY */}
-                    {userModalTab === 'grant' && (
-                      <form onSubmit={(e) => handleModalGrantAccess(e, selectedUser.email)} className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <Plus className="w-4 h-4 text-purple-600" />
-                          <span>{lang === 'kn' ? `"${selectedUser.email}" ಗೆ ಹೊಸ ಪ್ರವೇಶಾವಕಾಶ ನೀಡಿ` : `Grant New Access to ${selectedUser.email}`}</span>
-                        </h4>
-
-                        <div>
-                          <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                            {lang === 'kn' ? 'ವಿಷಯ / ಪರೀಕ್ಷೆ / ನೋಟ್ಸ್ ಆಯ್ಕೆಮಾಡಿ' : 'Select Item / Package'} *
-                          </label>
-                          <select
-                            value={userModalGrantForm.itemId}
-                            onChange={(e) => setUserModalGrantForm({ ...userModalGrantForm, itemId: e.target.value })}
-                            className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs outline-none focus:ring-2 focus:ring-purple-500"
-                          >
-                            <option value="ALL_COURSES">🌟 {lang === 'kn' ? 'ಎಲ್ಲಾ ಕೋರ್ಸ್‌ಗಳು & ಟೆಸ್ಟ್‌ಗಳು (Full All-Access Pass)' : 'All Courses & Tests (Full All-Access Pass)'}</option>
-                            
-                            <optgroup label="── Exam Packages ──">
-                              {exams.map((ex) => (
-                                <option key={ex.id} value={ex.id}>📚 {ex.title} (₹{ex.price})</option>
-                              ))}
-                            </optgroup>
-
-                            {tests.length > 0 && (
-                              <optgroup label="── Mock Tests ──">
-                                {tests.map((t) => (
-                                  <option key={t.id} value={t.id}>📝 {t.title} ({t.isFree ? 'FREE' : `₹${t.price || 49}`})</option>
-                                ))}
-                              </optgroup>
-                            )}
-
-                            {notes.length > 0 && (
-                              <optgroup label="── Digital Notes ──">
-                                {notes.map((n) => (
-                                  <option key={n.id} value={n.id}>📖 {n.title} ({n.isFree ? 'FREE' : `₹${n.price || 29}`})</option>
-                                ))}
-                              </optgroup>
-                            )}
-                          </select>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                              {lang === 'kn' ? 'ವ್ಯಾಲಿಡಿಟಿ ಅವಧಿ' : 'Validity Duration'} *
-                            </label>
-                            <select
-                              value={userModalGrantForm.validityDuration}
-                              onChange={(e) => setUserModalGrantForm({ ...userModalGrantForm, validityDuration: e.target.value })}
-                              className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-purple-700 dark:text-purple-300 outline-none focus:ring-2 focus:ring-purple-500"
-                            >
-                              <option value="30">📅 30 Days (1 Month)</option>
-                              <option value="90">📅 90 Days (3 Months)</option>
-                              <option value="180">📅 180 Days (6 Months)</option>
-                              <option value="365">📅 365 Days (1 Year)</option>
-                              <option value="LIFETIME">♾️ Lifetime Access</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                              {lang === 'kn' ? 'ಟಿಪ್ಪಣಿ (Remarks / Reason)' : 'Remarks (Optional)'}
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Offline Payment / Granted by Admin"
-                              value={userModalGrantForm.remarks}
-                              onChange={(e) => setUserModalGrantForm({ ...userModalGrantForm, remarks: e.target.value })}
-                              className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                          </div>
-                        </div>
-
-                        <button
-                          type="submit"
-                          className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 flex items-center justify-center gap-2"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{lang === 'kn' ? '✓ ಪ್ರವೇಶಾವಕಾಶ ಸಕ್ರಿಯಗೊಳಿಸಿ (Grant Access Now)' : 'Grant Access Now'}</span>
-                        </button>
-                      </form>
-                    )}
-
-                    {/* SUB-TAB 3: TEST ATTEMPTS HISTORY */}
-                    {userModalTab === 'attempts' && (
-                      <div className="space-y-2">
-                        {selectedUser.attempts.length === 0 ? (
-                          <div className="p-8 text-center text-slate-400 italic bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                            {lang === 'kn' ? 'ಈ ವಿದ್ಯಾರ್ಥಿ ಇನ್ನೂ ಯಾವುದೇ ಪರೀಕ್ಷೆಯನ್ನು ಬರೆದಿಲ್ಲ.' : 'No mock test attempts recorded yet for this student.'}
-                          </div>
-                        ) : (
-                          selectedUser.attempts.map((att) => (
-                            <div
-                              key={att.id}
-                              className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
-                            >
-                              <div>
-                                <h5 className="font-bold text-slate-900 dark:text-slate-100">{att.testTitle}</h5>
-                                <p className="text-[11px] text-slate-400">
-                                  {att.timestamp ? new Date(att.timestamp).toLocaleString() : 'Recent'} • Correct: <strong className="text-emerald-600">{att.correctCount}</strong> • Wrong: <strong className="text-red-500">{att.wrongCount}</strong>
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <span className="font-black text-blue-600 block text-sm">{att.score} / {att.totalMarks} Marks</span>
-                                <span className={`text-[10px] font-bold ${
-                                  att.accuracy >= 75 ? 'text-emerald-600' : att.accuracy >= 50 ? 'text-amber-600' : 'text-slate-500'
-                                }`}>
-                                  {att.accuracy}% Accuracy
-                                </span>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                  </div>
-
-                  {/* Modal Footer */}
-                  <div className="p-4 bg-slate-100 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-                    <button
-                      onClick={() => setSelectedUserEmail(null)}
-                      className="px-5 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 text-white rounded-xl font-bold text-xs"
-                    >
-                      {lang === 'kn' ? 'ಮುಚ್ಚಿ (Close)' : 'Close'}
-                    </button>
-                  </div>
-
-                </div>
-              </div>
-            )}
 
             {/* 5. ALL ENTITLEMENTS & VALIDITY OVERVIEW TABLE */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-0">
