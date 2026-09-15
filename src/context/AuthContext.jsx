@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(savedSession);
         const email = (parsed.email || '').trim().toLowerCase();
-        const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email) || email.includes('merilin') || email.includes('mereilin');
+        const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email);
         if (isAuthorized) {
           parsed.role = 'developer';
           parsed.isAuthorizedAdmin = true;
@@ -62,8 +62,8 @@ export const AuthProvider = ({ children }) => {
     const email = (supabaseUser.email || '').trim().toLowerCase();
     const meta = supabaseUser.user_metadata || {};
     
-    // Strict Admin verification - merilinprabhugk / mereilinprabhugk is Developer
-    const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email) || email.includes('merilin') || email.includes('mereilin');
+    // Strict Admin verification - Only whitelisted admin emails
+    const isAuthorized = AUTHORIZED_ADMIN_EMAILS.includes(email);
 
     const name = meta.full_name || meta.name || email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
@@ -449,7 +449,7 @@ export const AuthProvider = ({ children }) => {
         return purList.some(p => {
           const pEmail = (p.userEmail || p.user_email || '').trim().toLowerCase();
           if (pEmail !== userEmail) return false;
-          if (p.status === 'PENDING_APPROVAL' || p.status === 'REJECTED' || p.status === 'DEACTIVATED' || p.status === 'SUSPENDED') return false;
+          if (p.status !== 'ACTIVE') return false;
           if (p.validUntil && p.validUntil !== 'LIFETIME') {
             const expTime = new Date(p.validUntil).getTime();
             if (!isNaN(expTime) && expTime < Date.now()) return false;
