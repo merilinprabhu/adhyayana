@@ -54,7 +54,8 @@ import {
   VolumeX,
   Timer,
   ChevronLeft,
-  MessageSquarePlus
+  MessageSquarePlus,
+  Swords
 } from 'lucide-react';
 import { AskWhatYouWantModal } from '../components/AskWhatYouWantModal';
 
@@ -527,6 +528,17 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
               {/* Quick Hub Navigation CTAs */}
               <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => onNavigate('battle')}
+                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-slate-950 rounded-xl font-black text-xs sm:text-sm shadow-lg shadow-rose-600/30 flex items-center gap-2 hover:scale-[1.03] transition-all cursor-pointer ring-2 ring-amber-400/40"
+                >
+                  <Swords className="w-4 h-4 text-slate-950" />
+                  <span>{lang === 'kn' ? '⚔️ 1 vs 1 ಲೈವ್ ಕ್ವಿಜ್ ಬ್ಯಾಟಲ್' : '⚔️ 1 vs 1 Live Quiz Battle'}</span>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-950 text-rose-200 animate-pulse">
+                    LIVE
+                  </span>
+                </button>
+
                 <button
                   onClick={() => onNavigate(sec.ctaPrimaryTarget || 'notes')}
                   className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 flex items-center gap-1.5 hover:scale-[1.02] transition-all"

@@ -19,6 +19,7 @@ import { NotesViewer } from './pages/NotesViewer';
 import { TestPlayer } from './pages/TestPlayer';
 import { UserDashboard } from './pages/UserDashboard';
 import { DeveloperAdmin } from './pages/DeveloperAdmin';
+import { QuizBattlePage } from './pages/QuizBattlePage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainApp = () => {
@@ -26,7 +27,7 @@ const MainApp = () => {
   const { lang, exams, tests, notes } = useData();
 
   // Navigation View Router
-  // 'home' | 'exams' | 'notes' | 'dashboard' | 'developer' | 'exam_detail' | 'test_player' | 'notes_viewer'
+  // 'home' | 'exams' | 'notes' | 'dashboard' | 'developer' | 'exam_detail' | 'test_player' | 'notes_viewer' | 'battle'
   const [currentView, setCurrentView] = useState('home');
 
   // Selected entities for deep view
@@ -94,8 +95,8 @@ const MainApp = () => {
       <PwaInstallModal />
       <PwaFloatingBanner />
 
-      {/* Header / Navbar - Hide during full-screen test and notes reader */}
-      {currentView !== 'test_player' && currentView !== 'notes_viewer' && (
+      {/* Header / Navbar - Hide during full-screen test, notes reader and live battle */}
+      {currentView !== 'test_player' && currentView !== 'notes_viewer' && currentView !== 'battle' && (
         <Navbar
           currentView={currentView}
           setCurrentView={(view) => {
@@ -106,13 +107,20 @@ const MainApp = () => {
       )}
 
       {/* Main Dynamic View Content */}
-      <main className={`flex-grow ${currentView !== 'test_player' && currentView !== 'notes_viewer' ? 'pb-16 md:pb-0' : ''}`}>
+      <main className={`flex-grow ${currentView !== 'test_player' && currentView !== 'notes_viewer' && currentView !== 'battle' ? 'pb-16 md:pb-0' : ''}`}>
         {currentView === 'home' && (
           <HomePage
             onNavigate={(v) => setCurrentView(v)}
             onSelectExam={handleSelectExam}
             onSelectTest={handleSelectTest}
             onSelectNote={handleSelectNote}
+            onOpenAuth={handleOpenAuth}
+          />
+        )}
+
+        {currentView === 'battle' && (
+          <QuizBattlePage
+            onExit={() => setCurrentView('home')}
             onOpenAuth={handleOpenAuth}
           />
         )}

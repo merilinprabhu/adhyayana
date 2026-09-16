@@ -40,6 +40,7 @@ import {
   Save,
   CheckCircle
 } from 'lucide-react';
+import { CertificateModal } from '../components/CertificateModal';
 
 const KARNATAKA_DISTRICTS = [
   'ಬಾಗಲಕೋಟೆ (Bagalkote)', 'ಬೆಂಗಳೂರು ನಗರ (Bengaluru Urban)', 'ಬೆಂಗಳೂರು ಗ್ರಾಮಾಂತರ (Bengaluru Rural)',
@@ -92,8 +93,9 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
   const [noteSearch, setNoteSearch] = useState('');
   const [copiedReferral, setCopiedReferral] = useState(false);
 
-  // Scorecard Detailed Modal State
+  // Scorecard & Certificate Detailed Modal State
   const [selectedAttemptForScorecard, setSelectedAttemptForScorecard] = useState(null);
+  const [selectedCertAttempt, setSelectedCertAttempt] = useState(null);
   const [scorecardFilter, setScorecardFilter] = useState('all'); // all | correct | wrong | skipped
 
   // Flashcards Player State
@@ -724,27 +726,48 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
 
                       {/* Previous Attempt Score Badge */}
                       {latestAttempt && (
-                        <div className="p-2.5 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-xs flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-slate-400 block font-semibold">
-                              {lang === 'kn' ? 'ನಿಮ್ಮ ಕೊನೆಯ ಸ್ಕೋರ್:' : 'Your Last Score:'}
-                            </span>
-                            <span className="font-extrabold text-emerald-700 dark:text-emerald-300 text-sm">
-                              {latestAttempt.score} / {t.totalMarks || 50}
-                            </span>
+                        <div className="p-2.5 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-400 block font-semibold">
+                                {lang === 'kn' ? 'ನಿಮ್ಮ ಕೊನೆಯ ಸ್ಕೋರ್:' : 'Your Last Score:'}
+                              </span>
+                              <span className="font-extrabold text-emerald-700 dark:text-emerald-300 text-sm">
+                                {latestAttempt.score} / {t.totalMarks || 50}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                latestAttempt.accuracy >= 50
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                              }`}>
+                                {latestAttempt.accuracy}% Acc
+                              </span>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">
+                                {new Date(latestAttempt.timestamp).toLocaleDateString()}
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              latestAttempt.accuracy >= 50
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
-                            }`}>
-                              {latestAttempt.accuracy}% Acc
-                            </span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">
-                              {new Date(latestAttempt.timestamp).toLocaleDateString()}
-                            </span>
-                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCertAttempt({
+                                testTitle: t.titleKn || t.title,
+                                score: latestAttempt.score,
+                                totalMarks: t.totalMarks || 50,
+                                accuracy: latestAttempt.accuracy,
+                                date: latestAttempt.timestamp,
+                                id: latestAttempt.id
+                              });
+                            }}
+                            className="w-full py-1.5 px-2 bg-gradient-to-r from-amber-500/15 to-yellow-500/15 hover:from-amber-500/25 hover:to-yellow-500/25 text-amber-700 dark:text-amber-300 rounded-lg text-[11px] font-black flex items-center justify-center gap-1.5 transition-all border border-amber-500/30 cursor-pointer"
+                          >
+                            <Award className="w-3.5 h-3.5 text-amber-500" />
+                            <span>{lang === 'kn' ? '🏆 ಸಾಧನಾ ಪ್ರಮಾಣಪತ್ರ ವೀಕ್ಷಿಸಿ / ಡೌನ್‌ಲೋಡ್' : '🏆 View / Download Certificate'}</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -1849,6 +1872,25 @@ export const UserDashboard = ({ onSelectTest, onSelectNote, onSelectExam, onNavi
 
           </div>
         </div>
+      )}
+
+      {/* Certificate of Excellence Modal */}
+      {selectedCertAttempt && (
+        <CertificateModal
+          isOpen={Boolean(selectedCertAttempt)}
+          onClose={() => setSelectedCertAttempt(null)}
+          candidateName={user?.name || (user?.email ? user.email.split('@')[0] : 'ಸ್ಪರ್ಧಾತ್ಮಕ ಆಕಾಂಕ್ಷಿ (Aspirant)')}
+          candidateEmail={user?.email || ''}
+          testTitle={selectedCertAttempt.testTitle || 'State Competitive Mock Test'}
+          score={Number(selectedCertAttempt.score) !== undefined && !isNaN(Number(selectedCertAttempt.score)) ? Number(selectedCertAttempt.score) : 0}
+          totalMarks={Number(selectedCertAttempt.totalMarks) || 50}
+          accuracy={Number(selectedCertAttempt.accuracy) || 0}
+          correctCount={selectedCertAttempt.correctCount}
+          wrongCount={selectedCertAttempt.wrongCount}
+          totalQuestions={selectedCertAttempt.totalQuestions}
+          date={selectedCertAttempt.date || new Date().toISOString()}
+          attemptId={selectedCertAttempt.id || `cert_${Date.now()}`}
+        />
       )}
 
     </div>

@@ -27,11 +27,19 @@ import {
   Send
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { CertificateModal } from '../components/CertificateModal';
+import { OmrSheetView } from '../components/OmrSheetView';
 
 export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
   const { user, isAuthenticated, isDeveloper, isEnrolled } = useAuth();
   const { lang, exams, recordTestAttempt, toggleBookmark, isBookmarked, checkHasAccess, addFeedback } = useData();
 
+  const [examMode, setExamMode] = useState('omr'); // 'omr' | 'cbt'
+  const [showMobileOmr, setShowMobileOmr] = useState(false);
+  const [activeResultTab, setActiveResultTab] = useState('omr'); // 'omr' | 'analysis'
+  const [candidateRollNo] = useState(() => 'ADH-' + (user?.id ? user.id.slice(0, 4).toUpperCase() : '2026') + '-' + Math.floor(1000 + Math.random() * 9000));
+
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
   const [testRating, setTestRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [testComment, setTestComment] = useState('');
@@ -154,13 +162,20 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
     setVisited((prev) => ({ ...prev, [index]: true }));
   };
 
-  // Handle Option Select
-  const handleSelectOption = (optIdx) => {
+  // Handle Option Select (from question card or direct OMR bubbling)
+  const handleSelectOption = (optIdx, targetIdx = null) => {
     if (isSubmitted) return;
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [currentIdx]: optIdx
-    }));
+    const qIdx = targetIdx !== null ? targetIdx : currentIdx;
+    setSelectedAnswers((prev) => {
+      const updated = { ...prev };
+      if (optIdx === undefined || optIdx === null) {
+        delete updated[qIdx];
+      } else {
+        updated[qIdx] = optIdx;
+      }
+      return updated;
+    });
+    setVisited((prev) => ({ ...prev, [qIdx]: true }));
   };
 
   // Toggle Review
@@ -258,7 +273,7 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-16">
       
       {/* Top Header / Live Bar */}
-      <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm px-4 sm:px-6 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
             onClick={onExit}
@@ -276,15 +291,49 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
           </div>
         </div>
 
-        {/* Center: Countdown Timer */}
-        {!isSubmitted && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-            <Clock className={`w-4 h-4 ${timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-emerald-600'}`} />
-            <span className={`text-xs sm:text-sm font-mono font-bold ${timeLeft < 300 ? 'text-red-500' : 'text-slate-800 dark:text-slate-200'}`}>
-              {formatTimer(timeLeft)}
-            </span>
-          </div>
-        )}
+        {/* Center: Mode Switcher & Countdown Timer */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Mode Switcher Toggle */}
+          {!isSubmitted && (
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setExamMode('omr')}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+                  examMode === 'omr'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <span>📝 {lang === 'kn' ? 'OMR ಶೀಟ್' : 'OMR Sheet'}</span>
+                <span className="hidden sm:inline-block px-1 py-0.2 rounded text-[8px] bg-amber-400 text-slate-950 font-black">
+                  REAL EXAM
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setExamMode('cbt')}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+                  examMode === 'cbt'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <span>💻 {lang === 'kn' ? 'CBT ಮೋಡ್' : 'CBT Mode'}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Countdown Timer */}
+          {!isSubmitted && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <Clock className={`w-4 h-4 ${timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-emerald-600'}`} />
+              <span className={`text-xs sm:text-sm font-mono font-bold ${timeLeft < 300 ? 'text-red-500' : 'text-slate-800 dark:text-slate-200'}`}>
+                {formatTimer(timeLeft)}
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
@@ -397,13 +446,21 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+                  <button
+                    onClick={() => setIsCertModalOpen(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-lg shadow-amber-500/25 transition-all cursor-pointer"
+                  >
+                    <Award className="w-4 h-4 text-slate-950" />
+                    <span>{lang === 'kn' ? '🏆 ಸಾಧನಾ ಪ್ರಮಾಣಪತ್ರ (Certificate)' : '🏆 Get Certificate (PDF/Image)'}</span>
+                  </button>
+
                   <button
                     onClick={() => window.print()}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-600 shadow-sm transition-all"
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-600 shadow-sm transition-all cursor-pointer"
                   >
                     <Printer className="w-4 h-4 text-emerald-400" />
-                    <span>{lang === 'kn' ? 'ಪ್ರಶ್ನೆಪತ್ರಿಕೆ PDF ಪ್ರಿಂಟ್' : 'Print / Save PDF Paper'}</span>
+                    <span>{lang === 'kn' ? 'ಪ್ರಶ್ನೆಪತ್ರಿಕೆ PDF' : 'Print Paper'}</span>
                   </button>
                 </div>
               </div>
@@ -621,126 +678,209 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
               )}
             </div>
 
-            {/* Question-by-Question Detailed Review */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  {lang === 'kn' ? 'ಪ್ರಶ್ನೋತ್ತರ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ವಿವರಣೆಗಳು' : 'Detailed Question Analysis & Solution Explanations'}
-                </h3>
-                {result.wrongCount > 0 && (
-                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{result.wrongCount} {lang === 'kn' ? 'ಪ್ರಶ್ನೆಗಳು Mistake Box ಗೆ ಸೇರಿವೆ' : 'Mistakes saved to Review Box'}</span>
-                  </span>
-                )}
-              </div>
+            {/* Result View Tabs: OMR vs Detailed Analysis */}
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+              <button
+                type="button"
+                onClick={() => setActiveResultTab('omr')}
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 ${
+                  activeResultTab === 'omr'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <span>📝 {lang === 'kn' ? 'ಮೌಲ್ಯಮಾಪನಗೊಂಡ OMR ಶೀಟ್' : 'Evaluated OMR Sheet'}</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/20 text-white font-mono">
+                  {result.correctCount}/{activeQuestions.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveResultTab('analysis')}
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 ${
+                  activeResultTab === 'analysis'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <span>📊 {lang === 'kn' ? 'ಪ್ರಶ್ನೋತ್ತರ ವಿಶ್ಲೇಷಣೆ & ಕೀ ಉತ್ತರ' : 'Detailed Question Analysis'}</span>
+              </button>
+            </div>
 
-              <div className="space-y-4">
-                {result.questionResults.map((q, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-6 bg-white dark:bg-slate-900 rounded-3xl border shadow-sm space-y-4 ${
-                      q.isCorrect
-                        ? 'border-emerald-200 dark:border-emerald-800/60'
-                        : q.userAnswer === undefined
-                        ? 'border-slate-200 dark:border-slate-800'
-                        : 'border-red-200 dark:border-red-800/60'
-                    }`}
+            {/* TAB 1: Evaluated OMR Sheet View */}
+            {activeResultTab === 'omr' && (
+              <div className="space-y-6">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      {lang === 'kn' 
+                        ? 'ನಿಮ್ಮ OMR ಉತ್ತರ ಪತ್ರಿಕೆಯನ್ನು ಮೌಲ್ಯಮಾಪನ ಮಾಡಲಾಗಿದೆ. ಹಸಿರು ಬಣ್ಣವು ಸರಿಯಾದ ಆಯ್ಕೆಯನ್ನು ಹಾಗೂ ಕೆಂಪು ಬಣ್ಣವು ತಪ್ಪು ಆಯ್ಕೆಯನ್ನು ಸೂಚಿಸುತ್ತದೆ.'
+                        : 'Your OMR Sheet has been evaluated by the system. Green indicates correct answers and Red indicates wrong bubbles.'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveResultTab('analysis')}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[11px] shrink-0"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-400">
-                        Question {idx + 1} • <span className="text-emerald-600">{q.subject}</span>
-                      </span>
-                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                    {lang === 'kn' ? 'ಪರಿಹಾರಗಳನ್ನು ನೋಡಿ →' : 'View Solutions →'}
+                  </button>
+                </div>
+
+                <div className="max-w-4xl mx-auto shadow-2xl rounded-3xl overflow-hidden">
+                  <OmrSheetView
+                    questions={activeQuestions}
+                    selectedAnswers={selectedAnswers}
+                    currentIdx={currentIdx}
+                    onJumpToQuestion={handleSelectQuestion}
+                    onSelectOption={() => {}}
+                    markedForReview={markedForReview}
+                    candidateName={user?.name || (user?.email ? user.email.split('@')[0] : 'ಅಭ್ಯರ್ಥಿ (Candidate)')}
+                    candidateRoll={candidateRollNo}
+                    testTitle={test?.titleKn || test?.title || 'ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆ'}
+                    isSubmitted={true}
+                    questionResults={result.questionResults}
+                    lang={lang}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: Detailed Question-by-Question Solutions */}
+            {activeResultTab === 'analysis' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    {lang === 'kn' ? 'ಪ್ರಶ್ನೋತ್ತರ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ವಿವರಣೆಗಳು' : 'Detailed Question Analysis & Solution Explanations'}
+                  </h3>
+                  {result.wrongCount > 0 && (
+                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{result.wrongCount} {lang === 'kn' ? 'ಪ್ರಶ್ನೆಗಳು Mistake Box ಗೆ ಸೇರಿವೆ' : 'Mistakes saved to Review Box'}</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {result.questionResults.map((q, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-6 bg-white dark:bg-slate-900 rounded-3xl border shadow-sm space-y-4 ${
                         q.isCorrect
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          : q.userAnswer === undefined
-                          ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                          : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                      }`}>
-                        {q.isCorrect ? 'CORRECT (+Marks)' : q.userAnswer === undefined ? 'SKIPPED' : 'INCORRECT (-Neg)'}
-                      </span>
-                    </div>
-
-                    <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
-                      {lang === 'kn' && q.questionKn ? q.questionKn : q.questionText}
-                    </h4>
-
-                    {/* Options list */}
-                    <div className="space-y-2">
-                      {q.options.map((opt, optIdx) => {
-                        const isCorrectAnswer = optIdx === q.correctAnswer;
-                        const isUserAnswer = optIdx === q.userAnswer;
-
-                        let optClass = 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300';
-                        if (isCorrectAnswer) {
-                          optClass = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 font-bold';
-                        } else if (isUserAnswer && !q.isCorrect) {
-                          optClass = 'border-red-500 bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200';
-                        }
-
-                        return (
-                          <div
-                            key={optIdx}
-                            className={`p-3 rounded-2xl border text-xs flex items-center justify-between ${optClass}`}
-                          >
-                            <span className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-[10px]">
-                                {String.fromCharCode(65 + optIdx)}
-                              </span>
-                              <span>{opt}</span>
+                          ? 'border-emerald-200 dark:border-emerald-800/60'
+                          : q.userAnswer === undefined || q.userAnswer === null
+                          ? 'border-slate-200 dark:border-slate-800'
+                          : 'border-red-200 dark:border-red-800/60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400">
+                          Question {idx + 1}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {q.isCorrect ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              <span>{lang === 'kn' ? 'ಸರಿ (+ಅಂಕಗಳು)' : 'Correct'}</span>
                             </span>
+                          ) : q.userAnswer === undefined || q.userAnswer === null ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                              {lang === 'kn' ? 'ಉತ್ತರಿಸಿಲ್ಲ (0 ಅಂಕಗಳು)' : 'Unattempted'}
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 flex items-center gap-1">
+                              <X className="w-3 h-3" />
+                              <span>{lang === 'kn' ? 'ತಪ್ಪು (ಋಣಾತ್ಮಕ ಅಂಕ)' : 'Incorrect'}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                            {isCorrectAnswer && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
-                            {isUserAnswer && !q.isCorrect && <X className="w-4 h-4 text-red-600 shrink-0" />}
-                          </div>
-                        );
-                      })}
-                    </div>
+                      <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+                        {lang === 'kn' && q.questionKn ? q.questionKn : q.question}
+                      </h4>
 
-                    {/* Explanation & Solution Box */}
-                    <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
-                      <p className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                        <HelpCircle className="w-4 h-4 text-emerald-600" />
-                        <span>{lang === 'kn' ? 'ವಿವರಣೆ & ಕೀ ಉತ್ತರ (Explanation & Key):' : 'Detailed Solution & Explanation:'}</span>
-                      </p>
-                      
-                      {/* 1. Correct Answer Key line */}
-                      {q.options && q.options[q.correctAnswer] && (
-                        <p className="font-bold text-emerald-900 dark:text-emerald-200 text-xs">
-                          {lang === 'kn' ? 'ಸರಿಯಾದ ಉತ್ತರ:' : 'Correct Answer:'}{' '}
-                          <span className="bg-emerald-200/60 dark:bg-emerald-900/60 px-2 py-0.5 rounded text-emerald-900 dark:text-emerald-100">
-                            ಆಯ್ಕೆ {String.fromCharCode(65 + q.correctAnswer)} - {q.options[q.correctAnswer]}
-                          </span>
-                        </p>
-                      )}
+                      {/* Options Review */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                        {q.options.map((opt, optIdx) => {
+                          const isUserAnswer = q.userAnswer === optIdx;
+                          const isCorrectAnswer = q.correctAnswer === optIdx;
 
-                      {/* 2. Detailed Rationale / Solution text */}
-                      {(() => {
-                        const rawExp = (lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation) || q.explanation || q.explanationKn || '';
-                        const isGenericFallback = !rawExp || rawExp === 'No detailed explanation provided.' || rawExp.startsWith('ಸರಿಯಾದ ಉತ್ತರ: ಆಯ್ಕೆ') || rawExp.startsWith('Correct Answer: Option');
-                        
-                        if (!isGenericFallback && rawExp.trim().length > 0) {
+                          let optStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300';
+                          if (isCorrectAnswer) {
+                            optStyle = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold';
+                          } else if (isUserAnswer && !q.isCorrect) {
+                            optStyle = 'border-red-500 bg-red-50 dark:bg-red-950/40 text-red-900 dark:text-red-200 font-bold';
+                          }
+
                           return (
-                            <div className="mt-1 pt-2 border-t border-emerald-200/80 dark:border-emerald-800/60 text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
-                              <p className="text-xs">{rawExp}</p>
+                            <div
+                              key={optIdx}
+                              className={`p-3 rounded-xl border text-xs flex items-center justify-between ${optStyle}`}
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                  isCorrectAnswer 
+                                    ? 'bg-emerald-600 text-white' 
+                                    : (isUserAnswer ? 'bg-red-600 text-white' : 'bg-slate-200 dark:bg-slate-700')
+                                }`}>
+                                  {String.fromCharCode(65 + optIdx)}
+                                </span>
+                                <span>{opt}</span>
+                              </span>
+
+                              {isCorrectAnswer && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+                              {isUserAnswer && !q.isCorrect && <X className="w-4 h-4 text-red-600 shrink-0" />}
                             </div>
                           );
-                        }
-                        return null;
-                      })()}
-                    </div>
+                        })}
+                      </div>
 
-                  </div>
-                ))}
+                      {/* Explanation & Solution Box */}
+                      <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
+                        <p className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                          <HelpCircle className="w-4 h-4 text-emerald-600" />
+                          <span>{lang === 'kn' ? 'ವಿವರಣೆ & ಕೀ ಉತ್ತರ (Explanation & Key):' : 'Detailed Solution & Explanation:'}</span>
+                        </p>
+                        
+                        {/* 1. Correct Answer Key line */}
+                        {q.options && q.options[q.correctAnswer] && (
+                          <p className="font-bold text-emerald-900 dark:text-emerald-200 text-xs">
+                            {lang === 'kn' ? 'ಸರಿಯಾದ ಉತ್ತರ:' : 'Correct Answer:'}{' '}
+                            <span className="bg-emerald-200/60 dark:bg-emerald-900/60 px-2 py-0.5 rounded text-emerald-900 dark:text-emerald-100">
+                              ಆಯ್ಕೆ {String.fromCharCode(65 + q.correctAnswer)} - {q.options[q.correctAnswer]}
+                            </span>
+                          </p>
+                        )}
+
+                        {/* 2. Detailed Rationale / Solution text */}
+                        {(() => {
+                          const rawExp = (lang === 'kn' && q.explanationKn ? q.explanationKn : q.explanation) || q.explanation || q.explanationKn || '';
+                          const isGenericFallback = !rawExp || rawExp === 'No detailed explanation provided.' || rawExp.startsWith('ಸರಿಯಾದ ಉತ್ತರ: ಆಯ್ಕೆ') || rawExp.startsWith('Correct Answer: Option');
+                          
+                          if (!isGenericFallback && rawExp.trim().length > 0) {
+                            return (
+                              <div className="mt-1 pt-2 border-t border-emerald-200/80 dark:border-emerald-800/60 text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                                <p className="text-xs">{rawExp}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Bottom Actions */}
             <div className="flex items-center justify-center gap-4 pt-6">
               <button
                 onClick={onExit}
-                className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
+                className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
               >
                 Back to Dashboard
               </button>
@@ -749,264 +889,485 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
           </div>
         ) : (
           /* ACTIVE TEST ARENA */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Left 8 Cols: Question Area */}
-            <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          examMode === 'omr' ? (
+            /* REALISTIC OMR SIMULATOR MODE (SPLIT SCREEN) */
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
-              {isQuestionLocked(currentIdx) ? (
-                /* LOCKED QUESTION TEASER PAYWALL */
-                <div className="bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white p-8 sm:p-10 rounded-3xl border border-purple-500/40 text-center space-y-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                  <div className="w-16 h-16 bg-purple-500/20 text-purple-300 rounded-3xl flex items-center justify-center mx-auto text-3xl border border-purple-500/40">
-                    🔒
-                  </div>
-                  <div className="space-y-2 max-w-lg mx-auto">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs font-bold uppercase tracking-wider border border-amber-500/30">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      {lang === 'kn' ? 'ಉಚಿತ ಪ್ರಿವ್ಯೂ ಮಿತಿ ತಲುಪಿದೆ' : 'Free Preview Limit Reached'}
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-black text-white">
-                      {lang === 'kn' 
-                        ? `ಪ್ರಶ್ನೆ ${currentIdx + 1} ಮತ್ತು ಮುಂದಿನ ಪ್ರಶ್ನೆಗಳು ಲಾಕ್ ಆಗಿವೆ` 
-                        : `Question ${currentIdx + 1} & Pro Questions Locked`}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-purple-200 leading-relaxed">
-                      {lang === 'kn'
-                        ? `ನೀವು ಮೊದಲ ${freeQuestionsCount} ಉಚಿತ ಮಾದರಿ ಪ್ರಶ್ನೆಗಳನ್ನು ಪೂರ್ಣಗೊಳಿಸಿದ್ದೀರಿ. ಎಲ್ಲಾ ${test.questions.length} ಪ್ರಶ್ನೆಗಳು, ವಿವರವಾದ ಕೀ ಉತ್ತರಗಳು ಮತ್ತು ಪರಿಹಾರಗಳನ್ನು ಪಡೆಯಲು ಈಗಲೇ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
-                        : `You have completed the ${freeQuestionsCount} free sample questions. Unlock the test to access all ${test.questions.length} questions, instant explanations, and scoring.`}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                    <button
-                      onClick={handleUnlockTest}
-                      className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-500/30 transition-all scale-100 hover:scale-105"
-                    >
-                      {lang === 'kn' 
-                        ? `₹${test.price || 49} - ಈಗಲೇ ಟೆಸ್ಟ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ` 
-                        : `Unlock Full Test for ₹${test.price || 49}`}
-                    </button>
-                    <button
-                      onClick={handleSubmitTest}
-                      className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700"
-                    >
-                      {lang === 'kn' ? 'ಉಚಿತ ಪ್ರಶ್ನೆಗಳನ್ನು Submit ಮಾಡಿ' : 'Submit Free Preview Questions'}
-                    </button>
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      onClick={() => handleSelectQuestion(Math.max(0, freeQuestionsCount - 1))}
-                      className="text-xs text-slate-400 hover:text-white underline"
-                    >
-                      {lang === 'kn' ? `← ಪ್ರಶ್ನೆ ${freeQuestionsCount} ಕ್ಕೆ ಹಿಂತಿರುಗಿ` : `← Return to Question ${freeQuestionsCount}`}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Question Header */}
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-emerald-600 uppercase">
-                        {currentQ.subject || 'General Knowledge'}
+              {/* Left 6 or 7 Cols: Question Paper Sheet */}
+              <div className="lg:col-span-6 xl:col-span-7 bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                
+                {isQuestionLocked(currentIdx) ? (
+                  /* LOCKED QUESTION TEASER PAYWALL */
+                  <div className="bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-purple-500/40 text-center space-y-5 shadow-2xl animate-in fade-in">
+                    <div className="w-14 h-14 bg-purple-500/20 text-purple-300 rounded-3xl flex items-center justify-center mx-auto text-2xl border border-purple-500/40">
+                      🔒
+                    </div>
+                    <div className="space-y-1.5 max-w-md mx-auto">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-amber-500/20 text-amber-300 rounded-full text-[11px] font-bold uppercase tracking-wider border border-amber-500/30">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {lang === 'kn' ? 'ಉಚಿತ ಪ್ರಿವ್ಯೂ ಮಿತಿ ತಲುಪಿದೆ' : 'Free Preview Limit Reached'}
                       </span>
-                      {!hasFullAccess && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          FREE SAMPLE
+                      <h3 className="text-lg sm:text-xl font-black text-white">
+                        {lang === 'kn' 
+                          ? `ಪ್ರಶ್ನೆ ${currentIdx + 1} ಮತ್ತು ಮುಂದಿನ ಪ್ರಶ್ನೆಗಳು ಲಾಕ್ ಆಗಿವೆ` 
+                          : `Question ${currentIdx + 1} & Pro Questions Locked`}
+                      </h3>
+                      <p className="text-xs text-purple-200 leading-relaxed">
+                        {lang === 'kn'
+                          ? `ನೀವು ಮೊದಲ ${freeQuestionsCount} ಉಚಿತ ಮಾದರಿ ಪ್ರಶ್ನೆಗಳನ್ನು ಪೂರ್ಣಗೊಳಿಸಿದ್ದೀರಿ. ಎಲ್ಲಾ ${activeQuestions.length} ಪ್ರಶ್ನೆಗಳು ಮತ್ತು OMR ಮೌಲ್ಯಮಾಪನ ಪಡೆಯಲು ಈಗಲೇ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
+                          : `You have completed the ${freeQuestionsCount} free sample questions. Unlock the test to access all ${activeQuestions.length} questions and scoring.`}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                      <button
+                        onClick={handleUnlockTest}
+                        className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/30 transition-all cursor-pointer"
+                      >
+                        {lang === 'kn' 
+                          ? `₹${test.price || 49} - ಈಗಲೇ ಟೆಸ್ಟ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ` 
+                          : `Unlock Full Test for ₹${test.price || 49}`}
+                      </button>
+                      <button
+                        onClick={handleSubmitTest}
+                        className="w-full sm:w-auto px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 cursor-pointer"
+                      >
+                        {lang === 'kn' ? 'ಉಚಿತ ಪ್ರಶ್ನೆಗಳನ್ನು Submit ಮಾಡಿ' : 'Submit Free Preview Questions'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Question Header */}
+                    <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-emerald-600 uppercase">
+                          {currentQ.subject || 'General Knowledge'}
                         </span>
-                      )}
+                        {!hasFullAccess && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            FREE SAMPLE
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        {/* Language switch for question */}
+                        <button
+                          onClick={() => setQuestionLang(questionLang === 'kn' ? 'en' : 'kn')}
+                          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                          <Globe className="w-3.5 h-3.5" />
+                          <span>{questionLang === 'kn' ? 'ಕನ್ನಡ' : 'English'}</span>
+                        </button>
+
+                        {/* Bookmark Button */}
+                        <button
+                          onClick={() => toggleBookmark(currentQ)}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            isBookmarked(currentQ.id)
+                              ? 'bg-amber-50 border-amber-300 text-amber-500'
+                              : 'border-slate-200 dark:border-slate-700 text-slate-400'
+                          }`}
+                          title="Bookmark Question"
+                        >
+                          <Bookmark className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      {/* Language switch for question */}
-                      <button
-                        onClick={() => setQuestionLang(questionLang === 'kn' ? 'en' : 'kn')}
-                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-                      >
-                        <Globe className="w-3.5 h-3.5" />
-                        <span>{questionLang === 'kn' ? 'ಕನ್ನಡ' : 'English'}</span>
-                      </button>
+                    {/* Question Text */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg">
+                          ಪ್ರಶ್ನೆ {currentIdx + 1} / {activeQuestions.length}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {selectedAnswers[currentIdx] !== undefined ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              ✓ OMR ಶೇಡ್ ಆಗಿದೆ: {String.fromCharCode(65 + selectedAnswers[currentIdx])}
+                            </span>
+                          ) : (
+                            <span className="text-amber-500 font-medium">
+                              ⚪ OMR ಶೇಡ್ ಆಗಿಲ್ಲ
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 leading-snug pt-1">
+                        {questionLang === 'kn' && currentQ.questionKn ? currentQ.questionKn : currentQ.question}
+                      </h3>
+                    </div>
 
-                      {/* Bookmark Button */}
+                    {/* Options list in Question Paper */}
+                    <div className="space-y-2.5 pt-2">
+                      {currentQ.options.map((opt, optIdx) => {
+                        const isSelected = selectedAnswers[currentIdx] === optIdx;
+
+                        return (
+                          <button
+                            key={optIdx}
+                            onClick={() => handleSelectOption(optIdx)}
+                            className={`w-full p-3.5 rounded-2xl border text-left text-xs sm:text-sm font-medium transition-all flex items-center justify-between cursor-pointer ${
+                              isSelected
+                                ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold shadow-xs'
+                                : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-emerald-400'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                                isSelected
+                                  ? 'bg-emerald-600 text-white shadow-sm'
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                              }`}>
+                                {String.fromCharCode(65 + optIdx)}
+                              </span>
+                              <span>{opt}</span>
+                            </div>
+
+                            {isSelected && <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer Question Navigation */}
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
                       <button
-                        onClick={() => toggleBookmark(currentQ)}
-                        className={`p-1.5 rounded-lg border transition-all ${
-                          isBookmarked(currentQ.id)
-                            ? 'bg-amber-50 border-amber-300 text-amber-500'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-400'
+                        onClick={handleToggleReview}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          markedForReview[currentIdx]
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                         }`}
-                        title="Bookmark Question"
                       >
-                        <Bookmark className="w-4 h-4" />
+                        <Flag className="w-3.5 h-3.5" />
+                        <span>{markedForReview[currentIdx] ? 'Marked for Review' : 'Mark for Review'}</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          disabled={currentIdx === 0}
+                          onClick={() => handleSelectQuestion(currentIdx - 1)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                        >
+                          ← ಹಿಂದಿನ ಪ್ರಶ್ನೆ
+                        </button>
+                        <button
+                          disabled={currentIdx === activeQuestions.length - 1}
+                          onClick={() => handleSelectQuestion(currentIdx + 1)}
+                          className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-semibold disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>ಮುಂದಿನ ಪ್ರಶ್ನೆ →</span>
+                          {isQuestionLocked(currentIdx + 1) && <Lock className="w-3 h-3 text-amber-400" />}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+              </div>
+
+              {/* Right 6 or 5 Cols: Interactive OMR Sheet Component */}
+              <div className="lg:col-span-6 xl:col-span-5 sticky top-20">
+                <OmrSheetView
+                  questions={activeQuestions}
+                  selectedAnswers={selectedAnswers}
+                  currentIdx={currentIdx}
+                  onJumpToQuestion={handleSelectQuestion}
+                  onSelectOption={handleSelectOption}
+                  markedForReview={markedForReview}
+                  candidateName={user?.name || (user?.email ? user.email.split('@')[0] : 'ಸ್ಪರ್ಧಾತ್ಮಕ ಆಕಾಂಕ್ಷಿ')}
+                  candidateRoll={candidateRollNo}
+                  testTitle={test?.titleKn || test?.title || 'ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆ'}
+                  isSubmitted={false}
+                  lang={lang}
+                />
+
+                {/* Submit button under OMR */}
+                <div className="mt-4">
+                  <button
+                    onClick={handleSubmitTest}
+                    className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl text-xs sm:text-sm font-black shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{lang === 'kn' ? 'OMR ಶೀಟ್ ಸಲ್ಲಿಸಿ & ಫಲಿತಾಂಶ ನೋಡಿ' : 'Submit OMR Sheet & Evaluate'}</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          ) : (
+            /* STANDARD CBT MODE */
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              {/* Left 8 Cols: Question Area */}
+              <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                
+                {isQuestionLocked(currentIdx) ? (
+                  /* LOCKED QUESTION TEASER PAYWALL */
+                  <div className="bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white p-8 sm:p-10 rounded-3xl border border-purple-500/40 text-center space-y-6 shadow-2xl animate-in fade-in">
+                    <div className="w-16 h-16 bg-purple-500/20 text-purple-300 rounded-3xl flex items-center justify-center mx-auto text-3xl border border-purple-500/40">
+                      🔒
+                    </div>
+                    <div className="space-y-2 max-w-lg mx-auto">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs font-bold uppercase tracking-wider border border-amber-500/30">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {lang === 'kn' ? 'ಉಚಿತ ಪ್ರಿವ್ಯೂ ಮಿತಿ ತಲುಪಿದೆ' : 'Free Preview Limit Reached'}
+                      </span>
+                      <h3 className="text-xl sm:text-2xl font-black text-white">
+                        {lang === 'kn' 
+                          ? `ಪ್ರಶ್ನೆ ${currentIdx + 1} ಮತ್ತು ಮುಂದಿನ ಪ್ರಶ್ನೆಗಳು ಲಾಕ್ ಆಗಿವೆ` 
+                          : `Question ${currentIdx + 1} & Pro Questions Locked`}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-purple-200 leading-relaxed">
+                        {lang === 'kn'
+                          ? `ನೀವು ಮೊದಲ ${freeQuestionsCount} ಉಚಿತ ಮಾದರಿ ಪ್ರಶ್ನೆಗಳನ್ನು ಪೂರ್ಣಗೊಳಿಸಿದ್ದೀರಿ. ಎಲ್ಲಾ ${activeQuestions.length} ಪ್ರಶ್ನೆಗಳು, ವಿವರವಾದ ಕೀ ಉತ್ತರಗಳು ಮತ್ತು ಪರಿಹಾರಗಳನ್ನು ಪಡೆಯಲು ಈಗಲೇ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.`
+                          : `You have completed the ${freeQuestionsCount} free sample questions. Unlock the test to access all ${activeQuestions.length} questions, instant explanations, and scoring.`}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                      <button
+                        onClick={handleUnlockTest}
+                        className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-500/30 transition-all cursor-pointer"
+                      >
+                        {lang === 'kn' 
+                          ? `₹${test.price || 49} - ಈಗಲೇ ಟೆಸ್ಟ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ` 
+                          : `Unlock Full Test for ₹${test.price || 49}`}
+                      </button>
+                      <button
+                        onClick={handleSubmitTest}
+                        className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 cursor-pointer"
+                      >
+                        {lang === 'kn' ? 'ಉಚಿತ ಪ್ರಶ್ನೆಗಳನ್ನು Submit ಮಾಡಿ' : 'Submit Free Preview Questions'}
                       </button>
                     </div>
                   </div>
+                ) : (
+                  <>
+                    {/* Question Header */}
+                    <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-emerald-600 uppercase">
+                          {currentQ.subject || 'General Knowledge'}
+                        </span>
+                        {!hasFullAccess && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            FREE SAMPLE
+                          </span>
+                        )}
+                      </div>
 
-                  {/* Question Text */}
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold text-slate-400">
-                      Question {currentIdx + 1}
-                    </span>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 leading-snug">
-                      {questionLang === 'kn' && currentQ.questionKn ? currentQ.questionKn : currentQ.question}
-                    </h3>
+                      <div className="flex items-center gap-3">
+                        {/* Language switch for question */}
+                        <button
+                          onClick={() => setQuestionLang(questionLang === 'kn' ? 'en' : 'kn')}
+                          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                        >
+                          <Globe className="w-3.5 h-3.5" />
+                          <span>{questionLang === 'kn' ? 'ಕನ್ನಡ' : 'English'}</span>
+                        </button>
+
+                        {/* Bookmark Button */}
+                        <button
+                          onClick={() => toggleBookmark(currentQ)}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            isBookmarked(currentQ.id)
+                              ? 'bg-amber-50 border-amber-300 text-amber-500'
+                              : 'border-slate-200 dark:border-slate-700 text-slate-400'
+                          }`}
+                          title="Bookmark Question"
+                        >
+                          <Bookmark className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Question Text */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-bold text-slate-400">
+                        Question {currentIdx + 1}
+                      </span>
+                      <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                        {questionLang === 'kn' && currentQ.questionKn ? currentQ.questionKn : currentQ.question}
+                      </h3>
+                    </div>
+
+                    {/* Options */}
+                    <div className="space-y-3 pt-2">
+                      {currentQ.options.map((opt, optIdx) => {
+                        const isSelected = selectedAnswers[currentIdx] === optIdx;
+
+                        return (
+                          <button
+                            key={optIdx}
+                            onClick={() => handleSelectOption(optIdx)}
+                            className={`w-full p-4 rounded-2xl border text-left text-xs sm:text-sm font-medium transition-all flex items-center justify-between cursor-pointer ${
+                              isSelected
+                                ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold shadow-sm'
+                                : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-emerald-400'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                isSelected
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                              }`}>
+                                {String.fromCharCode(65 + optIdx)}
+                              </span>
+                              <span>{opt}</span>
+                            </div>
+
+                            {isSelected && <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer navigation */}
+                    <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                      <button
+                        onClick={handleToggleReview}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          markedForReview[currentIdx]
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                        <span>{markedForReview[currentIdx] ? 'Marked for Review' : 'Mark for Review'}</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          disabled={currentIdx === 0}
+                          onClick={() => handleSelectQuestion(currentIdx - 1)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          disabled={currentIdx === activeQuestions.length - 1}
+                          onClick={() => handleSelectQuestion(currentIdx + 1)}
+                          className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-semibold disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Next Question</span>
+                          {isQuestionLocked(currentIdx + 1) && <Lock className="w-3 h-3 text-amber-400" />}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+              </div>
+
+              {/* Right 4 Cols: Question Palette */}
+              <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                    Question Palette
+                  </h4>
+
+                  {/* Legend */}
+                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 dark:text-slate-400 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-md bg-emerald-600"></span>
+                      <span>{lang === 'kn' ? 'ಉತ್ತರಿಸಿದ್ದು' : 'Answered'} ({Object.keys(selectedAnswers).length})</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-md bg-rose-500"></span>
+                      <span>{lang === 'kn' ? 'ಉತ್ತರಿಸಿಲ್ಲ' : 'Not Answered'} ({Object.keys(visited).filter(k => selectedAnswers[k] === undefined).length})</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-md bg-purple-600"></span>
+                      <span>{lang === 'kn' ? 'ರಿವ್ಯೂ' : 'Marked'} ({Object.values(markedForReview).filter(Boolean).length})</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-md bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></span>
+                      <span>{lang === 'kn' ? 'ಭೇಟಿ ನೀಡಿಲ್ಲ' : 'Not Visited'} ({Math.max(0, activeQuestions.length - Object.keys(visited).length)})</span>
+                    </div>
+                    {!hasFullAccess && (
+                      <div className="col-span-2 flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold pt-1">
+                        <Lock className="w-3 h-3" />
+                        <span>{lang === 'kn' ? 'ಪ್ರೀಮಿಯಂ ಲಾಕ್' : 'Pro Locked'} ({Math.max(0, activeQuestions.length - freeQuestionsCount)})</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Options */}
-                  <div className="space-y-3 pt-2">
-                    {currentQ.options.map((opt, optIdx) => {
-                      const isSelected = selectedAnswers[currentIdx] === optIdx;
+                  {/* Grid Numbers */}
+                  <div className="grid grid-cols-5 gap-2">
+                    {activeQuestions.map((_, idx) => {
+                      const isAnswered = selectedAnswers[idx] !== undefined;
+                      const isReview = markedForReview[idx];
+                      const isCurrent = currentIdx === idx;
+                      const isLocked = isQuestionLocked(idx);
+                      const isVisited = visited[idx];
+
+                      let btnStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
+                      if (isLocked) {
+                        btnStyle = 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
+                      } else if (isReview) {
+                        btnStyle = 'bg-purple-600 text-white font-bold shadow-sm';
+                      } else if (isAnswered) {
+                        btnStyle = 'bg-emerald-600 text-white font-bold shadow-sm';
+                      } else if (isVisited) {
+                        btnStyle = 'bg-rose-500 text-white font-bold shadow-sm';
+                      }
+                      if (isCurrent) btnStyle += ' ring-2 ring-amber-400 dark:ring-amber-300 scale-105 z-10';
 
                       return (
                         <button
-                          key={optIdx}
-                          onClick={() => handleSelectOption(optIdx)}
-                          className={`w-full p-4 rounded-2xl border text-left text-xs sm:text-sm font-medium transition-all flex items-center justify-between ${
-                            isSelected
-                              ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold shadow-sm'
-                              : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-emerald-400'
-                          }`}
+                          key={idx}
+                          onClick={() => handleSelectQuestion(idx)}
+                          className={`h-9 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${btnStyle}`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                              isSelected
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                            }`}>
-                              {String.fromCharCode(65 + optIdx)}
-                            </span>
-                            <span>{opt}</span>
-                          </div>
-
-                          {isSelected && <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />}
+                          {isLocked && <Lock className="w-2.5 h-2.5 shrink-0 text-purple-500" />}
+                          <span>{idx + 1}</span>
                         </button>
                       );
                     })}
                   </div>
-
-                  {/* Footer navigation */}
-                  <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                    <button
-                      onClick={handleToggleReview}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                        markedForReview[currentIdx]
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      <Flag className="w-3.5 h-3.5" />
-                      <span>{markedForReview[currentIdx] ? 'Marked for Review' : 'Mark for Review'}</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        disabled={currentIdx === 0}
-                        onClick={() => handleSelectQuestion(currentIdx - 1)}
-                        className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        disabled={currentIdx === activeQuestions.length - 1}
-                        onClick={() => handleSelectQuestion(currentIdx + 1)}
-                        className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-semibold disabled:opacity-40 flex items-center gap-1.5"
-                      >
-                        <span>Next Question</span>
-                        {isQuestionLocked(currentIdx + 1) && <Lock className="w-3 h-3 text-amber-400" />}
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-            </div>
-
-            {/* Right 4 Cols: Question Palette */}
-            <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-              
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                  Question Palette
-                </h4>
-
-                {/* Legend */}
-                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 dark:text-slate-400 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-md bg-emerald-600"></span>
-                    <span>{lang === 'kn' ? 'ಉತ್ತರಿಸಿದ್ದು' : 'Answered'} ({Object.keys(selectedAnswers).length})</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-md bg-rose-500"></span>
-                    <span>{lang === 'kn' ? 'ಉತ್ತರಿಸಿಲ್ಲ' : 'Not Answered'} ({Object.keys(visited).filter(k => selectedAnswers[k] === undefined).length})</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-md bg-purple-600"></span>
-                    <span>{lang === 'kn' ? 'ರಿವ್ಯೂ' : 'Marked'} ({Object.values(markedForReview).filter(Boolean).length})</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-md bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></span>
-                    <span>{lang === 'kn' ? 'ಭೇಟಿ ನೀಡಿಲ್ಲ' : 'Not Visited'} ({Math.max(0, activeQuestions.length - Object.keys(visited).length)})</span>
-                  </div>
-                  {!hasFullAccess && (
-                    <div className="col-span-2 flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold pt-1">
-                      <Lock className="w-3 h-3" />
-                      <span>{lang === 'kn' ? 'ಪ್ರೀಮಿಯಂ ಲಾಕ್' : 'Pro Locked'} ({Math.max(0, activeQuestions.length - freeQuestionsCount)})</span>
-                    </div>
-                  )}
                 </div>
 
-                {/* Grid Numbers */}
-                <div className="grid grid-cols-5 gap-2">
-                  {activeQuestions.map((_, idx) => {
-                    const isAnswered = selectedAnswers[idx] !== undefined;
-                    const isReview = markedForReview[idx];
-                    const isCurrent = currentIdx === idx;
-                    const isLocked = isQuestionLocked(idx);
-                    const isVisited = visited[idx];
-
-                    let btnStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
-                    if (isLocked) {
-                      btnStyle = 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
-                    } else if (isReview) {
-                      btnStyle = 'bg-purple-600 text-white font-bold shadow-sm';
-                    } else if (isAnswered) {
-                      btnStyle = 'bg-emerald-600 text-white font-bold shadow-sm';
-                    } else if (isVisited) {
-                      btnStyle = 'bg-rose-500 text-white font-bold shadow-sm';
-                    }
-                    if (isCurrent) btnStyle += ' ring-2 ring-amber-400 dark:ring-amber-300 scale-105 z-10';
-
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => handleSelectQuestion(idx)}
-                        className={`h-9 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${btnStyle}`}
-                      >
-                        {isLocked && <Lock className="w-2.5 h-2.5 shrink-0 text-purple-500" />}
-                        <span>{idx + 1}</span>
-                      </button>
-                    );
-                  })}
+                {/* Submit Action */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    onClick={handleSubmitTest}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 cursor-pointer"
+                  >
+                    Final Submit & Generate Scorecard
+                  </button>
                 </div>
-              </div>
 
-              {/* Submit Action */}
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={handleSubmitTest}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30"
-                >
-                  Final Submit & Generate Scorecard
-                </button>
               </div>
 
             </div>
-
-          </div>
+          )
         )}
 
       </div>
+
+      {/* Certificate of Excellence Modal */}
+      {result && (
+        <CertificateModal
+          isOpen={isCertModalOpen}
+          onClose={() => setIsCertModalOpen(false)}
+          candidateName={user?.name || (user?.email ? user.email.split('@')[0] : 'ಸ್ಪರ್ಧಾತ್ಮಕ ಆಕಾಂಕ್ಷಿ (Aspirant)')}
+          candidateEmail={user?.email || ''}
+          testTitle={test?.titleKn || test?.title || result.testTitle || 'State Competitive Mock Test'}
+          score={Number(result.score) !== undefined && !isNaN(Number(result.score)) ? Number(result.score) : 0}
+          totalMarks={Number(result.totalMarks) || Number(test?.totalMarks) || 50}
+          accuracy={Number(result.accuracy) || 0}
+          correctCount={result.correctCount !== undefined ? result.correctCount : null}
+          wrongCount={result.wrongCount !== undefined ? result.wrongCount : null}
+          totalQuestions={result.totalQuestions || (activeQuestions?.length || 0)}
+          date={result.timestamp || new Date().toISOString()}
+          attemptId={result.id || `cert_${Date.now()}`}
+        />
+      )}
     </div>
   );
 };
