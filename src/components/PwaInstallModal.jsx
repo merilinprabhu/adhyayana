@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { usePwa } from '../context/PwaContext';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -122,9 +122,19 @@ export const PwaInstallModal = () => {
             className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            <span>{lang === 'kn' ? '📲 ಈಗಲೇ ಆ್ಯಪ್ ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಿ (Install App)' : '📲 Install ADHYAYANA App Now'}</span>
+            <span>{lang === 'kn' ? '📲 1-ಕ್ಲಿಕ್ ಆ್ಯಪ್ ಇನ್‌ಸ್ಟಾಲ್ (Play Store ಇಲ್ಲದೆ)' : '📲 1-Click Fast App Install'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
+
+          {/* Direct APK Download Link */}
+          <a
+            href="/Adhyayana.apk"
+            download="Adhyayana.apk"
+            className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-2xl flex items-center justify-center gap-2 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+          >
+            <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>{lang === 'kn' ? '📦 ನೇರ Android APK ಫೈಲ್ ಡೌನ್‌ಲೋಡ್ (4.5 MB)' : '📦 Direct Android APK Download (4.5 MB)'}</span>
+          </a>
 
           <button
             onClick={() => setIsInstallModalOpen(false)}
