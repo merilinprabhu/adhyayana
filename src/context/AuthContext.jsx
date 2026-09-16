@@ -8,6 +8,7 @@ import {
   signInWithGoogle, 
   signOutUser 
 } from '../lib/supabase';
+import { safeLocalStorageSet } from '../utils/storage';
 
 const AuthContext = createContext(null);
 
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }) => {
   // Sync session state to storage
   useEffect(() => {
     if (user) {
-      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(user));
+      safeLocalStorageSet(STORAGE_SESSION_KEY, user);
     } else {
       localStorage.removeItem(STORAGE_SESSION_KEY);
     }
@@ -366,9 +367,7 @@ export const AuthProvider = ({ children }) => {
         role: newRole,
         badge: newRole === 'developer' ? 'Platform Administrator' : 'Verified Aspirant',
       };
-      try {
-        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_SESSION_KEY, updated);
       return updated;
     });
   };
@@ -391,7 +390,7 @@ export const AuthProvider = ({ children }) => {
     setUser(updated);
 
     try {
-      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updated));
+      safeLocalStorageSet(STORAGE_SESSION_KEY, updated);
       const savedProfList = localStorage.getItem('adhyayana_profiles_v2');
       let list = savedProfList ? JSON.parse(savedProfList) : [];
       const cleanEmail = (updated.email || '').trim().toLowerCase();
@@ -401,7 +400,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         list.push(updated);
       }
-      localStorage.setItem('adhyayana_profiles_v2', JSON.stringify(list));
+      safeLocalStorageSet('adhyayana_profiles_v2', list);
     } catch (e) {}
 
     // Non-blocking sync to Supabase Cloud

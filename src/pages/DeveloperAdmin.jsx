@@ -558,7 +558,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     name: '',
     nameKn: '',
     description: '',
-    icon: 'BookOpen'
+    icon: 'BookOpen',
+    imageUrl: '',
+    badge: 'ಕೋರ್ ವಿಷಯ',
+    topics: ''
   });
 
   // New Test Form State
@@ -1026,7 +1029,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
       name: subjectToEdit.name || '',
       nameKn: subjectToEdit.nameKn || subjectToEdit.name || '',
       description: subjectToEdit.description || '',
-      icon: subjectToEdit.icon || 'BookOpen'
+      icon: subjectToEdit.icon || 'BookOpen',
+      imageUrl: subjectToEdit.imageUrl || subjectToEdit.image_url || '',
+      badge: subjectToEdit.badge || 'ಕೋರ್ ವಿಷಯ',
+      topics: Array.isArray(subjectToEdit.topics) ? subjectToEdit.topics.join(', ') : (subjectToEdit.topics || '')
     });
     window.scrollTo({ top: 300, behavior: 'smooth' });
     showToast(lang === 'kn' ? `ವಿಷಯ "${subjectToEdit.name}" ಎಡಿಟ್ ಮಾಡಲು ಲೋಡ್ ಮಾಡಲಾಗಿದೆ.` : `Loaded "${subjectToEdit.name}" for editing.`);
@@ -1040,7 +1046,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
       name: '',
       nameKn: '',
       description: '',
-      icon: 'BookOpen'
+      icon: 'BookOpen',
+      imageUrl: '',
+      badge: 'ಕೋರ್ ವಿಷಯ',
+      topics: ''
     });
   };
 
@@ -1049,10 +1058,18 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     e.preventDefault();
     if (!subjectForm.name) return;
 
+    const topicsArray = typeof subjectForm.topics === 'string' 
+      ? subjectForm.topics.split(',').map(t => t.trim()).filter(Boolean)
+      : (Array.isArray(subjectForm.topics) ? subjectForm.topics : []);
+
     const subjectPayload = {
       ...subjectForm,
       examId: subjectForm.examId || exams[0]?.id,
       nameKn: subjectForm.nameKn || subjectForm.name,
+      imageUrl: subjectForm.imageUrl || '',
+      image_url: subjectForm.imageUrl || '',
+      badge: subjectForm.badge || 'ಕೋರ್ ವಿಷಯ',
+      topics: topicsArray
     };
 
     if (editingSubjectId) {
@@ -1069,7 +1086,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
       name: '',
       nameKn: '',
       description: '',
-      icon: 'BookOpen'
+      icon: 'BookOpen',
+      imageUrl: '',
+      badge: 'ಕೋರ್ ವಿಷಯ',
+      topics: ''
     });
   };
 
@@ -2227,7 +2247,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
               )}
             </div>
 
-            <form onSubmit={handleCreateSubject} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateSubject} className="space-y-3.5 text-xs">
               <div>
                 <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
                   {lang === 'kn' ? 'ವಿಷಯದ ಹೆಸರು (Subject Title - English)' : 'Subject Title (English)'} *
@@ -2235,10 +2255,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Karnataka History & Heritage / Indian Polity"
+                  placeholder="e.g. Kannada Grammar / Karnataka History / Indian Polity"
                   value={subjectForm.name}
                   onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
 
@@ -2248,9 +2268,123 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                 </label>
                 <input
                   type="text"
-                  placeholder="ಉದಾ: ಕರ್ನಾಟಕ ಇತಿಹಾಸ ಮತ್ತು ಸಂಸ್ಕೃತಿ"
+                  placeholder="ಉದಾ: ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ / ಕರ್ನಾಟಕ ಇತಿಹಾಸ"
                   value={subjectForm.nameKn}
                   onChange={(e) => setSubjectForm({ ...subjectForm, nameKn: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* COVER / BANNER IMAGE URL & PRESETS */}
+              <div className="space-y-2 p-3 bg-purple-50/60 dark:bg-purple-950/30 rounded-2xl border border-purple-200/80 dark:border-purple-800/50">
+                <label className="font-bold block text-purple-900 dark:text-purple-200 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    {lang === 'kn' ? 'ಮುಖಪುಟ ಕವರ್ ಚಿತ್ರ (Cover / Banner Image URL)' : 'Subject Cover / Banner Image URL'}
+                  </span>
+                  <span className="text-[10px] font-normal text-purple-600 dark:text-purple-400">HD Image</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/... or paste image URL"
+                  value={subjectForm.imageUrl || ''}
+                  onChange={(e) => setSubjectForm({ ...subjectForm, imageUrl: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-mono text-[11px]"
+                />
+
+                {/* Preset Cover Suggestions */}
+                <div className="space-y-1 pt-1">
+                  <span className="text-[10px] font-bold text-slate-500">{lang === 'kn' ? 'ಸಿದ್ಧ ಕವರ್ ಚಿತ್ರಗಳು (Click to Select Preset Cover):' : 'Preset Cover Suggestions:'}</span>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-28 overflow-y-auto">
+                    {[
+                      { label: '📖 ಕನ್ನಡ ಸಾಹಿತ್ಯ & ವ್ಯಾಕರಣ', url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&auto=format&fit=crop&q=80' },
+                      { label: '🏛️ ಕರ್ನಾಟಕ ಇತಿಹಾಸ', url: 'https://images.unsplash.com/photo-1600100397608-f010f4439c27?w=800&auto=format&fit=crop&q=80' },
+                      { label: '📜 ಭಾರತೀಯ ಸಂವಿಧಾನ', url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&auto=format&fit=crop&q=80' },
+                      { label: '⚡ ಮೆಂಟಲ್ ಎಬಿಲಿಟಿ', url: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800&auto=format&fit=crop&q=80' },
+                      { label: '🔬 ಸಾಮಾನ್ಯ ವಿಜ್ಞಾನ', url: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=800&auto=format&fit=crop&q=80' },
+                      { label: '🌍 ಕರ್ನಾಟಕ ಭೂಗೋಳ', url: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&auto=format&fit=crop&q=80' },
+                      { label: '✨ ಪ್ರಚಲಿತ ಘಟನೆಗಳು', url: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=80' },
+                      { label: '🎓 ಶಿಕ್ಷಣ & TET', url: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&auto=format&fit=crop&q=80' }
+                    ].map((preset, pIdx) => (
+                      <button
+                        key={pIdx}
+                        type="button"
+                        onClick={() => setSubjectForm({ ...subjectForm, imageUrl: preset.url })}
+                        className={`p-1.5 rounded-lg border text-[10px] font-semibold text-left truncate transition-all ${
+                          subjectForm.imageUrl === preset.url
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                            : 'bg-white dark:bg-slate-900 border-purple-200 dark:border-purple-800 text-slate-700 dark:text-slate-300 hover:bg-purple-100 dark:hover:bg-purple-900/40'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Live Image Preview */}
+                {subjectForm.imageUrl && (
+                  <div className="relative h-24 w-full rounded-xl overflow-hidden border border-purple-300 dark:border-purple-700 shadow-inner mt-2">
+                    <img 
+                      src={subjectForm.imageUrl} 
+                      alt="Cover Preview" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2">
+                      <span className="text-[10px] font-bold text-white drop-shadow">✓ {lang === 'kn' ? 'ಕವರ್ ಚಿತ್ರ ಪ್ರಿವ್ಯೂ' : 'Cover Preview'}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* BADGE & TOPICS */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                    {lang === 'kn' ? 'ಬ್ಯಾಡ್ಜ್ ಶೀರ್ಷಿಕೆ (Badge)' : 'Badge Label'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ಉದಾ: ಕಡ್ಡಾಯ ಪತ್ರಿಕೆ / High Scoring"
+                    value={subjectForm.badge || ''}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, badge: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                    Icon Category
+                  </label>
+                  <select
+                    value={subjectForm.icon}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, icon: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
+                  >
+                    <option value="BookOpen">📖 Book / General</option>
+                    <option value="Landmark">🏛️ History & Heritage</option>
+                    <option value="ShieldCheck">🛡️ Polity & Constitution</option>
+                    <option value="Compass">🧭 Geography & Environment</option>
+                    <option value="Cpu">💻 Computer & Technology</option>
+                    <option value="Scale">⚖️ Law & Police Studies</option>
+                    <option value="Sparkles">✨ Current Affairs & GK</option>
+                    <option value="GraduationCap">🎓 Pedagogy & Teaching</option>
+                    <option value="Flame">🔥 Science & Technology</option>
+                    <option value="Zap">⚡ Mental Ability & Math</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === 'kn' ? 'ಪ್ರಮುಖ ಅಧ್ಯಾಯಗಳು (Topics - ಕಾಮಾಗಳಿಂದ ಬೇರ್ಪಡಿಸಿ)' : 'Key Chapters / Topics (Comma-separated)'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="ವರ್ಣಮಾಲೆ, ಸಂಧಿ, ಸಮಾಸ, ಸಾಹಿತ್ಯ, ಕದಂಬರು..."
+                  value={subjectForm.topics || ''}
+                  onChange={(e) => setSubjectForm({ ...subjectForm, topics: e.target.value })}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
                 />
               </div>
@@ -2268,30 +2402,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                 ></textarea>
               </div>
 
-              <div>
-                <label className="font-semibold block text-slate-700 dark:text-slate-300 mb-1">
-                  Icon Category
-                </label>
-                <select
-                  value={subjectForm.icon}
-                  onChange={(e) => setSubjectForm({ ...subjectForm, icon: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
-                >
-                  <option value="BookOpen">📖 Book / General</option>
-                  <option value="Landmark">🏛️ History & Heritage</option>
-                  <option value="ShieldCheck">🛡️ Polity & Constitution</option>
-                  <option value="Compass">🧭 Geography & Environment</option>
-                  <option value="Cpu">💻 Computer & Technology</option>
-                  <option value="Scale">⚖️ Law & Police Studies</option>
-                  <option value="Sparkles">✨ Current Affairs & GK</option>
-                  <option value="GraduationCap">🎓 Pedagogy & Teaching</option>
-                </select>
-              </div>
-
               <button
                 type="submit"
-                className={`w-full py-2.5 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5 ${
-                  editingSubjectId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'
+                className={`w-full py-3 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-1.5 ${
+                  editingSubjectId ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/20'
                 }`}
               >
                 {editingSubjectId ? <CheckCircle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -2320,32 +2434,66 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                 subjects.map((sub) => {
                   const subTests = tests.filter(t => t.subjectId === sub.id);
                   const subNotes = notes.filter(n => n.subjectId === sub.id);
+                  const hasCover = Boolean(sub.imageUrl || sub.image_url);
 
                   return (
                     <div
                       key={sub.id}
-                      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4"
+                      className="p-3 sm:p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 hover:border-purple-300 dark:hover:border-purple-800 transition-all"
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
-                            Subject
-                          </span>
-                          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                            {sub.name}
-                          </span>
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        {/* Subject Cover Thumbnail */}
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700 relative">
+                          {hasCover ? (
+                            <img 
+                              src={sub.imageUrl || sub.image_url} 
+                              alt={sub.name} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-purple-600 to-indigo-800 flex items-center justify-center text-white text-lg">
+                              📚
+                            </div>
+                          )}
+                          {sub.badge && (
+                            <span className="absolute bottom-0 inset-x-0 bg-black/75 text-[8px] font-black text-white text-center py-0.5 truncate px-1">
+                              {sub.badge}
+                            </span>
+                          )}
                         </div>
-                        {sub.nameKn && sub.nameKn !== sub.name && (
-                          <p className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                            {sub.nameKn}
+
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                              Subject
+                            </span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                              {sub.name}
+                            </span>
+                          </div>
+                          {sub.nameKn && sub.nameKn !== sub.name && (
+                            <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 truncate">
+                              {sub.nameKn}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-slate-400 line-clamp-1">
+                            {subTests.length} Mock Tests • {subNotes.length} Study Notes • {sub.description || 'No description'}
                           </p>
-                        )}
-                        <p className="text-[11px] text-slate-400">
-                          {subTests.length} Mock Tests • {subNotes.length} Study Notes • {sub.description || 'No description'}
-                        </p>
+
+                          {sub.topics && (
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {(Array.isArray(sub.topics) ? sub.topics : String(sub.topics).split(',')).slice(0, 3).map((t, idx) => (
+                                <span key={idx} className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                  #{typeof t === 'string' ? t.trim() : t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
                         <button
                           onClick={() => handleDuplicateSubject(sub)}
                           className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-600 transition-colors"
@@ -2355,10 +2503,11 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                         </button>
                         <button
                           onClick={() => handleStartEditSubject(sub)}
-                          className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600"
+                          className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 flex items-center gap-1 text-xs font-bold"
                           title="Edit Subject"
                         >
                           <Edit3 className="w-4 h-4" />
+                          <span className="hidden sm:inline">{lang === 'kn' ? 'ತಿದ್ದುಪಡಿ' : 'Edit'}</span>
                         </button>
                         <button
                           onClick={() => deleteSubject(sub.id)}

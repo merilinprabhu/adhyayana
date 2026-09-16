@@ -40,7 +40,8 @@ import {
   ChevronRight,
   Star,
   Trophy,
-  Filter
+  Filter,
+  Eye
 } from 'lucide-react';
 
 // Icon Renderer Helper
@@ -152,7 +153,8 @@ export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, o
     return matchesSearch && matchesCategory && matchesPrice;
   });
 
-  // Modals for Creation
+  // Modals for Creation & Preview
+  const [previewSubject, setPreviewSubject] = useState(null);
   const [isNewSubjectModalOpen, setIsNewSubjectModalOpen] = useState(false);
   const [isNewNoteModalOpen, setIsNewNoteModalOpen] = useState(false);
   const [isNewTestModalOpen, setIsNewTestModalOpen] = useState(false);
@@ -871,8 +873,8 @@ export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, o
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
-                {/* Dynamic Subject Cards with Image/Logo & Badges */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* Dynamic Subject Cards with Image, Topics, and Quick Actions */}
                 {subjects.map((subj) => {
                   const subjNotes = notes.filter(n => n.subjectId === subj.id || n.category === subj.name);
                   const subjTests = tests.filter(t => t.subjectId === subj.id || t.subjectName === subj.name);
@@ -884,103 +886,205 @@ export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, o
                   const completedSubjItems = subjReadNotes + subjAttemptedTests;
                   const prepPercentage = totalSubjItems > 0 ? Math.round((completedSubjItems / totalSubjItems) * 100) : 0;
                   const hasImage = Boolean(subj.imageUrl || subj.image_url);
+                  const gradient = subj.colorGradient || 'from-emerald-600 via-teal-700 to-cyan-800';
 
                   return (
                     <div
                       key={subj.id}
-                      className="group relative cursor-pointer rounded-2xl border transition-all text-left flex flex-col justify-between select-none overflow-hidden hover:shadow-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-800 dark:text-slate-100 hover:scale-[1.02]"
-                      onClick={() => setSelectedSubjectId(subj.id)}
+                      className="group relative rounded-3xl border transition-all duration-300 text-left flex flex-col justify-between select-none overflow-hidden hover:shadow-2xl bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-emerald-500 text-slate-800 dark:text-slate-100 hover:-translate-y-1.5 shadow-md"
                     >
-                      {/* Card Thumbnail / Header */}
-                      {hasImage ? (
-                        <div className="relative h-24 w-full overflow-hidden bg-slate-800">
+                      {/* Card Thumbnail / Header Banner - Large & Eye-Catching */}
+                      <div className="relative h-44 sm:h-48 md:h-52 w-full overflow-hidden bg-slate-900">
+                        {hasImage ? (
                           <img 
                             src={subj.imageUrl || subj.image_url} 
                             alt={subj.name} 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 brightness-90 group-hover:brightness-100"
                             onError={(e) => { e.target.style.display = 'none'; }}
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
-                          <div className="absolute bottom-2 left-2.5 p-1.5 rounded-lg bg-white/95 dark:bg-slate-900/95 shadow backdrop-blur-sm">
-                            {renderSubjectIcon(subj.icon)}
-                          </div>
-                          {prepPercentage > 0 ? (
-                            <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-600 text-white shadow">
-                              ✓ {prepPercentage}% {lang === 'kn' ? 'ಮುಗಿದಿದೆ' : 'Done'}
-                            </span>
-                          ) : (
-                            <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-600 text-white shadow">
-                              OPEN →
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="h-14 bg-gradient-to-r from-emerald-600/20 via-teal-600/10 to-transparent p-3 flex items-center justify-between">
-                          <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            {renderSubjectIcon(subj.icon)}
-                          </div>
-                          {prepPercentage > 0 ? (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                              ✓ {prepPercentage}%
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                              OPEN →
-                            </span>
-                          )}
-                        </div>
-                      )}
+                        ) : (
+                          <div className={`w-full h-full bg-gradient-to-br ${gradient} opacity-95`} />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-black/25" />
 
-                      <div className="p-3.5 flex flex-col justify-between flex-1">
-                        <div className="flex items-start justify-between gap-1">
-                          <p className="font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                            {lang === 'kn' ? subj.nameKn || subj.name : subj.name}
+                        {/* Top Badges */}
+                        <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between pointer-events-none">
+                          <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/95 dark:bg-slate-900/90 text-slate-900 dark:text-white shadow-lg backdrop-blur-md border border-white/30">
+                            {subj.badge || (lang === 'kn' ? 'ಕೋರ್ ವಿಷಯ' : 'Core Subject')}
+                          </span>
+
+                          {prepPercentage > 0 ? (
+                            <span className="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-500 text-white shadow-lg flex items-center gap-1">
+                              ✓ {prepPercentage}% {lang === 'kn' ? 'ಸಿದ್ಧತೆ' : 'Ready'}
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-slate-900/85 text-emerald-400 border border-emerald-500/50 backdrop-blur-md shadow">
+                              {subjNotesCount + subjTestsCount} {lang === 'kn' ? 'ಸಾಮಗ್ರಿಗಳು' : 'Items'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Floating Icon & Title Overlay */}
+                        <div className="absolute bottom-3.5 left-3.5 right-3.5 flex items-end justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="p-2.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 shadow-xl backdrop-blur-md border border-white/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+                              {renderSubjectIcon(subj.icon)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white text-xs sm:text-sm font-bold drop-shadow line-clamp-1 opacity-95">
+                                {subj.name}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Quick Preview Eye Trigger */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewSubject(subj);
+                            }}
+                            className="px-3 py-2 rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all shadow-lg backdrop-blur-md flex items-center gap-1.5 text-xs font-bold shrink-0 border border-white/20"
+                            title={lang === 'kn' ? 'ತ್ವರಿತ ಮುನ್ನೋಟ' : 'Quick Preview'}
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span>{lang === 'kn' ? 'ಮುನ್ನೋಟ' : 'Preview'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card Content Body */}
+                      <div className="p-5 flex flex-col justify-between flex-1 space-y-4">
+                        <div>
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 
+                              onClick={() => setSelectedSubjectId(subj.id)}
+                              className="font-black text-base sm:text-lg text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer leading-tight"
+                            >
+                              {lang === 'kn' ? subj.nameKn || subj.name : subj.name}
+                            </h3>
+
+                            {/* Developer Subject Edit & Delete Buttons */}
+                            {isDeveloper && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditSubject(subj);
+                                  }}
+                                  className="p-1.5 hover:bg-emerald-500 hover:text-white rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 transition-all shadow-xs"
+                                  title="Edit Subject"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Delete subject "${subj.name}" and all its notes/tests?`)) {
+                                      deleteSubject(subj.id);
+                                      if (selectedSubjectId === subj.id) setSelectedSubjectId('ALL');
+                                    }
+                                  }}
+                                  className="p-1.5 hover:bg-red-500 hover:text-white rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 transition-all shadow-xs"
+                                  title="Delete Subject"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                            {subj.description || (lang === 'kn' ? 'ಕರ್ನಾಟಕ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆಗಳಿಗೆ ಅಧಿಕೃತ ಸಿಲಬಸ್ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ಅಣಕು ಪರೀಕ್ಷೆಗಳು.' : 'Comprehensive syllabus notes and mock tests for Karnataka competitive exams.')}
                           </p>
 
-                          {/* Developer Subject Edit & Delete Buttons */}
-                          {isDeveloper && (
-                            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity z-10 shrink-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenEditSubject(subj);
-                                }}
-                                className="p-1 hover:bg-emerald-500 hover:text-white rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 transition-all shadow"
-                                title="Edit Subject"
-                              >
-                                <Edit3 className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (window.confirm(`Delete subject "${subj.name}" and all its notes/tests?`)) {
-                                    deleteSubject(subj.id);
-                                    if (selectedSubjectId === subj.id) setSelectedSubjectId('ALL');
-                                  }
-                                }}
-                                className="p-1 hover:bg-red-500 hover:text-white rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 transition-all shadow"
-                                title="Delete Subject"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                          {/* Interactive Topic Tags Preview */}
+                          {subj.topics && subj.topics.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2.5">
+                              {subj.topics.slice(0, 3).map((topic, tIdx) => (
+                                <span
+                                  key={tIdx}
+                                  onClick={() => setPreviewSubject(subj)}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+                                >
+                                  #{topic}
+                                </span>
+                              ))}
+                              {subj.topics.length > 3 && (
+                                <span 
+                                  onClick={() => setPreviewSubject(subj)}
+                                  className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 cursor-pointer self-center"
+                                >
+                                  +{subj.topics.length - 3} {lang === 'kn' ? 'ಹೆಚ್ಚು' : 'more'}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
 
-                        {/* Progress Bar if student has started */}
-                        {prepPercentage > 0 && (
-                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2">
-                            <div className="bg-emerald-500 h-full rounded-full transition-all" style={{ width: `${prepPercentage}%` }} />
-                          </div>
-                        )}
+                        {/* Progress and Stats Row */}
+                        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                          {prepPercentage > 0 && (
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                                <span>{lang === 'kn' ? 'ಅಧ್ಯಯನ ಪ್ರಗತಿ' : 'Study Progress'}</span>
+                                <span className="text-emerald-600 dark:text-emerald-400">{prepPercentage}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${prepPercentage}%` }} />
+                              </div>
+                            </div>
+                          )}
 
-                        <div className="flex items-center gap-1.5 mt-2.5">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
-                            📖 {subjNotesCount} Notes
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/40">
-                            📝 {subjTestsCount} Tests
-                          </span>
+                          <div className="flex items-center justify-between text-[11px] font-bold">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                                📖 {subjNotesCount} {lang === 'kn' ? 'ನೋಟ್ಸ್' : 'Notes'}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/40">
+                                📝 {subjTestsCount} {lang === 'kn' ? 'ಟೆಸ್ಟ್‌ಗಳು' : 'Tests'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Quick Action Footer Buttons */}
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            {subjTestsCount > 0 ? (
+                              <button
+                                onClick={() => {
+                                  if (subjTests[0] && onSelectTest) {
+                                    onSelectTest(subjTests[0]);
+                                  } else {
+                                    setSelectedSubjectId(subj.id);
+                                    setActiveTab('tests');
+                                  }
+                                }}
+                                className="px-3 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-teal-600/20 hover:scale-[1.02] transition-all"
+                              >
+                                <PlayCircle className="w-3.5 h-3.5" />
+                                <span>{lang === 'kn' ? 'ಟೆಸ್ಟ್ ಬಿಡಿಸಿ' : 'Practice Test'}</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setSelectedSubjectId(subj.id);
+                                  setActiveTab('notes');
+                                }}
+                                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                              >
+                                <BookOpen className="w-3.5 h-3.5" />
+                                <span>{lang === 'kn' ? 'ನೋಟ್ಸ್ ಓದಿ' : 'Read Notes'}</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                setSelectedSubjectId(subj.id);
+                              }}
+                              className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all"
+                            >
+                              <span>{lang === 'kn' ? 'ವಿಷಯ ಕೇಂದ್ರ →' : 'Open Hub →'}</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2763,6 +2867,249 @@ export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, o
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK SUBJECT PREVIEW MODAL / DRAWER */}
+      {previewSubject && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setPreviewSubject(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header Banner */}
+            <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-slate-900 shrink-0">
+              {previewSubject.imageUrl ? (
+                <img
+                  src={previewSubject.imageUrl}
+                  alt={previewSubject.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className={`w-full h-full bg-gradient-to-br ${previewSubject.colorGradient || 'from-emerald-600 to-teal-800'}`} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-black/30" />
+
+              {/* Close Button */}
+              <button
+                onClick={() => setPreviewSubject(null)}
+                className="absolute top-3.5 right-3.5 p-2 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-md"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Subject Badge */}
+              <div className="absolute top-3.5 left-3.5">
+                <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/95 dark:bg-slate-900/90 text-slate-900 dark:text-white shadow-md backdrop-blur-md border border-white/20">
+                  {previewSubject.badge || (lang === 'kn' ? 'ವಿಷಯ ಮುನ್ನೋಟ' : 'Subject Overview')}
+                </span>
+              </div>
+
+              {/* Header Title & Details */}
+              <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 shadow-lg backdrop-blur-md border border-white/30 text-emerald-600 dark:text-emerald-400">
+                    {renderSubjectIcon(previewSubject.icon)}
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-black text-white drop-shadow">
+                      {lang === 'kn' ? previewSubject.nameKn || previewSubject.name : previewSubject.name}
+                    </h2>
+                    <p className="text-xs text-slate-200 opacity-90 line-clamp-1">
+                      {previewSubject.name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
+              {/* Description */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                  {lang === 'kn' ? 'ವಿಷಯದ ಪರಿಚಯ & ಮಹತ್ವ' : 'Subject Overview & Syllabus'}
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                  {previewSubject.description || (lang === 'kn' ? 'ಕರ್ನಾಟಕ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆಗಳಿಗೆ ಅಧಿಕೃತ ಸಿಲಬಸ್ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ಅಣಕು ಪರೀಕ್ಷೆಗಳು.' : 'Comprehensive syllabus notes and mock tests for Karnataka competitive exams.')}
+                </p>
+              </div>
+
+              {/* Syllabus Chapters / Key Topics */}
+              {previewSubject.topics && previewSubject.topics.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {lang === 'kn' ? 'ಪ್ರಮುಖ ಅಧ್ಯಾಯಗಳು & ಟಾಪಿಕ್ಸ್' : 'Key Syllabus Topics & Chapters'}
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {previewSubject.topics.map((t, i) => (
+                      <span
+                        key={i}
+                        className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                      >
+                        ✓ {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Summary Stats & Progress */}
+              {(() => {
+                const subjNotes = notes.filter(n => n.subjectId === previewSubject.id || n.category === previewSubject.name);
+                const subjTests = tests.filter(t => t.subjectId === previewSubject.id || t.subjectName === previewSubject.name);
+                const subjReadNotes = subjNotes.filter(n => (readNoteIds || []).includes(n.id)).length;
+                const subjAttemptedTests = subjTests.filter(t => (attempts || []).some(a => a.testId === t.id || (a.testTitle && a.testTitle.toLowerCase() === (t.title || '').toLowerCase()))).length;
+                const totalItems = subjNotes.length + subjTests.length;
+                const completedItems = subjReadNotes + subjAttemptedTests;
+                const pct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+                return (
+                  <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    {/* Progress Bar */}
+                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold">
+                        <span className="text-slate-700 dark:text-slate-300">
+                          {lang === 'kn' ? 'ನಿಮ್ಮ ಒಟ್ಟಾರೆ ಸಿದ್ಧತೆ:' : 'Your Preparation Progress:'}
+                        </span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{pct}% {lang === 'kn' ? 'ಮುಗಿದಿದೆ' : 'Completed'}</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-500">
+                        <span>{subjReadNotes}/{subjNotes.length} {lang === 'kn' ? 'ನೋಟ್ಸ್ ಓದಲಾಗಿದೆ' : 'Notes Read'}</span>
+                        <span>{subjAttemptedTests}/{subjTests.length} {lang === 'kn' ? 'ಟೆಸ್ಟ್ ಬರೆಯಲಾಗಿದೆ' : 'Tests Attempted'}</span>
+                      </div>
+                    </div>
+
+                    {/* Available Tests Preview List */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <span className="flex items-center gap-1.5 text-teal-600 dark:text-teal-400">
+                          <PlayCircle className="w-4 h-4" />
+                          {lang === 'kn' ? 'ಲಭ್ಯವಿರುವ ಅಣಕು ಪರೀಕ್ಷೆಗಳು' : 'Available Mock Tests'} ({subjTests.length})
+                        </span>
+                      </div>
+
+                      {subjTests.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">
+                          {lang === 'kn' ? 'ಈ ವಿಷಯದಲ್ಲಿ ಸದ್ಯಕ್ಕೆ ಯಾವುದೇ ಟೆಸ್ಟ್ ಲಭ್ಯವಿಲ್ಲ.' : 'No tests available for this subject yet.'}
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {subjTests.slice(0, 4).map((t) => (
+                            <div
+                              key={t.id}
+                              className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 hover:border-teal-500 transition-colors"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                  {lang === 'kn' ? t.titleKn || t.title : t.title}
+                                </p>
+                                <span className="text-[10px] text-slate-500">
+                                  ⏱️ {t.durationMinutes} Mins • 🎯 {t.totalMarks} Marks
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setPreviewSubject(null);
+                                  if (onSelectTest) {
+                                    onSelectTest(t);
+                                  } else {
+                                    setSelectedSubjectId(previewSubject.id);
+                                    setActiveTab('tests');
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shrink-0 flex items-center gap-1 shadow-sm"
+                              >
+                                <PlayCircle className="w-3 h-3" />
+                                <span>{lang === 'kn' ? 'ಪ್ರಾರಂಭಿಸಿ' : 'Start'}</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Available Notes Preview List */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                          <BookOpen className="w-4 h-4" />
+                          {lang === 'kn' ? 'ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು' : 'Digital Study Notes'} ({subjNotes.length})
+                        </span>
+                      </div>
+
+                      {subjNotes.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">
+                          {lang === 'kn' ? 'ಈ ವಿಷಯದಲ್ಲಿ ಸದ್ಯಕ್ಕೆ ಯಾವುದೇ ನೋಟ್ಸ್ ಲಭ್ಯವಿಲ್ಲ.' : 'No notes available for this subject yet.'}
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {subjNotes.slice(0, 4).map((n) => (
+                            <div
+                              key={n.id}
+                              className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 hover:border-emerald-500 transition-colors"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                  {lang === 'kn' ? n.titleKn || n.title : n.title}
+                                </p>
+                                <span className="text-[10px] text-slate-500">
+                                  📖 {n.readTimeMinutes || 10} Mins Read
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setPreviewSubject(null);
+                                  if (onSelectNote) {
+                                    onSelectNote(n);
+                                  } else {
+                                    setSelectedSubjectId(previewSubject.id);
+                                    setActiveTab('notes');
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0 flex items-center gap-1 shadow-sm"
+                              >
+                                <BookOpen className="w-3 h-3" />
+                                <span>{lang === 'kn' ? 'ಓದಿ' : 'Read'}</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+              <button
+                onClick={() => setPreviewSubject(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold"
+              >
+                {lang === 'kn' ? 'ಮುಚ್ಚಿ' : 'Close'}
+              </button>
+
+              <button
+                onClick={() => {
+                  const targetSubjId = previewSubject.id;
+                  setPreviewSubject(null);
+                  setSelectedSubjectId(targetSubjId);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md flex items-center gap-2"
+              >
+                <span>{lang === 'kn' ? 'ಸಂಪೂರ್ಣ ವಿಷಯ ಕೇಂದ್ರಕ್ಕೆ ತೆರಳಿ' : 'Open Full Subject Hub'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

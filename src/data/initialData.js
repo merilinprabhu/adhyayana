@@ -79,6 +79,10 @@ export const INITIAL_SUBJECTS = [
     nameKn: 'ಕನ್ನಡ ವ್ಯಾಕರಣ & ಸಾಹಿತ್ಯ',
     description: 'ವರ್ಣಮಾಲೆ, ಸಂಧಿ, ಸಮಾಸ, ತತ್ಸಮ-ತದ್ಭವ, ಅಲಂಕಾರ, ಛಂದಸ್ಸು ಮತ್ತು ಪ್ರಮುಖ ಸಾಹಿತ್ಯ ಕೃತಿಗಳು.',
     icon: 'BookOpen',
+    imageUrl: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&auto=format&fit=crop&q=80',
+    colorGradient: 'from-amber-600 via-orange-600 to-rose-700',
+    badge: 'ಕಡ್ಡಾಯ ಪತ್ರಿಕೆ',
+    topics: ['ವರ್ಣಮಾಲೆ & ಸಂಧಿ', 'ಸಮಾಸಗಳು', 'ತತ್ಸಮ-ತದ್ಭವ', 'ಕನ್ನಡ ಸಾಹಿತ್ಯ', 'ಜ್ಞಾನಪೀಠ ಪುರಸ್ಕೃತರು'],
     order: 1
   },
   {
@@ -88,6 +92,10 @@ export const INITIAL_SUBJECTS = [
     nameKn: 'ಕರ್ನಾಟಕ ಇತಿಹಾಸ & ಸಂಸ್ಕೃತಿ',
     description: 'ಕದಂಬರು, ಚಾಲುಕ್ಯರು, ರಾಷ್ಟ್ರಕೂಟರು, ಹೊಯ್ಸಳರು, ವಿಜಯನಗರ ಸಾಮ್ರಾಜ್ಯ, ಮೈಸೂರು ಒಡೆಯರು ಮತ್ತು ಕರ್ನಾಟಕ ಏಕೀಕರಣ.',
     icon: 'Landmark',
+    imageUrl: 'https://images.unsplash.com/photo-1600100397608-f010f4439c27?w=800&auto=format&fit=crop&q=80',
+    colorGradient: 'from-emerald-600 via-teal-700 to-cyan-800',
+    badge: 'ಹೆಚ್ಚು ಪ್ರಶ್ನೆಗಳು',
+    topics: ['ಕದಂಬರು & ಚಾಲುಕ್ಯರು', 'ವಿಜಯನಗರ ಸಾಮ್ರಾಜ್ಯ', 'ಮೈಸೂರು ಒಡೆಯರು', 'ಕರ್ನಾಟಕ ಏಕೀಕರಣ', 'ಸ್ವಾತಂತ್ರ್ಯ ಚಳುವಳಿ'],
     order: 2
   },
   {
@@ -97,6 +105,10 @@ export const INITIAL_SUBJECTS = [
     nameKn: 'ಭಾರತೀಯ ಸಂವಿಧಾನ & ರಾಜನೀತಿ',
     description: 'ಮೂಲಭೂತ ಹಕ್ಕುಗಳು, ನಿರ್ದೇಶಕ ತತ್ವಗಳು, ಸಂಸತ್ತು, ನ್ಯಾಯಾಂಗ, ಪಂಚಾಯತ್ ರಾಜ್ ಮತ್ತು ಪ್ರಮುಖ ತಿದ್ದುಪಡಿಗಳು.',
     icon: 'Compass',
+    imageUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&auto=format&fit=crop&q=80',
+    colorGradient: 'from-blue-600 via-indigo-700 to-violet-800',
+    badge: 'ಸ್ಕೋರಿಂಗ್ ವಿಷಯ',
+    topics: ['ಪೀಠಿಕೆ & ಮೂಲಭೂತ ಹಕ್ಕುಗಳು', 'ನಿರ್ದೇಶಕ ತತ್ವಗಳು', 'ಸಂಸತ್ತು & ರಾಷ್ಟ್ರಪತಿ', 'ಸುಪ್ರೀಂ ಕೋರ್ಟ್', '73 & 74ನೇ ತಿದ್ದುಪಡಿ'],
     order: 3
   },
   {
@@ -106,7 +118,37 @@ export const INITIAL_SUBJECTS = [
     nameKn: 'ಮಾನಸಿಕ ಸಾಮರ್ಥ್ಯ & ಗಣಿತ',
     description: 'ಸಂಖ್ಯಾ ಸರಣಿ, ಕೋಡಿಂಗ್-ಡಿಕೋಡಿಂಗ್, ರಕ್ತ ಸಂಬಂಧ, ವೇಗ-ಸಮಯ-ದೂರ ಮತ್ತು ಡಾಟಾ ಇಂಟರ್‌ಪ್ರಿಟೇಶನ್.',
     icon: 'Sparkles',
+    imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800&auto=format&fit=crop&q=80',
+    colorGradient: 'from-purple-600 via-fuchsia-700 to-pink-700',
+    badge: 'ಶಾರ್ಟ್‌ಕಟ್ ಟ್ರಿಕ್ಸ್',
+    topics: ['ಸಂಖ್ಯಾ ಸರಣಿ', 'ಕೋಡಿಂಗ್ & ಡಿಕೋಡಿಂಗ್', 'ರಕ್ತ ಸಂಬಂಧ', 'ಸಮಯ & ಕೆಲಸ', 'ಡಾಟಾ ಇಂಟರ್‌ಪ್ರಿಟೇಶನ್'],
     order: 4
+  },
+  {
+    id: 'subj_general_science',
+    examId: 'exam_kas_2026',
+    name: 'ಸಾಮಾನ್ಯ ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ (General Science)',
+    nameKn: 'ಸಾಮಾನ್ಯ ವಿಜ್ಞಾನ & ತಂತ್ರಜ್ಞಾನ',
+    description: 'ಭೌತಶಾಸ್ತ್ರ, ರಸಾಯನಶಾಸ್ತ್ರ, ಜೀವಶಾಸ್ತ್ರ, ಪರಿಸರ ವಿಜ್ಞಾನ ಮತ್ತು ಇಸ್ರೋ / ಬಾಹ್ಯಾಕಾಶ ಸಂಶೋಧನೆಗಳು.',
+    icon: 'Flame',
+    imageUrl: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=800&auto=format&fit=crop&q=80',
+    colorGradient: 'from-rose-600 via-red-600 to-amber-700',
+    badge: 'ದೈನಂದಿನ ವಿಜ್ಞಾನ',
+    topics: ['ಮಾನವ ಶರೀರ ಶಾಸ್ತ್ರ', 'ಪರಿಸರ & ಜೀವವೈವಿಧ್ಯ', 'ಇಸ್ರೋ ಮಿಷನ್‌ಗಳು', 'ರೋಗಗಳು & ಲಸಿಕೆ', 'ಭೌತ ನಿಯಮಗಳು'],
+    order: 5
+  },
+  {
+    id: 'subj_geography',
+    examId: 'exam_kas_2026',
+    name: 'ಕರ್ನಾಟಕ & ಭಾರತದ ಭೂಗೋಳ (Geography)',
+    nameKn: 'ಕರ್ನಾಟಕ & ಭಾರತದ ಭೂಗೋಳ',
+    description: 'ನದಿ ವ್ಯವಸ್ಥೆ, ಮಣ್ಣು, ಹವಾಮಾನ, ಖನಿಜ ಸಂಪನ್ಮೂಲಗಳು, ರಾಷ್ಟ್ರೀಯ ಉದ್ಯಾನವನಗಳು ಮತ್ತು ಜನಗಣತಿ.',
+    icon: 'Globe',
+    imageUrl: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&auto=format&fit=crop&q=80',
+    colorGradient: 'from-teal-600 via-emerald-700 to-green-800',
+    badge: 'ಮ್ಯಾಪ್ ಆಧಾರಿತ',
+    topics: ['ಕರ್ನಾಟಕದ ನದಿಗಳು', 'ರಾಷ್ಟ್ರೀಯ ಉದ್ಯಾನವನಗಳು', 'ಖನಿಜಗಳು & ಕೈಗಾರಿಕೆ', 'ಮಳೆ & ಹವಾಮಾನ', 'ಪಶ್ಚಿಮ ಘಟ್ಟಗಳು'],
+    order: 6
   }
 ];
 

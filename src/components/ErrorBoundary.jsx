@@ -1,6 +1,8 @@
 import React from 'react';
 import { RefreshCw, ShieldAlert } from 'lucide-react';
 
+import { resetApplicationCache } from '../utils/storage';
+
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -22,12 +24,10 @@ export class ErrorBoundary extends React.Component {
 
   handleClearCacheAndReload = () => {
     try {
-      localStorage.removeItem('adhyayana_exams_v2');
-      localStorage.removeItem('adhyayana_subjects_v2');
-      localStorage.removeItem('adhyayana_tests_v2');
-      localStorage.removeItem('adhyayana_notes_v2');
-      localStorage.removeItem('adhyayana_notices_v3');
-    } catch (e) {}
+      resetApplicationCache(true);
+    } catch (e) {
+      localStorage.clear();
+    }
     window.location.reload();
   };
 

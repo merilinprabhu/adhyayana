@@ -10,6 +10,12 @@ import {
 } from '../data/initialData';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { 
+  safeLocalStorageSet, 
+  safeLocalStorageGet, 
+  sanitizeAttemptsForLocalStorage, 
+  pruneOldStorageCache 
+} from '../utils/storage';
 
 const DataContext = createContext(null);
 
@@ -1006,7 +1012,17 @@ export const DataProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
       const parsed = saved ? JSON.parse(saved) : null;
-      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_SUBJECTS;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const initialMap = Object.fromEntries(INITIAL_SUBJECTS.map(s => [s.id, s]));
+        return parsed.map(s => ({
+          ...s,
+          imageUrl: s.imageUrl || s.image_url || initialMap[s.id]?.imageUrl,
+          topics: (s.topics && s.topics.length > 0) ? s.topics : initialMap[s.id]?.topics || [],
+          colorGradient: s.colorGradient || initialMap[s.id]?.colorGradient || 'from-emerald-600 to-teal-700',
+          badge: s.badge || initialMap[s.id]?.badge
+        }));
+      }
+      return INITIAL_SUBJECTS;
     } catch {
       return INITIAL_SUBJECTS;
     }
@@ -1501,23 +1517,23 @@ export const DataProvider = ({ children }) => {
             if (s.key === 'payment_settings' && s.value) {
               if (s.value.upiId) {
                 setDeveloperUpiId(s.value.upiId);
-                localStorage.setItem(STORAGE_KEYS.DEV_UPI_ID, s.value.upiId);
+                safeLocalStorageSet(STORAGE_KEYS.DEV_UPI_ID, s.value.upiId);
               }
               if (s.value.phone) {
                 setDeveloperPhone(s.value.phone);
-                localStorage.setItem(STORAGE_KEYS.DEV_PHONE, s.value.phone);
+                safeLocalStorageSet(STORAGE_KEYS.DEV_PHONE, s.value.phone);
               }
               if (s.value.name) {
                 setDeveloperName(s.value.name);
-                localStorage.setItem(STORAGE_KEYS.DEV_NAME, s.value.name);
+                safeLocalStorageSet(STORAGE_KEYS.DEV_NAME, s.value.name);
               }
               if (s.value.qrImage) {
                 setDeveloperUpiQrImage(s.value.qrImage);
-                localStorage.setItem(STORAGE_KEYS.DEV_QR_IMAGE, s.value.qrImage);
+                safeLocalStorageSet(STORAGE_KEYS.DEV_QR_IMAGE, s.value.qrImage);
               }
               if (s.value.rzpKey) {
                 setRazorpayKeyId(s.value.rzpKey);
-                localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, s.value.rzpKey);
+                safeLocalStorageSet(STORAGE_KEYS.RAZORPAY_KEY, s.value.rzpKey);
               }
             } else if (s.key === 'home_page_sections' && Array.isArray(s.value) && s.value.length > 0) {
               const existingIds = new Set(s.value.map(item => item.id || item.type));
@@ -1544,12 +1560,10 @@ export const DataProvider = ({ children }) => {
               }
 
               setHomeSections(merged);
-              localStorage.setItem(STORAGE_KEYS.HOME_SECTIONS, JSON.stringify(merged));
+              safeLocalStorageSet(STORAGE_KEYS.HOME_SECTIONS, merged);
             } else if (s.key === 'live_mock_test_settings' && s.value && typeof s.value === 'object') {
               setLiveMockTest(prev => ({ ...prev, ...s.value }));
-              try {
-                localStorage.setItem(STORAGE_KEYS.LIVE_MOCK_TEST, JSON.stringify(s.value));
-              } catch (e) {}
+              safeLocalStorageSet(STORAGE_KEYS.LIVE_MOCK_TEST, s.value);
             } else if (s.key === 'feedbacks_data' && Array.isArray(s.value) && s.value.length > 0) {
               setFeedbacks(prev => {
                 const map = new Map(s.value.map(item => [item.id, item]));
@@ -1568,24 +1582,16 @@ export const DataProvider = ({ children }) => {
               });
             } else if (s.key === 'footer_config' && s.value && typeof s.value === 'object') {
               setFooterConfig(prev => ({ ...prev, ...s.value }));
-              try {
-                localStorage.setItem(STORAGE_KEYS.FOOTER_CONFIG, JSON.stringify(s.value));
-              } catch (e) {}
+              safeLocalStorageSet(STORAGE_KEYS.FOOTER_CONFIG, s.value);
             } else if (s.key === 'daily_current_affairs' && Array.isArray(s.value) && s.value.length > 0) {
               setCurrentAffairs(s.value);
-              try {
-                localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify(s.value));
-              } catch (e) {}
+              safeLocalStorageSet(STORAGE_KEYS.CURRENT_AFFAIRS, s.value);
             } else if (s.key === 'daily_flashcards' && Array.isArray(s.value) && s.value.length > 0) {
               setFlashcards(s.value);
-              try {
-                localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(s.value));
-              } catch (e) {}
+              safeLocalStorageSet(STORAGE_KEYS.FLASHCARDS, s.value);
             } else if (s.key === 'daily_quiz_settings' && s.value && typeof s.value === 'object') {
               setDailyQuiz(s.value);
-              try {
-                localStorage.setItem(STORAGE_KEYS.DAILY_QUIZ, JSON.stringify(s.value));
-              } catch (e) {}
+              safeLocalStorageSet(STORAGE_KEYS.DAILY_QUIZ, s.value);
             }
           });
         }
@@ -1734,105 +1740,105 @@ export const DataProvider = ({ children }) => {
     syncFromSupabase();
   }, [syncFromSupabase]);
 
-  // Persist items to localStorage
+  // Persist items to localStorage (Quota safe with auto-pruning & attempts sanitization)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.EXAMS, JSON.stringify(exams));
+    safeLocalStorageSet(STORAGE_KEYS.EXAMS, exams);
   }, [exams]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(subjects));
+    safeLocalStorageSet(STORAGE_KEYS.SUBJECTS, subjects);
   }, [subjects]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TESTS, JSON.stringify(tests));
+    safeLocalStorageSet(STORAGE_KEYS.TESTS, tests);
   }, [tests]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
+    safeLocalStorageSet(STORAGE_KEYS.NOTES, notes);
   }, [notes]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(attempts));
+    safeLocalStorageSet(STORAGE_KEYS.ATTEMPTS, sanitizeAttemptsForLocalStorage(attempts, 15));
   }, [attempts]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(bookmarks));
+    safeLocalStorageSet(STORAGE_KEYS.BOOKMARKS, bookmarks);
   }, [bookmarks]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.READ_NOTES, JSON.stringify(readNoteIds));
+    safeLocalStorageSet(STORAGE_KEYS.READ_NOTES, readNoteIds);
   }, [readNoteIds]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PURCHASES, JSON.stringify(purchases));
+    safeLocalStorageSet(STORAGE_KEYS.PURCHASES, purchases);
   }, [purchases]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+    safeLocalStorageSet(STORAGE_KEYS.PROFILES, profiles);
   }, [profiles]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
+    safeLocalStorageSet(STORAGE_KEYS.LANGUAGE, lang);
   }, [lang]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, razorpayKeyId);
+    safeLocalStorageSet(STORAGE_KEYS.RAZORPAY_KEY, razorpayKeyId);
   }, [razorpayKeyId]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.DAILY_QUIZ, JSON.stringify(dailyQuiz));
+    safeLocalStorageSet(STORAGE_KEYS.DAILY_QUIZ, dailyQuiz);
   }, [dailyQuiz]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.COMBOS, JSON.stringify(combos));
+    safeLocalStorageSet(STORAGE_KEYS.COMBOS, combos);
   }, [combos]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(mistakes));
+    safeLocalStorageSet(STORAGE_KEYS.MISTAKES, mistakes);
   }, [mistakes]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.LEADERBOARD, JSON.stringify(leaderboard));
+    safeLocalStorageSet(STORAGE_KEYS.LEADERBOARD, leaderboard);
   }, [leaderboard]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(referrals));
+    safeLocalStorageSet(STORAGE_KEYS.REFERRALS, referrals);
   }, [referrals]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.HOME_SECTIONS, JSON.stringify(homeSections));
+    safeLocalStorageSet(STORAGE_KEYS.HOME_SECTIONS, homeSections);
   }, [homeSections]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.NOTICES, JSON.stringify(notices));
+    safeLocalStorageSet(STORAGE_KEYS.NOTICES, notices);
   }, [notices]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.READ_NOTICES, JSON.stringify(readNoticeIds));
+    safeLocalStorageSet(STORAGE_KEYS.READ_NOTICES, readNoticeIds);
   }, [readNoticeIds]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FOOTER_CONFIG, JSON.stringify(footerConfig));
+    safeLocalStorageSet(STORAGE_KEYS.FOOTER_CONFIG, footerConfig);
   }, [footerConfig]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(emailConfig));
+    safeLocalStorageSet(STORAGE_KEYS.EMAIL_CONFIG, emailConfig);
   }, [emailConfig]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify(currentAffairs));
+    safeLocalStorageSet(STORAGE_KEYS.CURRENT_AFFAIRS, currentAffairs);
   }, [currentAffairs]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(flashcards));
+    safeLocalStorageSet(STORAGE_KEYS.FLASHCARDS, flashcards);
   }, [flashcards]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FLASHCARD_PROGRESS, JSON.stringify(flashcardProgress));
+    safeLocalStorageSet(STORAGE_KEYS.FLASHCARD_PROGRESS, flashcardProgress);
   }, [flashcardProgress]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.STUDY_STREAK, JSON.stringify(studyStreak));
+    safeLocalStorageSet(STORAGE_KEYS.STUDY_STREAK, studyStreak);
   }, [studyStreak]);
 
   // 1-Click Push / Seed All Current Local & Template Data to Supabase Database
@@ -2370,7 +2376,7 @@ export const DataProvider = ({ children }) => {
 
   const resetHomeSections = () => {
     setHomeSections(DEFAULT_HOME_SECTIONS);
-    localStorage.setItem(STORAGE_KEYS.HOME_SECTIONS, JSON.stringify(DEFAULT_HOME_SECTIONS));
+    safeLocalStorageSet(STORAGE_KEYS.HOME_SECTIONS, DEFAULT_HOME_SECTIONS);
     try {
       supabase.from('app_settings').upsert({ key: 'home_page_sections', value: DEFAULT_HOME_SECTIONS });
     } catch (e) {}
@@ -2381,10 +2387,10 @@ export const DataProvider = ({ children }) => {
     setSubjects(INITIAL_SUBJECTS);
     setTests(INITIAL_TESTS);
     setNotes(INITIAL_NOTES);
-    localStorage.setItem(STORAGE_KEYS.EXAMS, JSON.stringify(INITIAL_EXAMS));
-    localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(INITIAL_SUBJECTS));
-    localStorage.setItem(STORAGE_KEYS.TESTS, JSON.stringify(INITIAL_TESTS));
-    localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(INITIAL_NOTES));
+    safeLocalStorageSet(STORAGE_KEYS.EXAMS, INITIAL_EXAMS);
+    safeLocalStorageSet(STORAGE_KEYS.SUBJECTS, INITIAL_SUBJECTS);
+    safeLocalStorageSet(STORAGE_KEYS.TESTS, INITIAL_TESTS);
+    safeLocalStorageSet(STORAGE_KEYS.NOTES, INITIAL_NOTES);
     return { success: true, message: 'Default Syllabus, Tests, and Notes restored successfully!' };
   };
 
@@ -2925,9 +2931,7 @@ export const DataProvider = ({ children }) => {
 
     setAttempts(prev => {
       const updated = [fullAttempt, ...prev.filter(a => a.id !== fullAttempt.id)];
-      try {
-        localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.ATTEMPTS, sanitizeAttemptsForLocalStorage(updated, 15));
       return updated;
     });
 
@@ -2957,17 +2961,15 @@ export const DataProvider = ({ children }) => {
             map.set(wq.id || wq.question, wq);
           });
           const updatedMistakes = Array.from(map.values());
-          try {
-            localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(updatedMistakes));
-          } catch (e) {}
+          safeLocalStorageSet(STORAGE_KEYS.MISTAKES, updatedMistakes);
           return updatedMistakes;
         });
       }
     }
 
-    // Push to Supabase user_attempts table
+    // Push to Supabase user_attempts database table
     try {
-      await supabase.from('user_attempts').upsert({
+      const { error } = await supabase.from('user_attempts').upsert({
         id: fullAttempt.id,
         user_id: fullAttempt.userId,
         user_email: fullAttempt.userEmail,
@@ -2984,6 +2986,11 @@ export const DataProvider = ({ children }) => {
         question_results: fullAttempt.questionResults,
         timestamp: fullAttempt.timestamp
       });
+      if (error) {
+        console.warn('Supabase attempt upsert notice:', error);
+      } else {
+        console.log('✅ Attempt saved to Supabase Cloud Database:', fullAttempt.id);
+      }
     } catch (e) {
       console.warn('Supabase attempt insert fallback:', e);
     }
@@ -3022,23 +3029,23 @@ export const DataProvider = ({ children }) => {
   const updateDeveloperPaymentSettings = async ({ upiId, phone, name, qrImage, rzpKey }) => {
     if (upiId !== undefined) {
       setDeveloperUpiId(upiId);
-      localStorage.setItem(STORAGE_KEYS.DEV_UPI_ID, upiId);
+      safeLocalStorageSet(STORAGE_KEYS.DEV_UPI_ID, upiId);
     }
     if (phone !== undefined) {
       setDeveloperPhone(phone);
-      localStorage.setItem(STORAGE_KEYS.DEV_PHONE, phone);
+      safeLocalStorageSet(STORAGE_KEYS.DEV_PHONE, phone);
     }
     if (name !== undefined) {
       setDeveloperName(name);
-      localStorage.setItem(STORAGE_KEYS.DEV_NAME, name);
+      safeLocalStorageSet(STORAGE_KEYS.DEV_NAME, name);
     }
     if (qrImage !== undefined) {
       setDeveloperUpiQrImage(qrImage);
-      localStorage.setItem(STORAGE_KEYS.DEV_QR_IMAGE, qrImage);
+      safeLocalStorageSet(STORAGE_KEYS.DEV_QR_IMAGE, qrImage);
     }
     if (rzpKey !== undefined) {
       setRazorpayKeyId(rzpKey);
-      localStorage.setItem(STORAGE_KEYS.RAZORPAY_KEY, rzpKey);
+      safeLocalStorageSet(STORAGE_KEYS.RAZORPAY_KEY, rzpKey);
     }
 
     try {
@@ -3371,11 +3378,7 @@ export const DataProvider = ({ children }) => {
         }
         return p;
       });
-      try {
-        localStorage.setItem(STORAGE_KEYS.PURCHASES, JSON.stringify(updated));
-      } catch (err) {
-        console.warn('Storage sync error:', err);
-      }
+      safeLocalStorageSet(STORAGE_KEYS.PURCHASES, updated);
       return updated;
     });
 
@@ -3489,9 +3492,7 @@ export const DataProvider = ({ children }) => {
     setReadNoteIds(prev => {
       const filtered = prev.filter(item => (typeof item === 'string' ? item : item.id) !== noteId);
       const updated = [{ id: noteId, timestamp: new Date().toISOString() }, ...filtered];
-      try {
-        localStorage.setItem(STORAGE_KEYS.READ_NOTES, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.READ_NOTES, updated);
       return updated;
     });
   };
@@ -3580,9 +3581,7 @@ export const DataProvider = ({ children }) => {
   const updateFooterConfig = async (newConfig) => {
     const merged = { ...footerConfig, ...newConfig };
     setFooterConfig(merged);
-    try {
-      localStorage.setItem(STORAGE_KEYS.FOOTER_CONFIG, JSON.stringify(merged));
-    } catch (e) {}
+    safeLocalStorageSet(STORAGE_KEYS.FOOTER_CONFIG, merged);
 
     try {
       await supabase.from('app_settings').upsert({
@@ -3716,9 +3715,7 @@ export const DataProvider = ({ children }) => {
   const addCurrentAffairs = (newCapsule) => {
     setCurrentAffairs(prev => {
       const updated = [newCapsule, ...prev.filter(c => c.id !== newCapsule.id)];
-      try {
-        localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.CURRENT_AFFAIRS, updated);
       return updated;
     });
   };
@@ -3726,9 +3723,7 @@ export const DataProvider = ({ children }) => {
   const deleteCurrentAffairs = (id) => {
     setCurrentAffairs(prev => {
       const updated = prev.filter(c => c.id !== id);
-      try {
-        localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.CURRENT_AFFAIRS, updated);
       return updated;
     });
   };
@@ -3740,9 +3735,7 @@ export const DataProvider = ({ children }) => {
         ...prev,
         [cardId]: { rating, updatedAt: new Date().toISOString() }
       };
-      try {
-        localStorage.setItem(STORAGE_KEYS.FLASHCARD_PROGRESS, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.FLASHCARD_PROGRESS, updated);
       return updated;
     });
   };
@@ -3754,9 +3747,7 @@ export const DataProvider = ({ children }) => {
     setFlashcardProgress(prev => {
       const next = { ...prev };
       cardIds.forEach(id => delete next[id]);
-      try {
-        localStorage.setItem(STORAGE_KEYS.FLASHCARD_PROGRESS, JSON.stringify(next));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.FLASHCARD_PROGRESS, next);
       return next;
     });
   };
@@ -3764,9 +3755,7 @@ export const DataProvider = ({ children }) => {
   const addFlashcardDeck = (newDeck) => {
     setFlashcards(prev => {
       const updated = [newDeck, ...prev.filter(d => d.id !== newDeck.id)];
-      try {
-        localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.FLASHCARDS, updated);
       return updated;
     });
   };
@@ -3806,9 +3795,7 @@ export const DataProvider = ({ children }) => {
         completedTodayTarget: questionsAnswered >= 10 || notesRead >= 1
       };
 
-      try {
-        localStorage.setItem(STORAGE_KEYS.STUDY_STREAK, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.STUDY_STREAK, updated);
 
       return updated;
     });
@@ -3823,9 +3810,7 @@ export const DataProvider = ({ children }) => {
         ...prev,
         [noteId]: [...noteHighlights.filter(h => h.id !== highlight.id), highlight]
       };
-      try {
-        localStorage.setItem(STORAGE_KEYS.USER_HIGHLIGHTS, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.USER_HIGHLIGHTS, updated);
       return updated;
     });
   };
@@ -3837,9 +3822,7 @@ export const DataProvider = ({ children }) => {
         ...prev,
         [noteId]: noteHighlights.filter(h => h.id !== highlightId)
       };
-      try {
-        localStorage.setItem(STORAGE_KEYS.USER_HIGHLIGHTS, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.USER_HIGHLIGHTS, updated);
       return updated;
     });
   };
@@ -3847,9 +3830,7 @@ export const DataProvider = ({ children }) => {
   const updateLiveMockTest = (newConfig) => {
     setLiveMockTest(prev => {
       const updated = { ...prev, ...newConfig };
-      try {
-        localStorage.setItem(STORAGE_KEYS.LIVE_MOCK_TEST, JSON.stringify(updated));
-      } catch (e) {}
+      safeLocalStorageSet(STORAGE_KEYS.LIVE_MOCK_TEST, updated);
 
       if (supabase) {
         supabase.from('app_settings').upsert({ key: 'live_mock_test_settings', value: updated }).then().catch(err => {
@@ -5483,11 +5464,9 @@ export const DataProvider = ({ children }) => {
     setDailyQuiz(newDailyQuiz);
     setFlashcards(freshDailyFlashcards);
 
-    try {
-      localStorage.setItem(STORAGE_KEYS.DAILY_QUIZ, JSON.stringify(newDailyQuiz));
-      localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify([newCapsule]));
-      localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(freshDailyFlashcards));
-    } catch (e) {}
+    safeLocalStorageSet(STORAGE_KEYS.DAILY_QUIZ, newDailyQuiz);
+    safeLocalStorageSet(STORAGE_KEYS.CURRENT_AFFAIRS, [newCapsule]);
+    safeLocalStorageSet(STORAGE_KEYS.FLASHCARDS, freshDailyFlashcards);
 
     // Cloud push to Supabase app_settings so all students across Karnataka receive fresh content
     try {
@@ -5656,8 +5635,8 @@ export const DataProvider = ({ children }) => {
       };
 
       setCurrentAffairs(prev => [newLiveCapsule, ...(prev || []).filter(c => c.date !== today)]);
+      safeLocalStorageSet(STORAGE_KEYS.CURRENT_AFFAIRS, [newLiveCapsule]);
       try {
-        localStorage.setItem(STORAGE_KEYS.CURRENT_AFFAIRS, JSON.stringify([newLiveCapsule]));
         if (supabase) {
           supabase.from('app_settings').upsert({
             key: 'daily_current_affairs',
@@ -5701,8 +5680,8 @@ export const DataProvider = ({ children }) => {
 
     setFeedbacks(prev => {
       const updated = [newFeedback, ...prev];
+      safeLocalStorageSet(STORAGE_KEYS.FEEDBACKS, updated);
       try {
-        localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
         supabase.from('app_settings').upsert({
           key: 'feedbacks_data',
           value: updated,
@@ -5745,8 +5724,8 @@ export const DataProvider = ({ children }) => {
         }
         return fb;
       });
+      safeLocalStorageSet(STORAGE_KEYS.FEEDBACKS, updated);
       try {
-        localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
         supabase.from('app_settings').upsert({
           key: 'feedbacks_data',
           value: updated,
@@ -5769,8 +5748,8 @@ export const DataProvider = ({ children }) => {
   const deleteFeedback = useCallback(async (feedbackId) => {
     setFeedbacks(prev => {
       const updated = prev.filter(fb => fb.id !== feedbackId);
+      safeLocalStorageSet(STORAGE_KEYS.FEEDBACKS, updated);
       try {
-        localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(updated));
         supabase.from('app_settings').upsert({
           key: 'feedbacks_data',
           value: updated,
@@ -5797,8 +5776,8 @@ export const DataProvider = ({ children }) => {
 
     setStudyRequests(prev => {
       const updated = [newRequest, ...prev];
+      safeLocalStorageSet(STORAGE_KEYS.STUDY_REQUESTS, updated);
       try {
-        localStorage.setItem(STORAGE_KEYS.STUDY_REQUESTS, JSON.stringify(updated));
         supabase.from('app_settings').upsert({
           key: 'study_requests_data',
           value: updated,
@@ -5839,8 +5818,8 @@ export const DataProvider = ({ children }) => {
         }
         return req;
       });
+      safeLocalStorageSet(STORAGE_KEYS.STUDY_REQUESTS, updated);
       try {
-        localStorage.setItem(STORAGE_KEYS.STUDY_REQUESTS, JSON.stringify(updated));
         supabase.from('app_settings').upsert({ key: 'study_requests_data', value: updated });
       } catch (e) {}
       return updated;
@@ -5860,8 +5839,8 @@ export const DataProvider = ({ children }) => {
   const deleteStudyRequest = useCallback(async (requestId) => {
     setStudyRequests(prev => {
       const updated = prev.filter(req => req.id !== requestId);
+      safeLocalStorageSet(STORAGE_KEYS.STUDY_REQUESTS, updated);
       try {
-        localStorage.setItem(STORAGE_KEYS.STUDY_REQUESTS, JSON.stringify(updated));
         supabase.from('app_settings').upsert({ key: 'study_requests_data', value: updated });
       } catch (e) {}
       return updated;
