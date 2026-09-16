@@ -1,0 +1,39 @@
+{
+  "name": "ಅಧ್ಯಯನ • ADHYAYANA Learning & Exams",
+  "short_name": "ಅಧ್ಯಯನ",
+  "description": "ಕರ್ನಾಟಕದ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆಗಳ ಲೈವ್ ಅಣಕು ಪರೀಕ್ಷೆಗಳು, ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಮತ್ತು ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳ ಪೋರ್ಟಲ್.",
+  "start_url": "/?source=pwa",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#059669",
+  "scope": "/",
+  "lang": "kn",
+  "categories": ["education", "books", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
