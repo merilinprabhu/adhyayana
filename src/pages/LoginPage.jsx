@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { usePwa } from '../context/PwaContext';
+import { downloadAdhyayanaApk } from '../utils/apkDownloader';
 import { 
   BookOpen, 
   ShieldCheck, 
@@ -267,15 +268,15 @@ export const LoginPage = ({ initialMode = null }) => {
 
         {/* Top Right Controls */}
         <div className="flex items-center gap-2">
-          <a
-            href="/Adhyayana.apk"
-            download="Adhyayana.apk"
-            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-emerald-500 text-white hover:from-amber-600 hover:to-emerald-600 shadow-md shadow-emerald-900/30 transition-all cursor-pointer transform hover:scale-105 active:scale-95 no-underline"
+          <button
+            onClick={downloadAdhyayanaApk}
+            type="button"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-emerald-500 text-white hover:from-amber-600 hover:to-emerald-600 shadow-md shadow-emerald-900/30 transition-all cursor-pointer transform hover:scale-105 active:scale-95"
             title={lang === 'kn' ? 'ಅಧ್ಯಯನ ಆಂಡ್ರಾಯ್ಡ್ APK ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ (4.5 MB)' : 'Download Adhyayana Android APK (4.5 MB)'}
           >
             <Download className="w-3.5 h-3.5 animate-bounce" />
             <span className="inline">{lang === 'kn' ? 'ಆ್ಯಪ್ ಡೌನ್‌ಲೋಡ್ (APK)' : 'Download APK'}</span>
-          </a>
+          </button>
 
           {user && (
             <button
