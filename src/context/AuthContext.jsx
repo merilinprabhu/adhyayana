@@ -131,60 +131,65 @@ export const AuthProvider = ({ children }) => {
     // Auto sync user to profiles table without overwriting completed profile data
     try {
       if (supabase) {
-        supabase.from('profiles').select('*').eq('email', email).maybeSingle().then(({ data: remoteProf }) => {
-          if (remoteProf) {
-            const remoteCompleted = Boolean(
-              isAuthorized ||
-              remoteProf.profile_completed === true ||
-              remoteProf.profileCompleted === true ||
-              (remoteProf.phone && String(remoteProf.phone).trim().length >= 10)
-            );
-            setUser(prev => {
-              if (!prev || (prev.email || '').trim().toLowerCase() !== email) return prev;
-              const isCompleted = Boolean(
+        (async () => {
+          try {
+            const { data: remoteProf } = await supabase.from('profiles').select('*').eq('email', email).maybeSingle();
+            if (remoteProf) {
+              const remoteCompleted = Boolean(
                 isAuthorized ||
-                prev.profileCompleted ||
-                remoteCompleted ||
-                (prev.phone && String(prev.phone).trim().length >= 10) ||
+                remoteProf.profile_completed === true ||
+                remoteProf.profileCompleted === true ||
                 (remoteProf.phone && String(remoteProf.phone).trim().length >= 10)
               );
-              const merged = {
-                ...prev,
-                name: prev.name || remoteProf.name,
-                phone: prev.phone || remoteProf.phone,
-                district: prev.district || remoteProf.district,
-                qualification: prev.qualification || remoteProf.qualification,
-                medium: prev.medium || remoteProf.medium,
-                prepStage: prev.prepStage || remoteProf.prep_stage,
-                targetExam: prev.targetExam || remoteProf.target_exam,
-                profileCompleted: isCompleted,
-                role: isAuthorized ? 'developer' : (remoteProf.role || prev.role || 'student'),
-                status: remoteProf.status || 'ACTIVE'
-              };
-              try {
-                localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(merged));
-              } catch (e) {}
-              return merged;
-            });
-          } else {
-            // First time profile creation in table
-            supabase.from('profiles').upsert({
-              id: activeUser.uid,
-              email: activeUser.email,
-              name: activeUser.name,
-              phone: activeUser.phone || null,
-              district: activeUser.district || null,
-              qualification: activeUser.qualification || null,
-              prep_stage: activeUser.prepStage || null,
-              medium: activeUser.medium || null,
-              target_exam: activeUser.targetExam || null,
-              role: activeUser.role,
-              profile_completed: hasCompletedProfile,
-              last_login: activeUser.lastLogin,
-              status: 'ACTIVE'
-            }).catch(e => console.warn('Profile sync notice:', e));
+              setUser(prev => {
+                if (!prev || (prev.email || '').trim().toLowerCase() !== email) return prev;
+                const isCompleted = Boolean(
+                  isAuthorized ||
+                  prev.profileCompleted ||
+                  remoteCompleted ||
+                  (prev.phone && String(prev.phone).trim().length >= 10) ||
+                  (remoteProf.phone && String(remoteProf.phone).trim().length >= 10)
+                );
+                const merged = {
+                  ...prev,
+                  name: prev.name || remoteProf.name,
+                  phone: prev.phone || remoteProf.phone,
+                  district: prev.district || remoteProf.district,
+                  qualification: prev.qualification || remoteProf.qualification,
+                  medium: prev.medium || remoteProf.medium,
+                  prepStage: prev.prepStage || remoteProf.prep_stage,
+                  targetExam: prev.targetExam || remoteProf.target_exam,
+                  profileCompleted: isCompleted,
+                  role: isAuthorized ? 'developer' : (remoteProf.role || prev.role || 'student'),
+                  status: remoteProf.status || 'ACTIVE'
+                };
+                try {
+                  localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(merged));
+                } catch (e) {}
+                return merged;
+              });
+            } else {
+              // First time profile creation in table
+              await supabase.from('profiles').upsert({
+                id: activeUser.uid,
+                email: activeUser.email,
+                name: activeUser.name,
+                phone: activeUser.phone || null,
+                district: activeUser.district || null,
+                qualification: activeUser.qualification || null,
+                prep_stage: activeUser.prepStage || null,
+                medium: activeUser.medium || null,
+                target_exam: activeUser.targetExam || null,
+                role: activeUser.role,
+                profile_completed: hasCompletedProfile,
+                last_login: activeUser.lastLogin,
+                status: 'ACTIVE'
+              });
+            }
+          } catch (err) {
+            console.debug('Profile sync notice:', err);
           }
-        }).catch(e => console.warn('Profile query notice:', e));
+        })();
       }
     } catch (e) {}
 

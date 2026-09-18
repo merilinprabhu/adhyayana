@@ -1117,6 +1117,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
   const handleStartEditTest = (testToEdit) => {
     setEditingTestId(testToEdit.id);
     setActiveTab('tests');
+    const isFree = Boolean(testToEdit.isFree) || Number(testToEdit.price) === 0;
     setTestForm({
       examId: testToEdit.examId || exams[0]?.id || '',
       subjectId: testToEdit.subjectId || '',
@@ -1125,9 +1126,10 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
       durationMinutes: testToEdit.durationMinutes || 30,
       totalMarks: testToEdit.totalMarks || 50,
       negativeMarking: testToEdit.negativeMarking !== undefined ? testToEdit.negativeMarking : 0.25,
-      price: testToEdit.price !== undefined ? testToEdit.price : 49,
-      isFree: Boolean(testToEdit.isFree),
-      freeQuestionsCount: testToEdit.freeQuestionsCount !== undefined ? testToEdit.freeQuestionsCount : 5,
+      price: testToEdit.price !== undefined ? testToEdit.price : (isFree ? 0 : 49),
+      validityDays: String(testToEdit.validityDays || testToEdit.validity_days || '30'),
+      isFree: isFree,
+      freeQuestionsCount: testToEdit.freeQuestionsCount !== undefined ? testToEdit.freeQuestionsCount : (isFree ? 50 : 5),
       sourceType: testToEdit.sourceType || (testToEdit.gsheetUrl || testToEdit.gsheet_url ? 'gsheet_url' : 'gsheet_url'),
       gsheetUrl: testToEdit.gsheetUrl || testToEdit.gsheet_url || '',
       gsheetCsvData: testToEdit.gsheetCsvData || GOOGLE_SHEET_TEMPLATE_SAMPLE,
@@ -1153,6 +1155,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
       totalMarks: 50,
       negativeMarking: 0.25,
       price: 49,
+      validityDays: '30',
       isFree: false,
       freeQuestionsCount: 5,
       sourceType: 'gsheet_url',
@@ -2652,9 +2655,18 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                     <input
                       type="checkbox"
                       id="devTestIsFree"
-                      checked={testForm.isFree}
-                      onChange={(e) => setTestForm({ ...testForm, isFree: e.target.checked, price: e.target.checked ? 0 : 49 })}
-                      className="w-4 h-4 text-purple-600 rounded"
+                      checked={Boolean(testForm.isFree)}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setTestForm(prev => ({
+                          ...prev,
+                          isFree: isChecked,
+                          price: isChecked ? 0 : (Number(prev.price) > 0 ? prev.price : 49),
+                          validityDays: isChecked ? '365' : (prev.validityDays || '30'),
+                          freeQuestionsCount: isChecked ? 50 : 5
+                        }));
+                      }}
+                      className="w-4 h-4 text-purple-600 rounded cursor-pointer"
                     />
                     <label htmlFor="devTestIsFree" className="font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
                       {lang === 'kn' ? '100% ಉಚಿತ ಟೆಸ್ಟ್ (Make 100% Free)' : '100% Free Test'}
@@ -2683,20 +2695,30 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                           { price: 99, days: 180, label: '₹99 • 6 ತಿಂಗಳು' },
                           { price: 199, days: 365, label: '₹199 • 1 ವರ್ಷ' },
                           { price: 299, days: 365, label: '₹299 • 365 ದಿನ' }
-                        ].map((preset) => (
-                          <button
-                            key={preset.price}
-                            type="button"
-                            onClick={() => setTestForm({ ...testForm, price: preset.price, validityDays: String(preset.days) })}
-                            className={`p-1.5 rounded-lg border text-[10px] font-bold transition-all text-center ${
-                              Number(testForm.price) === preset.price && String(testForm.validityDays) === String(preset.days)
-                                ? 'border-purple-600 bg-purple-600 text-white shadow-sm'
-                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-purple-300'
-                            }`}
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
+                        ].map((preset, pIdx) => {
+                          const isSelected = Number(testForm.price) === preset.price && String(testForm.validityDays) === String(preset.days);
+                          return (
+                            <button
+                              key={`preset_${preset.price}_${preset.days}_${pIdx}`}
+                              type="button"
+                              onClick={() => {
+                                setTestForm(prev => ({
+                                  ...prev,
+                                  price: preset.price,
+                                  validityDays: String(preset.days),
+                                  isFree: false
+                                }));
+                              }}
+                              className={`p-2 rounded-xl border text-[11px] font-bold transition-all text-center cursor-pointer shadow-sm ${
+                                isSelected
+                                  ? 'border-purple-600 bg-purple-600 text-white shadow-md shadow-purple-600/30 scale-[1.02]'
+                                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -2709,7 +2731,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                           type="number"
                           min="0"
                           value={testForm.price}
-                          onChange={(e) => setTestForm({ ...testForm, price: e.target.value })}
+                          onChange={(e) => setTestForm({ ...testForm, price: e.target.value, isFree: Number(e.target.value) === 0 })}
                           placeholder="e.g. 49"
                           className="w-full p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-bold"
                         />
@@ -2720,7 +2742,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                         </label>
                         <input
                           type="text"
-                          value={testForm.validityDays}
+                          value={testForm.validityDays || '30'}
                           onChange={(e) => setTestForm({ ...testForm, validityDays: e.target.value })}
                           placeholder="e.g. 10, 20, 30, 365"
                           className="w-full p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-bold"
@@ -2734,7 +2756,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                           type="number"
                           min="0"
                           value={testForm.freeQuestionsCount}
-                          onChange={(e) => setTestForm({ ...testForm, freeQuestionsCount: e.target.value })}
+                          onChange={(e) => setTestForm({ ...testForm, freeQuestionsCount: Number(e.target.value) })}
                           placeholder="e.g. 5"
                           className="w-full p-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-bold"
                         />

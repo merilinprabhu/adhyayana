@@ -73,24 +73,29 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
       ];
 
   const exam = exams.find(e => e.id === test?.examId);
-  const hasFullAccess = isDeveloper || 
+  const isFreeTest = Boolean(test?.isFree) || Number(test?.price) === 0;
+
+  // Real student access check
+  const studentHasAccess = 
+    isFreeTest ||
     isEnrolled(test?.id) || 
     isEnrolled(test?.examId) || 
     isEnrolled(test?.subjectId) || 
     (checkHasAccess && checkHasAccess(test?.id, test?.subjectId, test?.examId, test?.title)) ||
     (test?.examTitle && checkHasAccess && checkHasAccess(null, null, null, test.examTitle)) ||
-    (test?.subjectName && checkHasAccess && checkHasAccess(null, null, null, test.subjectName)) ||
-    test?.isFree || 
-    Number(test?.price) === 0;
+    (test?.subjectName && checkHasAccess && checkHasAccess(null, null, null, test.subjectName));
 
-  const freeQuestionsCount = hasFullAccess
-    ? activeQuestions.length 
-    : (test?.freeQuestionsCount !== undefined ? Number(test?.freeQuestionsCount) : 2);
+  const [previewStudentLockMode, setPreviewStudentLockMode] = useState(false);
+  const hasFullAccess = (isDeveloper && !previewStudentLockMode) ? true : studentHasAccess;
+
+  const freeQuestionsCount = isFreeTest
+    ? activeQuestions.length
+    : (test?.freeQuestionsCount !== undefined ? Number(test?.freeQuestionsCount) : 5);
   
   const isQuestionLocked = (idx) => !hasFullAccess && idx >= freeQuestionsCount;
 
   const handleUnlockTest = () => {
-    if (hasFullAccess) return;
+    if (hasFullAccess && !previewStudentLockMode) return;
     if (!isAuthenticated) {
       if (onOpenAuth) onOpenAuth();
       return;
@@ -100,6 +105,7 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
         id: test.id,
         title: test.title,
         price: test.price || 49,
+        validityDays: test.validityDays || test.validity_days || '30',
         type: 'test',
         questions: activeQuestions,
         durationMinutes: test.durationMinutes
@@ -337,10 +343,24 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
+          {isDeveloper && !isFreeTest && (
+            <button
+              onClick={() => setPreviewStudentLockMode(!previewStudentLockMode)}
+              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                previewStudentLockMode 
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+              }`}
+              title="Toggle to test Student Paywall & Preview Lock"
+            >
+              {previewStudentLockMode ? '🔒 Student Locked Mode' : '🔓 Developer Unlocked'}
+            </button>
+          )}
+
           {!isSubmitted && (
             <button
               onClick={handleSubmitTest}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 cursor-pointer"
             >
               {lang === 'kn' ? 'ಟೆಸ್ಟ್ ಸಲ್ಲಿಸಿ' : 'Submit Test'}
             </button>

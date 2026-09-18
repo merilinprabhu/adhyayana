@@ -36,7 +36,10 @@ import {
   Bell,
   Play,
   UserPlus,
-  Loader2
+  Loader2,
+  BookOpen,
+  FileCheck,
+  Target
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -121,9 +124,21 @@ class BattleAudioEngine {
 
 const battleAudio = new BattleAudioEngine();
 
-// --- Battle Questions Bank for Karnataka Exams ---
-const BATTLE_QUESTIONS_BANK = [
-  // Karnataka History & Heritage
+// Clean human name formatter
+const formatCleanName = (name, email) => {
+  if (name && !name.includes('@')) return name.trim();
+  const raw = name || email || 'Aspirant';
+  const prefix = raw.split('@')[0];
+  return prefix
+    .replace(/[._\d-]+/g, ' ')
+    .trim()
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ') || 'Aspirant';
+};
+
+// Default Fallback Questions
+const FALLBACK_QUESTIONS = [
   {
     id: 'bq_kh_1',
     subjectId: 'history',
@@ -145,38 +160,6 @@ const BATTLE_QUESTIONS_BANK = [
     explanation: 'Pulakeshin II defeated Harshavardhana, earning the title Parameshwara (recorded in Aihole Inscription).'
   },
   {
-    id: 'bq_kh_3',
-    subjectId: 'history',
-    subjectName: 'ಕರ್ನಾಟಕ ಇತಿಹಾಸ (Karnataka History)',
-    question: 'In which year did the famous battle of Talikota take place?',
-    questionKn: 'ಪ್ರಸಿದ್ಧ ತಾಳಿಕೋಟೆ ಕದನ (ರಕ್ಕಸ ತಂಗಡಿ) ಯಾವ ವರ್ಷದಲ್ಲಿ ನಡೆಯಿತು?',
-    options: ['1526 AD', '1565 AD', '1799 AD', '1509 AD'],
-    correctAnswer: 1,
-    explanation: 'The Battle of Talikota took place on 23 January 1565, leading to the decline of the Vijayanagara Empire.'
-  },
-  {
-    id: 'bq_kh_4',
-    subjectId: 'history',
-    subjectName: 'ಕರ್ನಾಟಕ ಇತಿಹಾಸ (Karnataka History)',
-    question: 'Who is known as the "Brave Queen of Ullal" who fought Portuguese invaders?',
-    questionKn: 'ಪೋರ್ಚುಗೀಸರ ವಿರುದ್ಧ ಹೋರಾಡಿದ ಉಳ್ಳಾಲದ ವೀರ ರಾಣಿ ಯಾರು?',
-    options: ['Rani Chennamma', 'Rani Abbakka Chowta (ರಾಣಿ ಅಬ್ಬಕ್ಕ)', 'Keladi Chennamma', 'Onake Obavva'],
-    correctAnswer: 1,
-    explanation: 'Rani Abbakka Chowta of Ullal fought fiercely against the Portuguese in the 16th century.'
-  },
-  {
-    id: 'bq_kh_5',
-    subjectId: 'history',
-    subjectName: 'ಕರ್ನಾಟಕ ಇತಿಹಾಸ (Karnataka History)',
-    question: 'Who wrote the famous Kannada poetic work "Kavirajamarga"?',
-    questionKn: '"ಕವಿರಾಜಮಾರ್ಗ" ಕೃತಿಯನ್ನು ರಚಿಸಿದವರು ಯಾರು ಅಥವಾ ಯಾರ ಆಸ್ಥಾನದಲ್ಲಿ ರಚನೆಯಾಯಿತು?',
-    options: ['Pampa (ಪಂಪ)', 'Ranna (ರನ್ನ)', 'Amoghavarsha Nrupathunga (ಅಮೋಘವರ್ಷ ನೃಪತುಂಗ)', 'Janna (ಜನ್ನ)'],
-    correctAnswer: 2,
-    explanation: 'Kavirajamarga is the earliest available work on rhetoric and poetics in Kannada language associated with Amoghavarsha I.'
-  },
-
-  // Indian Constitution & Polity
-  {
     id: 'bq_pol_1',
     subjectId: 'polity',
     subjectName: 'ಭಾರತೀಯ ಸಂವಿಧಾನ (Indian Polity)',
@@ -186,38 +169,6 @@ const BATTLE_QUESTIONS_BANK = [
     correctAnswer: 2,
     explanation: 'Article 32 gives the Right to Constitutional Remedies through Writs.'
   },
-  {
-    id: 'bq_pol_2',
-    subjectId: 'polity',
-    subjectName: 'ಭಾರತೀಯ ಸಂವಿಧಾನ (Indian Polity)',
-    question: 'What is the minimum age required to become the Governor of an Indian State?',
-    questionKn: 'ಭಾರತದಲ್ಲಿ ರಾಜ್ಯದ ರಾಜ್ಯಪಾಲರಾಗಲು ನಿಗದಿಪಡಿಸಲಾದ ಕನಿಷ್ಠ ವಯಸ್ಸು ಎಷ್ಟು?',
-    options: ['25 Years', '30 Years', '35 Years (೩೫ ವರ್ಷ)', '40 Years'],
-    correctAnswer: 2,
-    explanation: 'Article 157 states that a candidate must be at least 35 years old to be appointed as Governor.'
-  },
-  {
-    id: 'bq_pol_3',
-    subjectId: 'polity',
-    subjectName: 'ಭಾರತೀಯ ಸಂವಿಧಾನ (Indian Polity)',
-    question: 'Which Constitutional Amendment introduced the Panchayati Raj System (Part IX)?',
-    questionKn: 'ಪಂಚಾಯತ್ ರಾಜ್ ವ್ಯವಸ್ಥೆಯನ್ನು ಜಾರಿಗೆ ತಂದ ಸಂವಿಧಾನದ ತಿದ್ದುಪಡಿ ಯಾವುದು?',
-    options: ['42nd Amendment', '44th Amendment', '73rd Amendment (೭೩ನೇ ತಿದ್ದುಪಡಿ)', '86th Amendment'],
-    correctAnswer: 2,
-    explanation: 'The 73rd Constitutional Amendment Act, 1992 added the 11th Schedule and Part IX for Panchayati Raj.'
-  },
-  {
-    id: 'bq_pol_4',
-    subjectId: 'polity',
-    subjectName: 'ಭಾರತೀಯ ಸಂವಿಧಾನ (Indian Polity)',
-    question: 'Under which Article can the President of India declare National Emergency?',
-    questionKn: 'ರಾಷ್ಟ್ರಪತಿಗಳು ಯಾವ ವಿಧಿಯ ಅಡಿಯಲ್ಲಿ ರಾಷ್ಟ್ರೀಯ ತುರ್ತು ಪರಿಸ್ಥಿತಿಯನ್ನು ಘೋಷಿಸಬಹುದು?',
-    options: ['Article 352 (೩೫೨ನೇ ವಿಧಿ)', 'Article 356', 'Article 360', 'Article 368'],
-    correctAnswer: 0,
-    explanation: 'Article 352 empowers the President to declare a National Emergency on grounds of war, external aggression, or armed rebellion.'
-  },
-
-  // Geography of Karnataka & India
   {
     id: 'bq_geo_1',
     subjectId: 'geography',
@@ -229,28 +180,6 @@ const BATTLE_QUESTIONS_BANK = [
     explanation: 'Mullayanagiri in Chikkamagaluru district is the highest peak in Karnataka at 1,930 meters.'
   },
   {
-    id: 'bq_geo_2',
-    subjectId: 'geography',
-    subjectName: 'ಭೂಗೋಳ ಶಾಸ್ತ್ರ (Geography)',
-    question: 'Jog Falls is formed on which river in Karnataka?',
-    questionKn: 'ವಿಶ್ವವಿಖ್ಯಾತ ಜೋಗ ಜಲಪಾತವು ಯಾವ ನದಿಯಿಂದ ನಿರ್ಮಾಣವಾಗಿದೆ?',
-    options: ['Cauvery (ಕಾವೇರಿ)', 'Sharavathi (ಶರಾವತಿ)', 'Tungabhadra', 'Netravati'],
-    correctAnswer: 1,
-    explanation: 'Jog Falls is formed by the Sharavathi River in Sagara taluk, Shivamogga district.'
-  },
-  {
-    id: 'bq_geo_3',
-    subjectId: 'geography',
-    subjectName: 'ಭೂಗೋಳ ಶಾಸ್ತ್ರ (Geography)',
-    question: 'Which district of Karnataka is known as the "Coffee Land of India"?',
-    questionKn: 'ಕರ್ನಾಟಕದ ಯಾವ ಜಿಲ್ಲೆಯನ್ನು "ಭಾರತದ ಕಾಫಿಯ ನಾಡು" ಎಂದು ಕರೆಯಲಾಗುತ್ತದೆ?',
-    options: ['Kodagu', 'Chikkamagaluru (ಚಿಕ್ಕಮಗಳೂರು)', 'Hassan', 'Shivamogga'],
-    correctAnswer: 1,
-    explanation: 'Chikkamagaluru is the birthplace of coffee cultivation in India where Baba Budan brought 7 coffee beans.'
-  },
-
-  // General Science & Technology
-  {
     id: 'bq_sci_1',
     subjectId: 'science',
     subjectName: 'ಸಾಮಾನ್ಯ ವಿಜ್ಞಾನ (General Science)',
@@ -261,18 +190,6 @@ const BATTLE_QUESTIONS_BANK = [
     explanation: 'Bio-gas contains 55-75% Methane (CH4) produced by anaerobic digestion of organic matter.'
   },
   {
-    id: 'bq_sci_2',
-    subjectId: 'science',
-    subjectName: 'ಸಾಮಾನ್ಯ ವಿಜ್ಞಾನ (General Science)',
-    question: 'Which vitamin is essential for normal blood clotting?',
-    questionKn: 'ರಕ್ತ ಹೆಪ್ಪುಗಟ್ಟುವಿಕೆಗೆ (Blood Clotting) ಅತ್ಯಗತ್ಯವಾದ ಜೀವಸತ್ವ ಯಾವುದು?',
-    options: ['Vitamin A', 'Vitamin C', 'Vitamin K (ವಿಟಮಿನ್ K)', 'Vitamin D'],
-    correctAnswer: 2,
-    explanation: 'Vitamin K is required for the synthesis of prothrombin, a key protein for blood coagulation.'
-  },
-
-  // Current Affairs & GK
-  {
     id: 'bq_ca_1',
     subjectId: 'current_affairs',
     subjectName: 'ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನ (Current Affairs)',
@@ -281,27 +198,26 @@ const BATTLE_QUESTIONS_BANK = [
     options: ['Sriharikota', 'Bengaluru (ಬೆಂಗಳೂರು)', 'Thiruvananthapuram', 'Hyderabad'],
     correctAnswer: 1,
     explanation: 'ISRO headquarters Antariksh Bhavan is located in Bengaluru, Karnataka.'
-  },
-  {
-    id: 'bq_ca_2',
-    subjectId: 'current_affairs',
-    subjectName: 'ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನ (Current Affairs)',
-    question: 'How many districts are there in Karnataka currently?',
-    questionKn: 'ಪ್ರಸ್ತುತ ಕರ್ನಾಟಕದಲ್ಲಿ ಒಟ್ಟು ಎಷ್ಟು ಜಿಲ್ಲೆಗಳಿವೆ?',
-    options: ['28', '30', '31 (೩೧ ಜಿಲ್ಲೆಗಳು - ವಿಜಯನಗರ ಸೇರಿ)', '32'],
-    correctAnswer: 2,
-    explanation: 'Karnataka has 31 districts, with Vijayanagara being the 31st district carved out of Ballari in 2021.'
   }
 ];
 
 export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) => {
   const { user, isAuthenticated } = useAuth();
-  const { lang } = useData();
+  const { lang, tests = [] } = useData();
 
   // Battle Lifecycle State: 'lobby' | 'searching' | 'room_wait' | 'matched' | 'battle' | 'result'
   const [battleState, setBattleState] = useState('lobby');
   const [selectedSubject, setSelectedSubject] = useState('all');
+  const [selectedTestId, setSelectedTestId] = useState('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Active Selected Test Object
+  const activeTest = useMemo(() => {
+    if (selectedTestId && selectedTestId !== 'all') {
+      return tests.find(t => t.id === selectedTestId) || null;
+    }
+    return null;
+  }, [selectedTestId, tests]);
 
   // Multiplayer Room & Opponent
   const [roomCode, setRoomCode] = useState(initialRoomCode || '');
@@ -310,15 +226,26 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
   const [opponent, setOpponent] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Real Online Users from Supabase Presence
+  // Unique Session ID for this tab
+  const clientSessionId = useMemo(() => {
+    return 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+  }, []);
+
+  const cleanPlayerName = useMemo(() => {
+    return formatCleanName(user?.name, user?.email);
+  }, [user]);
+
+  // Real Online Users & Registered Platform Members
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [registeredMembers, setRegisteredMembers] = useState([]);
   const [incomingChallenge, setIncomingChallenge] = useState(null);
   const [outgoingChallengeTo, setOutgoingChallengeTo] = useState(null);
+  const [challengeTimeoutLeft, setChallengeTimeoutLeft] = useState(30);
+  const [challengeStatusNotice, setChallengeStatusNotice] = useState(null);
 
   // Match Ready & Start Countdown (3... 2... 1... START!)
   const [readyCountdown, setReadyCountdown] = useState(null);
   const [iAmReady, setIAmReady] = useState(false);
-  const [opponentIsReady, setOpponentIsReady] = useState(false);
 
   // Active Game State
   const [matchQuestions, setMatchQuestions] = useState([]);
@@ -334,7 +261,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
   const [roundHistory, setRoundHistory] = useState([]);
   const [floatingReactions, setFloatingReactions] = useState([]);
 
-  // Voice Call / Audio WebRTC State
+  // Voice Call
   const [voiceCallActive, setVoiceCallActive] = useState(false);
   const [micMuted, setMicMuted] = useState(false);
   const localStreamRef = useRef(null);
@@ -343,12 +270,27 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
   const lobbyChannelRef = useRef(null);
   const roomChannelRef = useRef(null);
 
-  // Current User Identity
-  const currentUserId = useMemo(() => {
-    return user?.id || (user?.email ? user.email : 'guest_' + Math.random().toString(36).substring(2, 9));
-  }, [user]);
+  // Unmount cleanup for all realtime channels
+  useEffect(() => {
+    return () => {
+      if (roomChannelRef.current) {
+        try {
+          supabase.removeChannel(roomChannelRef.current);
+        } catch (e) {}
+        roomChannelRef.current = null;
+      }
+      if (lobbyChannelRef.current) {
+        try {
+          supabase.removeChannel(lobbyChannelRef.current);
+        } catch (e) {}
+        lobbyChannelRef.current = null;
+      }
+    };
+  }, []);
 
-  const playerName = user?.name || (user?.email ? user.email.split('@')[0] : 'ನೀವು (You)');
+  const currentUserId = useMemo(() => {
+    return user?.id || (user?.email ? user.email : clientSessionId);
+  }, [user, clientSessionId]);
 
   // Local Persistent Stats
   const [stats, setStats] = useState(() => {
@@ -364,25 +306,197 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
     setStats(newStats);
     try {
       localStorage.setItem('adhyayana_battle_stats', JSON.stringify(newStats));
-    } catch (e) {
-      // safe
-    }
+    } catch (e) {}
   };
 
-  // Subjects List
-  const subjectsList = [
-    { id: 'all', name: 'ಎಲ್ಲಾ ವಿಷಯಗಳು (All Mixed)', icon: '⚡' },
-    { id: 'history', name: 'ಕರ್ನಾಟಕ ಇತಿಹಾಸ (History)', icon: '🏛️' },
-    { id: 'polity', name: 'ಭಾರತೀಯ ಸಂವಿಧಾನ (Polity)', icon: '⚖️' },
-    { id: 'geography', name: 'ಭೂಗೋಳ ಶಾಸ್ತ್ರ (Geography)', icon: '🌍' },
-    { id: 'science', name: 'ಸಾಮಾನ್ಯ ವಿಜ್ಞಾನ (Science)', icon: '🔬' },
-    { id: 'current_affairs', name: 'ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನ (GK)', icon: '📰' }
-  ];
+  // Helper: Extract 5 Questions from selected test or fallback bank
+  const getQuestionsPoolForMatch = (testId) => {
+    let pool = [];
+    if (testId && testId !== 'all') {
+      const foundTest = tests.find(t => t.id === testId);
+      if (foundTest && Array.isArray(foundTest.questions) && foundTest.questions.length > 0) {
+        pool = foundTest.questions.map((q, idx) => ({
+          id: q.id || `tq_${idx}`,
+          subjectName: foundTest.titleKn || foundTest.title || 'Mock Test',
+          question: q.question,
+          questionKn: q.questionKn || q.question,
+          options: q.options || ['A', 'B', 'C', 'D'],
+          correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0,
+          explanation: q.explanation || ''
+        }));
+      }
+    }
 
-  // 1. Initialize Lobby Presence & Incoming In-App Challenges (REAL USERS ONLY)
+    if (pool.length < 3) {
+      pool = FALLBACK_QUESTIONS;
+    }
+
+    return [...pool].sort(() => 0.5 - Math.random()).slice(0, 5);
+  };
+
+  // 1. Fetch real registered platform members from Supabase database
   useEffect(() => {
+    const fetchRegisteredProfiles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name, email, district, target_exam')
+          .limit(20);
+        if (!error && data && data.length > 0) {
+          const formatted = data
+            .filter(p => (p.name || p.email) && p.id !== user?.id && p.email !== user?.email)
+            .map(p => ({
+              id: p.id || p.email,
+              name: formatCleanName(p.name, p.email),
+              district: p.district || 'Karnataka',
+              target: p.target_exam || 'KPSC Aspirant',
+              avatar: '👨‍🎓',
+              points: 1200,
+              isOnline: false
+            }));
+          setRegisteredMembers(formatted);
+        }
+      } catch (e) {}
+    };
+    fetchRegisteredProfiles();
+  }, [user]);
+
+  // 2. LAYER 1: 100% Reliable Multi-Tab LocalStorage Heartbeat Registry
+  useEffect(() => {
+    const PRESENCE_STORAGE_KEY = 'adhyayana_live_presence_registry';
+
+    const syncMyPresence = () => {
+      try {
+        const currentData = JSON.parse(localStorage.getItem(PRESENCE_STORAGE_KEY) || '{}');
+        const now = Date.now();
+
+        // Write my heartbeat
+        currentData[clientSessionId] = {
+          sessionId: clientSessionId,
+          userId: currentUserId,
+          name: cleanPlayerName,
+          district: user?.district || 'Karnataka',
+          target: user?.target_exam || 'KPSC Aspirant',
+          avatar: '👨‍🎓',
+          points: stats.points,
+          lastPing: now
+        };
+
+        // Prune entries older than 3.5 seconds
+        const activeList = [];
+        Object.keys(currentData).forEach(sid => {
+          if (now - currentData[sid].lastPing < 3500) {
+            if (sid !== clientSessionId) {
+              activeList.push({
+                ...currentData[sid],
+                id: currentData[sid].userId || sid,
+                isOnline: true
+              });
+            }
+          } else {
+            delete currentData[sid];
+          }
+        });
+
+        localStorage.setItem(PRESENCE_STORAGE_KEY, JSON.stringify(currentData));
+        setOnlineUsers(activeList);
+      } catch (e) {}
+    };
+
+    syncMyPresence();
+    const interval = setInterval(syncMyPresence, 1000);
+
+    const handleStorageEvent = (e) => {
+      if (e.key === PRESENCE_STORAGE_KEY) {
+        try {
+          const currentData = JSON.parse(e.newValue || '{}');
+          const now = Date.now();
+          const activeList = [];
+          Object.keys(currentData).forEach(sid => {
+            if (now - currentData[sid].lastPing < 4000 && sid !== clientSessionId) {
+              activeList.push({
+                ...currentData[sid],
+                id: currentData[sid].userId || sid,
+                isOnline: true
+              });
+            }
+          });
+          setOnlineUsers(prev => {
+            const map = new Map();
+            prev.forEach(u => map.set(u.sessionId || u.id, u));
+            activeList.forEach(u => map.set(u.sessionId || u.id, u));
+            return Array.from(map.values()).filter(u => u.sessionId !== clientSessionId);
+          });
+        } catch (err) {}
+      } else if (e.key === 'adhyayana_battle_challenge_event') {
+        try {
+          const invite = JSON.parse(e.newValue || '{}');
+          if (invite && (invite.toSessionId === clientSessionId || invite.toUserId === currentUserId)) {
+            battleAudio.playInvite();
+            setIncomingChallenge(invite.payload);
+          }
+        } catch (err) {}
+      } else if (e.key === 'adhyayana_battle_decline_event') {
+        try {
+          const dec = JSON.parse(e.newValue || '{}');
+          if (dec && (dec.toSessionId === clientSessionId || dec.toUserId === currentUserId)) {
+            setChallengeStatusNotice(`${dec.fromName || 'Aspirant'} ಸವಾಲನ್ನು ತಿರಸ್ಕರಿಸಿದ್ದಾರೆ (Declined).`);
+            setOutgoingChallengeTo(null);
+            setBattleState('lobby');
+          }
+        } catch (err) {}
+      }
+    };
+
+    window.addEventListener('storage', handleStorageEvent);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageEvent);
+      // Remove me from presence
+      try {
+        const currentData = JSON.parse(localStorage.getItem(PRESENCE_STORAGE_KEY) || '{}');
+        delete currentData[clientSessionId];
+        localStorage.setItem(PRESENCE_STORAGE_KEY, JSON.stringify(currentData));
+      } catch (e) {}
+    };
+  }, [clientSessionId, currentUserId, cleanPlayerName, stats.points, user]);
+
+  // Outgoing challenge 30-second timeout
+  useEffect(() => {
+    if (!outgoingChallengeTo || battleState !== 'room_wait') return;
+    setChallengeTimeoutLeft(30);
+    const t = setInterval(() => {
+      setChallengeTimeoutLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(t);
+          setChallengeStatusNotice(`${outgoingChallengeTo.name} ಅವರಿಂದ ಯಾವುದೇ ಪ್ರತಿಕ್ರಿಯೆ ಬಂದಿಲ್ಲ (No response within 30s).`);
+          setOutgoingChallengeTo(null);
+          setBattleState('lobby');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [outgoingChallengeTo, battleState]);
+
+  // Auto-clear challenge status notice toast
+  useEffect(() => {
+    if (!challengeStatusNotice) return;
+    const t = setTimeout(() => setChallengeStatusNotice(null), 6000);
+    return () => clearTimeout(t);
+  }, [challengeStatusNotice]);
+
+  // 3. LAYER 2: Supabase WebSockets Presence for Internet-wide Real-Time Play
+  useEffect(() => {
+    const existing = supabase.getChannels().find(c => c.topic === 'realtime:battle_global_lobby');
+    if (existing) {
+      supabase.removeChannel(existing);
+    }
+
     const lobbyChannel = supabase.channel('battle_global_lobby', {
-      config: { presence: { key: currentUserId } }
+      config: { presence: { key: clientSessionId } }
     });
 
     lobbyChannel
@@ -391,51 +505,49 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
         const activeAspirants = [];
         Object.keys(state).forEach((key) => {
           const presenceList = state[key];
-          if (presenceList && presenceList[0]) {
-            const p = presenceList[0];
-            if (p.userId !== currentUserId) {
-              activeAspirants.push({
-                id: p.userId,
-                name: p.name,
-                district: p.district || 'Karnataka',
-                target: p.target || 'KPSC Aspirant',
-                avatar: p.avatar || '👨‍🎓',
-                points: p.points || 1200,
-                isOnline: true
-              });
-            }
+          if (Array.isArray(presenceList)) {
+            presenceList.forEach(p => {
+              if (p.sessionId !== clientSessionId) {
+                activeAspirants.push({
+                  id: p.userId || p.sessionId,
+                  sessionId: p.sessionId,
+                  name: p.name,
+                  district: p.district || 'Karnataka',
+                  target: p.target || 'KPSC Aspirant',
+                  avatar: p.avatar || '👨‍🎓',
+                  points: p.points || 1200,
+                  isOnline: true
+                });
+              }
+            });
           }
         });
-        setOnlineUsers(activeAspirants);
+        setOnlineUsers(prev => {
+          const map = new Map();
+          prev.forEach(u => map.set(u.sessionId || u.id, u));
+          activeAspirants.forEach(u => map.set(u.sessionId || u.id, u));
+          return Array.from(map.values()).filter(u => u.sessionId !== clientSessionId);
+        });
       })
       .on('broadcast', { event: 'battle_invite' }, ({ payload }) => {
-        if (payload.toUserId === currentUserId) {
+        if (payload.toSessionId === clientSessionId || (payload.toUserId && payload.toUserId === currentUserId)) {
           battleAudio.playInvite();
           setIncomingChallenge(payload);
         }
       })
       .on('broadcast', { event: 'invite_declined' }, ({ payload }) => {
-        if (payload.toUserId === currentUserId) {
-          alert(`${payload.fromName || 'Aspirant'} has declined the challenge.`);
+        if (payload.toSessionId === clientSessionId || (payload.toUserId && payload.toUserId === currentUserId)) {
+          setChallengeStatusNotice(`${payload.fromName || 'Aspirant'} ಸವಾಲನ್ನು ತಿರಸ್ಕರಿಸಿದ್ದಾರೆ (Declined).`);
           setOutgoingChallengeTo(null);
           setBattleState('lobby');
-        }
-      })
-      .on('broadcast', { event: 'matchmaking_paired' }, ({ payload }) => {
-        if (payload.player1.id === currentUserId || payload.player2.id === currentUserId) {
-          const isP1 = payload.player1.id === currentUserId;
-          const matchedOpponent = isP1 ? payload.player2 : payload.player1;
-          setRoomCode(payload.roomCode);
-          setIsHost(isP1);
-          setOpponent(matchedOpponent);
-          subscribeToBattleRoom(payload.roomCode, isP1, matchedOpponent);
         }
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await lobbyChannel.track({
+            sessionId: clientSessionId,
             userId: currentUserId,
-            name: playerName,
+            name: cleanPlayerName,
             district: user?.district || 'Karnataka',
             target: user?.target_exam || 'KAS / PSI Aspirant',
             avatar: '🎓',
@@ -448,9 +560,9 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
     lobbyChannelRef.current = lobbyChannel;
 
     return () => {
-      lobbyChannel.unsubscribe();
+      supabase.removeChannel(lobbyChannel);
     };
-  }, [currentUserId, playerName, stats.points, battleState]);
+  }, [clientSessionId, currentUserId, cleanPlayerName, stats.points, battleState, user]);
 
   // Handle Initial Deep Link Room Code if present in URL
   useEffect(() => {
@@ -459,10 +571,16 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
     }
   }, [initialRoomCode]);
 
-  // 2. Setup Real-time Battle Room Channel
-  const subscribeToBattleRoom = (code, asHost, customOpponent = null) => {
+  // 4. Setup Real-time Battle Room Channel
+  const subscribeToBattleRoom = (code, asHost, customOpponent = null, specificTestId = null) => {
     if (roomChannelRef.current) {
-      roomChannelRef.current.unsubscribe();
+      supabase.removeChannel(roomChannelRef.current);
+      roomChannelRef.current = null;
+    }
+
+    const existingRoom = supabase.getChannels().find(c => c.topic === `realtime:battle_room_${code}`);
+    if (existingRoom) {
+      supabase.removeChannel(existingRoom);
     }
 
     const channel = supabase.channel(`battle_room_${code}`, {
@@ -475,45 +593,35 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
         battleAudio.playMatchFound();
 
         if (asHost) {
-          let pool = BATTLE_QUESTIONS_BANK;
-          if (selectedSubject !== 'all') {
-            pool = BATTLE_QUESTIONS_BANK.filter(q => q.subjectId === selectedSubject);
-            if (pool.length < 3) pool = BATTLE_QUESTIONS_BANK;
-          }
-          const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 5);
-          setMatchQuestions(shuffled);
+          const testToUse = specificTestId || selectedTestId;
+          const questions = getQuestionsPoolForMatch(testToUse);
+          setMatchQuestions(questions);
 
-          // Broadcast synced questions and matched state
+          // Broadcast synced questions
           channel.send({
             type: 'broadcast',
             event: 'sync_questions',
             payload: {
-              questions: shuffled,
-              host: { id: currentUserId, name: playerName, points: stats.points, avatar: '🔥' }
+              questions: questions,
+              testTitle: activeTest?.titleKn || activeTest?.title || 'Competitive Mock Test',
+              host: { id: currentUserId, name: cleanPlayerName, points: stats.points, avatar: '🔥' }
             }
           });
         }
 
-        // Move to MATCHED (Ready Screen) - DO NOT open automatically!
         setBattleState('matched');
       })
       .on('broadcast', { event: 'sync_questions' }, ({ payload }) => {
         setMatchQuestions(payload.questions);
         setOpponent(payload.host);
         battleAudio.playMatchFound();
-        // Move to MATCHED (Ready Screen) - Wait for Start!
         setBattleState('matched');
-      })
-      .on('broadcast', { event: 'player_ready' }, ({ payload }) => {
-        if (payload.userId !== currentUserId) {
-          setOpponentIsReady(true);
-        }
       })
       .on('broadcast', { event: 'start_countdown' }, () => {
         runReadyCountdown();
       })
       .on('broadcast', { event: 'player_answer' }, ({ payload }) => {
-        if (payload.userId !== currentUserId) {
+        if (payload.userId !== currentUserId && payload.sessionId !== clientSessionId) {
           setOpponentAnsweredRound(true);
           setOpponentChoice(payload.choice);
           setOpponentScore(payload.totalScore);
@@ -525,14 +633,14 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          // Announce presence in room
           channel.send({
             type: 'broadcast',
             event: 'player_joined',
             payload: {
               user: {
                 id: currentUserId,
-                name: playerName,
+                sessionId: clientSessionId,
+                name: cleanPlayerName,
                 district: user?.district || 'Karnataka',
                 points: stats.points,
                 avatar: '🔥'
@@ -562,7 +670,6 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
       } else {
         clearInterval(interval);
         setReadyCountdown(null);
-        // Start actual duel!
         startBattleArena();
       }
     }, 1000);
@@ -583,7 +690,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
     setBattleState('battle');
   };
 
-  // When Host or Player clicks "Start Match / I'm Ready"
+  // When Host clicks "Start Match"
   const handleTriggerStartMatch = () => {
     setIAmReady(true);
     if (roomChannelRef.current) {
@@ -597,12 +704,13 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
   };
 
   // Create Private Room
-  const handleCreatePrivateRoom = () => {
+  const handleCreatePrivateRoom = (testId = null) => {
+    const chosenTest = testId || selectedTestId;
     const code = 'ADH-' + Math.floor(1000 + Math.random() * 9000);
     setRoomCode(code);
     setIsHost(true);
     setBattleState('room_wait');
-    subscribeToBattleRoom(code, true);
+    subscribeToBattleRoom(code, true, null, chosenTest);
   };
 
   // Join Room by Code
@@ -615,34 +723,54 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
     subscribeToBattleRoom(cleanCode, false);
   };
 
-  // In-App Direct Challenge to an Online Real User
-  const handleSendChallengeToUser = (targetUser) => {
+  // In-App Direct Challenge to an Online User for a specific test
+  const handleSendChallengeToUser = (targetUser, testId = null) => {
+    const chosenTest = testId || selectedTestId;
+    const testObj = tests.find(t => t.id === chosenTest);
+    const testTitle = testObj ? (testObj.titleKn || testObj.title) : 'General Karnataka Studies';
+
     const code = 'ADH-' + Math.floor(1000 + Math.random() * 9000);
     setRoomCode(code);
     setIsHost(true);
     setOutgoingChallengeTo(targetUser);
     setBattleState('room_wait');
 
-    subscribeToBattleRoom(code, true);
+    subscribeToBattleRoom(code, true, targetUser, chosenTest);
 
+    const invitePayload = {
+      toSessionId: targetUser.sessionId,
+      toUserId: targetUser.id,
+      roomCode: code,
+      testId: chosenTest,
+      testTitle: testTitle,
+      from: {
+        id: currentUserId,
+        sessionId: clientSessionId,
+        name: cleanPlayerName,
+        district: user?.district || 'Karnataka',
+        points: stats.points,
+        avatar: '⚔️'
+      }
+    };
+
+    // 1. Send via Supabase WebSocket
     if (lobbyChannelRef.current) {
       lobbyChannelRef.current.send({
         type: 'broadcast',
         event: 'battle_invite',
-        payload: {
-          toUserId: targetUser.id,
-          roomCode: code,
-          subject: selectedSubject,
-          from: {
-            id: currentUserId,
-            name: playerName,
-            district: user?.district || 'Karnataka',
-            points: stats.points,
-            avatar: '⚔️'
-          }
-        }
+        payload: invitePayload
       });
     }
+
+    // 2. Send via Local Storage Event for instant local tab sync
+    try {
+      localStorage.setItem('adhyayana_battle_challenge_event', JSON.stringify({
+        timestamp: Date.now(),
+        toSessionId: targetUser.sessionId,
+        toUserId: targetUser.id,
+        payload: invitePayload
+      }));
+    } catch (e) {}
   };
 
   // Accept Incoming In-App Challenge
@@ -653,8 +781,11 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
     setRoomCode(challenge.roomCode);
     setIsHost(false);
     setOpponent(challenge.from);
+    if (challenge.testId) {
+      setSelectedTestId(challenge.testId);
+    }
     setBattleState('searching');
-    subscribeToBattleRoom(challenge.roomCode, false, challenge.from);
+    subscribeToBattleRoom(challenge.roomCode, false, challenge.from, challenge.testId);
   };
 
   // Decline Incoming In-App Challenge
@@ -665,32 +796,39 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
         type: 'broadcast',
         event: 'invite_declined',
         payload: {
+          toSessionId: incomingChallenge.from.sessionId,
           toUserId: incomingChallenge.from.id,
-          fromName: playerName
+          fromName: cleanPlayerName
         }
       });
     }
+    try {
+      localStorage.setItem('adhyayana_battle_decline_event', JSON.stringify({
+        timestamp: Date.now(),
+        toSessionId: incomingChallenge.from.sessionId,
+        toUserId: incomingChallenge.from.id,
+        fromName: cleanPlayerName
+      }));
+    } catch (e) {}
     setIncomingChallenge(null);
   };
 
-  // Quick Matchmaking (Waits for a real person in the matchmaking queue or online users)
+  // Quick Matchmaking
   const handleStartQuickMatch = () => {
     setBattleState('searching');
     battleAudio.muted = !soundEnabled;
 
-    // If there is another real online user in the lobby, invite them
-    const availableReal = onlineUsers.filter(u => u.id !== currentUserId);
+    const availableReal = onlineUsers.filter(u => u.sessionId !== clientSessionId);
     if (availableReal.length > 0) {
       const matched = availableReal[0];
-      handleSendChallengeToUser(matched);
+      handleSendChallengeToUser(matched, selectedTestId);
       return;
     }
 
-    // Otherwise, create a public room and wait until a real person joins
     const code = 'ADH-' + Math.floor(1000 + Math.random() * 9000);
     setRoomCode(code);
     setIsHost(true);
-    subscribeToBattleRoom(code, true);
+    subscribeToBattleRoom(code, true, null, selectedTestId);
   };
 
   // Active Round Timer Effect
@@ -741,13 +879,13 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
       nextStreak = 0;
     }
 
-    // Broadcast Realtime Answer to Opponent
     if (roomChannelRef.current) {
       roomChannelRef.current.send({
         type: 'broadcast',
         event: 'player_answer',
         payload: {
           userId: currentUserId,
+          sessionId: clientSessionId,
           roundIndex: currentRoundIdx,
           choice: optIdx,
           isCorrect,
@@ -842,7 +980,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
       roomChannelRef.current.send({
         type: 'broadcast',
         event: 'emoji_reaction',
-        payload: { emoji, fromName: playerName }
+        payload: { emoji, fromName: cleanPlayerName }
       });
     }
   };
@@ -886,8 +1024,10 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
   };
 
   // WhatsApp Invite Link Construction
-  const battleShareUrl = `${window.location.origin}${window.location.pathname}?battleRoom=${roomCode}`;
-  const whatsappInviteMessage = `🔥 ನಮಸ್ಕಾರ! ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನನ್ನೊಂದಿಗೆ 1 vs 1 ಸ್ಪರ್ಧಾತ್ಮಕ ರಸಪ್ರಶ್ನೆ ಆಡಲು ಬನ್ನಿ!\n\n🔑 ಕೊಠಡಿ ಕೋಡ್ (Room Code): *${roomCode}*\n\n👉 ಈ ಲಿಂಕ್ ಕ್ಲಿಕ್ ಮಾಡಿ ನೇರವಾಗಿ ಸೇರಿಕೊಳ್ಳಿ:\n${battleShareUrl}`;
+  const testTitleParam = activeTest ? `&testId=${activeTest.id}` : '';
+  const battleShareUrl = `${window.location.origin}${window.location.pathname}?battleRoom=${roomCode}${testTitleParam}`;
+  const testNameForInvite = activeTest ? `*${activeTest.titleKn || activeTest.title}*` : 'ಸ್ಪರ್ಧಾತ್ಮಕ ರಸಪ್ರಶ್ನೆ';
+  const whatsappInviteMessage = `🔥 ನಮಸ್ಕಾರ! ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನನ್ನೊಂದಿಗೆ ${testNameForInvite} ವಿಷಯದಲ್ಲಿ 1 vs 1 ಲೈವ್ ಕಾಳಗ ಆಡಲು ಬನ್ನಿ!\n\n🔑 ಕೊಠಡಿ ಕೋಡ್ (Room Code): *${roomCode}*\n\n👉 ಈ ಲಿಂಕ್ ಕ್ಲಿಕ್ ಮಾಡಿ ನೇರವಾಗಿ ಸೇರಿಕೊಳ್ಳಿ:\n${battleShareUrl}`;
 
   const currentQ = matchQuestions[currentRoundIdx];
 
@@ -904,14 +1044,17 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
             <div className="flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white px-2 py-0.5 rounded-full">
-                  ಲೈವ್ ಸವಾಲು (Live Challenge)
+                  ಲೈವ್ ಸವಾಲು (Live 1v1 Challenge)
                 </span>
               </div>
               <h4 className="text-sm font-black text-white mt-0.5">
                 {incomingChallenge.from?.name || 'Aspirant'}
               </h4>
-              <p className="text-[11px] text-amber-300">
-                1 vs 1 ರಸಪ್ರಶ್ನೆ ಪಂದ್ಯಕ್ಕೆ ನಿಮ್ಮನ್ನು ಆಹ್ವಾನಿಸಿದ್ದಾರೆ!
+              <p className="text-[11px] text-amber-300 font-bold">
+                {incomingChallenge.testTitle ? `📝 ${incomingChallenge.testTitle}` : '1 vs 1 ರಸಪ್ರಶ್ನೆ ಪಂದ್ಯ'}
+              </p>
+              <p className="text-[10px] text-slate-400">
+                ನಿಮ್ಮೊಂದಿಗೆ 1 vs 1 ಲೈವ್ ಸ್ಪರ್ಧೆಗೆ ಆಹ್ವಾನಿಸಿದ್ದಾರೆ!
               </p>
             </div>
           </div>
@@ -932,6 +1075,22 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
         </div>
       )}
 
+      {/* Challenge Status Notice Toast (e.g. Declined or Timed Out) */}
+      {challengeStatusNotice && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] p-4 rounded-2xl bg-slate-900/95 border-2 border-rose-500 text-white text-xs font-bold flex items-center justify-between gap-3 shadow-2xl animate-in slide-in-from-top-4">
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg">📢</span>
+            <span className="text-rose-300">{challengeStatusNotice}</span>
+          </div>
+          <button
+            onClick={() => setChallengeStatusNotice(null)}
+            className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Floating Reaction Taunts Layer */}
       <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden">
         {floatingReactions.map((r) => (
@@ -945,7 +1104,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
         ))}
       </div>
 
-      {/* Top Header Bar */}
+      {/* Top Header Bar - Clean User Name in Top Corner */}
       <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
@@ -964,22 +1123,24 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                   1 vs 1 REALTIME QUIZ BATTLE
                 </h1>
                 <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-600 text-white animate-pulse">
-                  MULTIPLAYER
+                  LIVE
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400">
-                ಕರ್ನಾಟಕ ಲೈವ್ ರಸಪ್ರಶ್ನೆ ಕಾಳಗ • Real-time Multiplayer
-              </p>
             </div>
           </div>
         </div>
 
-        {/* Right Stats & Audio Controls */}
+        {/* Right Corner: User Display Name & Points Only */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden sm:flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
-            <span className="text-xs">🏆</span>
-            <span className="text-xs font-bold text-amber-400 font-mono">{stats.points} pts</span>
-            <span className="text-[10px] text-slate-400">({stats.wins}W - {stats.losses}L)</span>
+          
+          <div className="flex items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700 shadow-sm">
+            <span className="text-xs">👤</span>
+            <span className="text-xs font-bold text-white max-w-[110px] sm:max-w-[160px] truncate">
+              {cleanPlayerName}
+            </span>
+            <span className="text-xs font-bold text-amber-400 font-mono">
+              ({stats.points} pts)
+            </span>
           </div>
 
           {/* Voice Call Button (Active during battle) */}
@@ -1037,13 +1198,13 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                 </div>
 
                 <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight">
-                  {lang === 'kn' ? 'ಸ್ನೇಹಿತರೊಂದಿಗೆ & ರಾಜ್ಯದ ಆಕಾಂಕ್ಷಿಗಳೊಂದಿಗೆ 1 vs 1 ನೇರ ಸ್ಪರ್ಧಿಸಿ!' : 'Challenge Real Aspirants in Live 1 vs 1 Duels!'}
+                  {lang === 'kn' ? 'ನಿರ್ದಿಷ್ಟ ಟೆಸ್ಟ್‌ಗಳಲ್ಲಿ 1 vs 1 ನೇರ ಸ್ಪರ್ಧಿಸಿ!' : 'Challenge Real Aspirants on Specific Mock Tests!'}
                 </h2>
 
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   {lang === 'kn' 
-                    ? '5 ವೇಗದ ರಸಪ್ರಶ್ನೆಗಳು • 15 ಸೆಕೆಂಡ್ ಸಮಯ • WhatsApp ಮೂಲಕ ನೇರವಾಗಿ ಸ್ನೇಹಿತರನ್ನು ಆಹ್ವಾನಿಸಿ ಅಥವಾ ಆನ್‌ಲೈನ್ ಇರುವ ಆಕಾಂಕ್ಷಿಗಳಿಗೆ ಸವಾಲು ಕಳುಹಿಸಿ!'
-                    : '5 Rapid questions • 15 seconds each • Invite WhatsApp friends directly or challenge active online aspirants in real-time!'}
+                    ? 'ಯಾವುದೇ ಮಾಕ್ ಟೆಸ್ಟ್ ಆಯ್ಕೆಮಾಡಿ • WhatsApp ಮೂಲಕ ಸ್ನೇಹಿತರಿಗೆ ಆಹ್ವಾನ ಕಳುಹಿಸಿ ಅಥವಾ ಆನ್‌ಲೈನ್ ಇರುವ ಆಕಾಂಕ್ಷಿಗಳಿಗೆ ಸವಾಲು ಹಾಕಿ!'
+                    : 'Pick any mock test from catalog • Challenge friends on WhatsApp or duel live online aspirants in real-time!'}
                 </p>
 
                 {/* Primary Action Buttons */}
@@ -1057,7 +1218,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                   </button>
 
                   <button
-                    onClick={handleCreatePrivateRoom}
+                    onClick={() => handleCreatePrivateRoom(selectedTestId)}
                     className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     <Users className="w-4 h-4 text-cyan-400" />
@@ -1101,11 +1262,11 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
               </div>
             </div>
 
-            {/* LIVE ONLINE ASPIRANTS HUB (REAL USERS ONLY) */}
+            {/* LIVE ONLINE ASPIRANTS HUB */}
             <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+                  <div className={`w-3 h-3 rounded-full ${onlineUsers.length > 0 ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
                   <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                     <UserCheck className="w-4 h-4 text-emerald-400" />
                     <span>{lang === 'kn' ? 'ಲೈವ್ ಆನ್‌ಲೈನ್ ಆಕಾಂಕ್ಷಿಗಳು (Live Online Aspirants)' : 'Active Online Aspirants (Send Direct Challenge)'}</span>
@@ -1120,7 +1281,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
                   {onlineUsers.map((asp) => (
                     <div
-                      key={asp.id}
+                      key={asp.sessionId || asp.id}
                       className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 hover:border-amber-400/50 transition-all flex items-center justify-between gap-3 shadow-md"
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -1136,7 +1297,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                       </div>
 
                       <button
-                        onClick={() => handleSendChallengeToUser(asp)}
+                        onClick={() => handleSendChallengeToUser(asp, selectedTestId)}
                         className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-slate-950 font-black text-[10px] sm:text-xs shadow-md shrink-0 flex items-center gap-1 cursor-pointer transition-all hover:scale-105 active:scale-95"
                       >
                         <Swords className="w-3 h-3 text-slate-950" />
@@ -1161,7 +1322,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                     </p>
                   </div>
                   <button
-                    onClick={handleCreatePrivateRoom}
+                    onClick={() => handleCreatePrivateRoom(selectedTestId)}
                     className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 inline-flex items-center gap-2 cursor-pointer"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -1171,38 +1332,129 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
               )}
             </div>
 
-            {/* Subject Selector */}
-            <div className="space-y-3">
-              <h3 className="text-sm sm:text-base font-bold text-slate-200 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>{lang === 'kn' ? 'ರಸಪ್ರಶ್ನೆ ವಿಷಯ ಆಯ್ಕೆಮಾಡಿ (Choose Subject):' : 'Choose Battle Subject:'}</span>
-              </h3>
+            {/* FEATURE: SELECT SPECIFIC MOCK TEST FOR 1v1 LIVE DUEL */}
+            <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-sm sm:text-base font-bold text-white">
+                    {lang === 'kn' ? '📝 ನಿರ್ದಿಷ್ಟ ಮಾಕ್ ಟೆಸ್ಟ್ ಆಯ್ಕೆಮಾಡಿ (Select Test for 1v1 Battle):' : 'Choose Specific Test for 1v1 Battle:'}
+                  </h3>
+                </div>
+                <span className="text-xs font-bold text-amber-400 bg-amber-950/60 px-3 py-1 rounded-full border border-amber-800">
+                  {tests.length} Tests Available
+                </span>
+              </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {subjectsList.map((sub) => {
-                  const isSelected = selectedSubject === sub.id;
+              <p className="text-xs text-slate-400">
+                {lang === 'kn'
+                  ? 'ಕೆಳಗಿನ ಯಾವುದೇ ಟೆಸ್ಟ್ ಆಯ್ಕೆಮಾಡಿ ನೇರವಾಗಿ ಆ ಟೆಸ್ಟ್‌ನ ಪ್ರಶ್ನೆಗಳೊಂದಿಗೆ ಸ್ನೇಹಿತರಿಗೆ ಅಥವಾ ಆನ್‌ಲೈನ್ ಆಕಾಂಕ್ಷಿಗಳಿಗೆ 1v1 ಸವಾಲು ಕಳುಹಿಸಿ:'
+                  : 'Select any mock test below to challenge friends on its actual questions in a 1v1 speed duel:'}
+              </p>
+
+              {/* Tests Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {/* Default General Mix */}
+                <div
+                  onClick={() => setSelectedTestId('all')}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                    selectedTestId === 'all'
+                      ? 'bg-slate-800 border-amber-400 ring-2 ring-amber-400/50 shadow-xl'
+                      : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-2xl">⚡</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+                      Mixed GK
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-white">
+                      {lang === 'kn' ? 'ಕರ್ನಾಟಕ ಸಾಮಾನ್ಯ ಜ್ಞಾನ (All Mixed GK)' : 'Karnataka Mixed GK Test'}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5">ಇತಿಹಾಸ, ಸಂವಿಧಾನ, ಭೂಗೋಳ & ವಿಜ್ಞಾನ</p>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px]">
+                    <span className="text-slate-400">5 Questions • 15s</span>
+                    <span className="font-bold text-amber-400">ಆಯ್ಕೆಮಾಡಿ ✓</span>
+                  </div>
+                </div>
+
+                {/* Real Tests from Platform Catalog */}
+                {tests.map((test) => {
+                  const isSelected = selectedTestId === test.id;
+                  const qCount = Array.isArray(test.questions) ? test.questions.length : 0;
                   return (
-                    <button
-                      key={sub.id}
-                      onClick={() => setSelectedSubject(sub.id)}
-                      className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-3 cursor-pointer ${
+                    <div
+                      key={test.id}
+                      onClick={() => setSelectedTestId(test.id)}
+                      className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                         isSelected
-                          ? 'bg-slate-800 border-amber-400 ring-2 ring-amber-400/50 shadow-lg'
-                          : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 hover:bg-slate-800/60 text-slate-300'
+                          ? 'bg-slate-800 border-amber-400 ring-2 ring-amber-400/50 shadow-xl'
+                          : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
                       }`}
                     >
-                      <span className="text-2xl">{sub.icon}</span>
-                      <div>
-                        <p className={`text-xs sm:text-sm font-bold ${isSelected ? 'text-amber-400' : 'text-slate-200'}`}>
-                          {sub.name}
-                        </p>
-                        <p className="text-[10px] text-slate-500">5 Questions • 15s</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-2xl">📝</span>
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                          {test.subjectName || 'Mock Test'}
+                        </span>
                       </div>
-                    </button>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-white line-clamp-2">
+                          {test.titleKn || test.title}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{qCount} ಒಟ್ಟು ಪ್ರಶ್ನೆಗಳು</p>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px]">
+                        <span className="text-slate-400">5 Rapid Duel Qs</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTestId(test.id);
+                            handleCreatePrivateRoom(test.id);
+                          }}
+                          className="px-2 py-1 bg-gradient-to-r from-amber-500 to-rose-600 text-slate-950 font-black rounded-lg text-[9px] hover:scale-105 transition-transform"
+                        >
+                          1v1 ಕಾಳಗ ಆಡಿ ⚔️
+                        </button>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
             </div>
+
+            {/* REGISTERED ASPIRANTS DIRECTORY (From Platform Database) */}
+            {registeredMembers.length > 0 && (
+              <div className="p-6 bg-slate-900/60 rounded-3xl border border-slate-800/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-300 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-cyan-400" />
+                    <span>{lang === 'kn' ? 'ನೊಂದಾಯಿತ ವೇದಿಕೆ ಆಕಾಂಕ್ಷಿಗಳು (Registered Platform Members)' : 'Registered Platform Aspirants'}</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-500">{registeredMembers.length} Members</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {registeredMembers.slice(0, 6).map((member) => (
+                    <div key={member.id} className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+                      <div className="min-w-0 pr-2">
+                        <p className="text-xs font-bold text-white truncate">{member.name}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{member.target} • {member.district}</p>
+                      </div>
+                      <button
+                        onClick={() => handleSendChallengeToUser(member, selectedTestId)}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-[10px] rounded-lg border border-slate-700 shrink-0 cursor-pointer"
+                      >
+                        ಆಹ್ವಾನಿಸಿ (Invite)
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Profile Stats */}
             <div className="p-5 bg-slate-900 rounded-3xl border border-slate-800 space-y-4 max-w-md mx-auto">
@@ -1214,7 +1466,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
               </div>
 
               <div>
-                <h4 className="text-base font-black text-white">{playerName}</h4>
+                <h4 className="text-base font-black text-white">{cleanPlayerName}</h4>
                 <p className="text-xs font-bold text-slate-400">{user?.target_exam || 'KPSC Aspirant'}</p>
               </div>
 
@@ -1254,9 +1506,9 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                 {lang === 'kn' ? 'ನೈಜ ಎದುರಾಳಿಗಾಗಿ ಹುಡುಕಲಾಗುತ್ತಿದೆ...' : 'Waiting for Real Opponent...'}
               </h3>
               <p className="text-xs text-slate-400">
-                {lang === 'kn' 
-                  ? 'ಯಾರಾದರೂ ಆನ್‌ಲೈನ್ ಬರುವವರೆಗೆ ಅಥವಾ ಕೊಠಡಿಗೆ ಸೇರುವವರೆಗೆ ನಿರೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ...' 
-                  : 'Waiting for an active player to connect to the duel room...'}
+                {activeTest 
+                  ? `ಟೆಸ್ಟ್: "${activeTest.titleKn || activeTest.title}" - ಪಂದ್ಯಕ್ಕೆ ಯಾರಾದರೂ ಸೇರುವವರೆಗೆ ನಿರೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ...`
+                  : 'ಯಾರಾದರೂ ಆನ್‌ಲೈನ್ ಬರುವವರೆಗೆ ಅಥವಾ ಕೊಠಡಿಗೆ ಸೇರುವವರೆಗೆ ನಿರೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ...'}
               </p>
             </div>
 
@@ -1305,75 +1557,134 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
           </div>
         )}
 
-        {/* ----------------- STATE 3: PRIVATE ROOM & WHATSAPP SHARE WAIT ----------------- */}
+        {/* ----------------- STATE 3: CHALLENGE WAITING & PRIVATE ROOM WAIT ----------------- */}
         {battleState === 'room_wait' && (
-          <div className="max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-6 animate-in fade-in">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-3xl border border-emerald-500/40">
-              👥
-            </div>
+          <div className="max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-6 animate-in fade-in shadow-2xl">
+            {outgoingChallengeTo ? (
+              <div className="space-y-5">
+                <div className="relative w-20 h-20 mx-auto">
+                  <div className="absolute inset-0 rounded-3xl bg-amber-500/20 animate-ping" />
+                  <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-500 to-rose-600 text-slate-950 flex items-center justify-center text-3xl font-black shadow-xl shadow-rose-600/30">
+                    ⚔️
+                  </div>
+                </div>
 
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-white">
-                {outgoingChallengeTo 
-                  ? `${outgoingChallengeTo.name} ಅವರಿಗೆ ಸವಾಲು ಕಳುಹಿಸಲಾಗಿದೆ!`
-                  : (lang === 'kn' ? '1 vs 1 ರೂಮ್ ಸಿದ್ಧವಾಗಿದೆ' : 'Private Friend Room Created')}
-              </h3>
-              <p className="text-xs text-slate-400">
-                {outgoingChallengeTo
-                  ? 'ಅವರು ಸವಾಲು ಸ್ವೀಕರಿಸಿದ ತಕ್ಷಣ ಪಂದ್ಯದ ಸ್ಕ್ರೀನ್ ಓಪನ್ ಆಗುತ್ತದೆ...'
-                  : (lang === 'kn' 
-                      ? 'ಕೆಳಗಿನ WhatsApp ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ಸ್ನೇಹಿತರಿಗೆ ಲಿಂಕ್ ಕಳುಹಿಸಿ:' 
-                      : 'Share this Room Code with your friend via WhatsApp to join:')}
-              </p>
-            </div>
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider border border-amber-500/30">
+                    <Clock className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                    <span>ಸವಾಲು ಕಳುಹಿಸಲಾಗಿದೆ ({challengeTimeoutLeft}s)</span>
+                  </div>
+                  <h3 className="text-xl font-black text-white mt-2">
+                    {outgoingChallengeTo.name}
+                  </h3>
+                  <p className="text-xs text-amber-400 font-mono">
+                    {outgoingChallengeTo.points || 1200} pts • {outgoingChallengeTo.district || 'Karnataka'}
+                  </p>
+                  {activeTest && (
+                    <p className="text-xs font-bold text-slate-300 pt-1">
+                      📝 {activeTest.titleKn || activeTest.title}
+                    </p>
+                  )}
+                  <p className="text-xs text-slate-400 pt-2 leading-relaxed">
+                    ಅವರು ಸವಾಲು <strong>ಸ್ವೀಕರಿಸಲು (Accept)</strong> ಅಥವಾ <strong>ತಿರಸ್ಕರಿಸಲು (Reject)</strong> ಕಾಯಲಾಗುತ್ತಿದೆ...
+                  </p>
+                </div>
 
-            {/* Room Code Display */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest text-left">Room Code</p>
-                <span className="text-xl font-black font-mono tracking-widest text-amber-400">{roomCode}</span>
+                {/* Live Waiting Progress Bar */}
+                <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                  <div
+                    className="bg-gradient-to-r from-amber-500 to-rose-500 h-full transition-all duration-1000 ease-linear"
+                    style={{ width: `${(challengeTimeoutLeft / 30) * 100}%` }}
+                  />
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span>ಲೈವ್ ಸಿಗ್ನಲ್ ಕಳುಹಿಸಲಾಗಿದೆ • 30 ಸೆಕೆಂಡುಗಳ ಕಾಲ ಕಾಯಲಾಗುತ್ತದೆ</span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (roomChannelRef.current) roomChannelRef.current.unsubscribe();
+                    setOutgoingChallengeTo(null);
+                    setBattleState('lobby');
+                  }}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold text-xs rounded-xl border border-slate-700 cursor-pointer transition-all"
+                >
+                  ✕ ಸವಾಲು ರದ್ದುಮಾಡಿ (Cancel Challenge)
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(battleShareUrl);
-                  setCopiedLink(true);
-                  setTimeout(() => setCopiedLink(false), 2000);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
-              </button>
-            </div>
+            ) : (
+              <div className="space-y-5">
+                <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-3xl border border-emerald-500/40">
+                  👥
+                </div>
 
-            {/* WhatsApp Direct Invite Button */}
-            <a
-              href={`https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappInviteMessage)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95"
-            >
-              <MessageCircle className="w-5 h-5 fill-current" />
-              <span>WhatsApp ನಲ್ಲಿ ಆಹ್ವಾನಿಸಿ (Invite on WhatsApp)</span>
-            </a>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-white">
+                    {lang === 'kn' ? '1 vs 1 ರೂಮ್ ಸಿದ್ಧವಾಗಿದೆ' : 'Private Friend Room Created'}
+                  </h3>
+                  {activeTest && (
+                    <p className="text-xs font-bold text-amber-400">
+                      📝 {activeTest.titleKn || activeTest.title}
+                    </p>
+                  )}
+                  <p className="text-xs text-slate-400">
+                    {lang === 'kn' 
+                      ? 'ಕೆಳಗಿನ WhatsApp ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ಸ್ನೇಹಿತರಿಗೆ ಲಿಂಕ್ ಕಳುಹಿಸಿ:' 
+                      : 'Share this Room Code with your friend via WhatsApp to join:'}
+                  </p>
+                </div>
 
-            {/* Waiting Pulse */}
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-center gap-2 text-xs text-slate-400">
-              <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span>ನೈಜ ಆಟಗಾರರ ಸೇರ್ಪಡೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ...</span>
-            </div>
+                {/* Room Code Display */}
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest text-left">Room Code</p>
+                    <span className="text-xl font-black font-mono tracking-widest text-amber-400">{roomCode}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(battleShareUrl);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2000);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
+                  </button>
+                </div>
 
-            <div className="pt-2">
-              <button
-                onClick={() => {
-                  if (roomChannelRef.current) roomChannelRef.current.unsubscribe();
-                  setBattleState('lobby');
-                }}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
-              >
-                ರದ್ದು (Cancel & Back)
-              </button>
-            </div>
+                {/* WhatsApp Direct Invite Button */}
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappInviteMessage)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95"
+                >
+                  <MessageCircle className="w-5 h-5 fill-current" />
+                  <span>WhatsApp ನಲ್ಲಿ ಆಹ್ವಾನಿಸಿ (Invite on WhatsApp)</span>
+                </a>
+
+                {/* Waiting Pulse */}
+                <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-center gap-2 text-xs text-slate-400">
+                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  <span>ಸ್ನೇಹಿತರ ಸೇರ್ಪಡೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ...</span>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      if (roomChannelRef.current) roomChannelRef.current.unsubscribe();
+                      setBattleState('lobby');
+                    }}
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    ರದ್ದು (Cancel & Back)
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1388,6 +1699,11 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
               <h2 className="text-2xl sm:text-3xl font-black text-white mt-2">
                 🎉 ಎದುರಾಳಿ ಸಿಕ್ಕಿದ್ದಾರೆ! (Opponent Found!)
               </h2>
+              {activeTest && (
+                <p className="text-xs font-bold text-amber-400 mt-1">
+                  📝 {activeTest.titleKn || activeTest.title}
+                </p>
+              )}
               <p className="text-xs text-slate-400">
                 {lang === 'kn' 
                   ? 'ಇಬ್ಬರೂ ಸಿದ್ಧರಾದಾಗ "ಪಂದ್ಯ ಪ್ರಾರಂಭಿಸಿ" ಬಟನ್ ಒತ್ತಿ!' 
@@ -1403,7 +1719,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-xl font-black">
                   👤
                 </div>
-                <h4 className="text-xs sm:text-sm font-bold text-white truncate">{playerName}</h4>
+                <h4 className="text-xs sm:text-sm font-bold text-white truncate">{cleanPlayerName}</h4>
                 <p className="text-[10px] text-amber-400 font-mono">{stats.points} pts</p>
                 <span className="inline-block text-[9px] font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded-full">
                   ನೀವು (You)
@@ -1478,7 +1794,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs sm:text-sm font-black text-white truncate max-w-[100px] sm:max-w-none">
-                        {playerName}
+                        {cleanPlayerName}
                       </span>
                       {playerStreak > 1 && (
                         <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-600 text-white animate-pulse">
@@ -1682,7 +1998,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
               {/* Final Scores Comparison */}
               <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
                 <div className="text-center border-r border-slate-800 pr-2">
-                  <p className="text-xs text-slate-400">{playerName}</p>
+                  <p className="text-xs text-slate-400">{cleanPlayerName}</p>
                   <p className="text-2xl font-black text-emerald-400">{playerScore}</p>
                 </div>
                 <div className="text-center pl-2">

@@ -9,7 +9,9 @@ import { GoogleAuthModal } from './components/GoogleAuthModal';
 import { CheckoutModal } from './components/CheckoutModal';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { PwaFloatingBanner } from './components/PwaFloatingBanner';
+import { BattleInviteModal } from './components/BattleInviteModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { supabase } from './lib/supabase';
 
 // Core entry pages
 import { LoginPage } from './pages/LoginPage';
@@ -63,6 +65,144 @@ const MainApp = () => {
     return 'home';
   });
 
+  // Global In-App 1v1 Battle Invitation
+  const [globalBattleInvite, setGlobalBattleInvite] = useState(null);
+
+  // Unique session ID for tab
+  const tabSessionId = React.useMemo(() => {
+    return 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+  }, []);
+
+  // Track global presence and listen for battle invitations across ANY page
+  useEffect(() => {
+    if (!user) return;
+    const PRESENCE_KEY = 'adhyayana_live_presence_registry';
+    const cleanName = (user.name && !user.name.includes('@'))
+      ? user.name.trim()
+      : (user.name || user.email || 'Aspirant').split('@')[0].replace(/[._\d-]+/g, ' ').trim() || 'Aspirant';
+
+    const broadcastHeartbeat = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem(PRESENCE_KEY) || '{}');
+        const now = Date.now();
+        stored[tabSessionId] = {
+          sessionId: tabSessionId,
+          userId: user.id || user.email || tabSessionId,
+          name: cleanName,
+          district: user.district || 'Karnataka',
+          target: user.targetExam || user.target_exam || 'KPSC Aspirant',
+          avatar: '👨‍🎓',
+          points: 1200,
+          currentView: currentView,
+          lastPing: now
+        };
+        // Clean stale
+        Object.keys(stored).forEach(sid => {
+          if (now - stored[sid].lastPing > 4000) {
+            delete stored[sid];
+          }
+        });
+        localStorage.setItem(PRESENCE_KEY, JSON.stringify(stored));
+      } catch (e) {}
+    };
+
+    broadcastHeartbeat();
+    const interval = setInterval(broadcastHeartbeat, 1500);
+
+    const handleStorageEvent = (e) => {
+      if (e.key === 'adhyayana_battle_challenge_event') {
+        try {
+          const inv = JSON.parse(e.newValue || '{}');
+          if (inv && (inv.toSessionId === tabSessionId || inv.toUserId === (user.id || user.email))) {
+            if (currentView !== 'battle') {
+              setGlobalBattleInvite(inv.payload);
+            }
+          }
+        } catch (err) {}
+      }
+    };
+
+    window.addEventListener('storage', handleStorageEvent);
+
+    let lobbyChannel = null;
+    if (currentView !== 'battle') {
+      const existing = supabase.getChannels().find(c => c.topic === 'realtime:battle_global_lobby');
+      if (existing) {
+        supabase.removeChannel(existing);
+      }
+
+      lobbyChannel = supabase.channel('battle_global_lobby', {
+        config: { presence: { key: tabSessionId } }
+      });
+
+      lobbyChannel
+        .on('broadcast', { event: 'battle_invite' }, ({ payload }) => {
+          if (payload && (payload.toSessionId === tabSessionId || payload.toUserId === (user.id || user.email))) {
+            setGlobalBattleInvite(payload);
+          }
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await lobbyChannel.track({
+              sessionId: tabSessionId,
+              userId: user.id || user.email || tabSessionId,
+              name: cleanName,
+              district: user.district || 'Karnataka',
+              target: user.targetExam || user.target_exam || 'KPSC Aspirant',
+              avatar: '🎓',
+              points: 1200,
+              currentView: currentView
+            });
+          }
+        });
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageEvent);
+      if (lobbyChannel) {
+        supabase.removeChannel(lobbyChannel);
+      }
+      try {
+        const stored = JSON.parse(localStorage.getItem(PRESENCE_KEY) || '{}');
+        delete stored[tabSessionId];
+        localStorage.setItem(PRESENCE_KEY, JSON.stringify(stored));
+      } catch (e) {}
+    };
+  }, [tabSessionId, user, currentView]);
+
+  const handleAcceptGlobalInvite = () => {
+    if (!globalBattleInvite) return;
+    const inv = globalBattleInvite;
+    setGlobalBattleInvite(null);
+    setInitialBattleRoom(inv.roomCode);
+    setCurrentView('battle');
+  };
+
+  const handleDeclineGlobalInvite = () => {
+    if (!globalBattleInvite) return;
+    try {
+      const channel = supabase.channel('battle_global_lobby');
+      channel.send({
+        type: 'broadcast',
+        event: 'invite_declined',
+        payload: {
+          toSessionId: globalBattleInvite.from?.sessionId,
+          toUserId: globalBattleInvite.from?.id,
+          fromName: (user?.name && !user.name.includes('@')) ? user.name.trim() : 'Aspirant'
+        }
+      });
+      // also storage fallback
+      localStorage.setItem('adhyayana_battle_decline_event', JSON.stringify({
+        timestamp: Date.now(),
+        toSessionId: globalBattleInvite.from?.sessionId,
+        toUserId: globalBattleInvite.from?.id,
+        fromName: user?.name || 'Aspirant'
+      }));
+    } catch (e) {}
+    setGlobalBattleInvite(null);
+  };
+
   // Selected entities for deep view
   const [selectedExam, setSelectedExam] = useState(null);
   const [selectedTest, setSelectedTest] = useState(null);
@@ -113,6 +253,13 @@ const MainApp = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors">
       
+      {/* Global In-App Battle Invite Popup */}
+      <BattleInviteModal
+        invite={globalBattleInvite}
+        onAccept={handleAcceptGlobalInvite}
+        onDecline={handleDeclineGlobalInvite}
+      />
+
       {/* Google Sign-in Global Modal */}
       <GoogleAuthModal />
 
