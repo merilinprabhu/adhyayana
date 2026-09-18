@@ -41,7 +41,8 @@ import {
   Star,
   Trophy,
   Filter,
-  Eye
+  Eye,
+  Upload
 } from 'lucide-react';
 
 // Icon Renderer Helper
@@ -88,6 +89,7 @@ const AVAILABLE_ICONS = [
 ];
 
 const PRESET_SUBJECT_COVERS = [
+  { label: 'ಕಂಪ್ಯೂಟರ್ / Computer Literacy', url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80' },
   { label: 'ಇತಿಹಾಸ / History', url: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=600&auto=format&fit=crop&q=80' },
   { label: 'ಸಂವಿಧಾನ / Polity', url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80' },
   { label: 'ಭೂಗೋಳ / Geography', url: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&auto=format&fit=crop&q=80' },
@@ -96,6 +98,7 @@ const PRESET_SUBJECT_COVERS = [
   { label: 'ಗಣಿತ & ಸಾಮರ್ಥ್ಯ / Mental Ability', url: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&auto=format&fit=crop&q=80' },
   { label: 'ಪ್ರಚಲಿತ ಘಟನೆಗಳು / Current Affairs', url: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&auto=format&fit=crop&q=80' },
   { label: 'ಶಿಕ್ಷಣ / Pedagogy & TET', url: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&auto=format&fit=crop&q=80' },
+  { label: 'ಸಾಮಾನ್ಯ ಅಧ್ಯಯನ / General Studies', url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600&auto=format&fit=crop&q=80' }
 ];
 
 export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, onSelectTest, onOpenAuth, onOpenCheckout, onNavigate }) => {
@@ -251,6 +254,23 @@ export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, o
     if (onSelectTest) {
       onSelectTest(test);
     }
+  };
+
+  // Helper: File Upload to DataURL (Base64)
+  const handleImageFileUpload = (e, onResult) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert(lang === 'kn' ? 'ದಯವಿಟ್ಟು 2MB ಗಿಂತ ಕಡಿಮೆ ಗಾತ್ರದ ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ.' : 'Please select an image smaller than 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      if (uploadEvent.target?.result) {
+        onResult(uploadEvent.target.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // Submit Handler: Add Subject
@@ -895,15 +915,14 @@ export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, o
                     >
                       {/* Card Thumbnail / Header Banner - Large & Eye-Catching */}
                       <div className="relative h-44 sm:h-48 md:h-52 w-full overflow-hidden bg-slate-900">
-                        {hasImage ? (
+                        <div className={`absolute inset-0 w-full h-full bg-gradient-to-br ${gradient} opacity-95`} />
+                        {hasImage && (
                           <img 
                             src={subj.imageUrl || subj.image_url} 
                             alt={subj.name} 
-                            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 brightness-90 group-hover:brightness-100"
-                            onError={(e) => { e.target.style.display = 'none'; }}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 brightness-90 group-hover:brightness-100"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
-                        ) : (
-                          <div className={`w-full h-full bg-gradient-to-br ${gradient} opacity-95`} />
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-black/25" />
 
@@ -1935,13 +1954,25 @@ export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, o
                   Subject Cover Image / Thumbnail (Optional)
                 </label>
                 <div className="space-y-2">
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/... or paste image URL"
-                    value={newSubjImage}
-                    onChange={(e) => setNewSubjImage(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/... or paste image URL"
+                      value={newSubjImage}
+                      onChange={(e) => setNewSubjImage(e.target.value)}
+                      className="flex-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono"
+                    />
+                    <label className="cursor-pointer px-3 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs font-bold flex items-center gap-1.5 shrink-0 border border-purple-200 dark:border-purple-800 transition-colors">
+                      <Upload className="w-3.5 h-3.5 text-purple-600" />
+                      <span>{lang === 'kn' ? 'ಚಿತ್ರ ಅಪ್ಲೋಡ್' : 'Upload File'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleImageFileUpload(e, (dataUrl) => setNewSubjImage(dataUrl))}
+                      />
+                    </label>
+                  </div>
 
                   {/* Preset Covers Selector */}
                   <div>
@@ -2440,13 +2471,25 @@ export const NotesCatalog = ({ initialTab = 'all', onSelectExam, onSelectNote, o
                   Subject Cover Image / Thumbnail (Optional)
                 </label>
                 <div className="space-y-2">
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/... or paste image URL"
-                    value={editingSubject.imageUrl || ''}
-                    onChange={(e) => setEditingSubject({ ...editingSubject, imageUrl: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/... or paste image URL"
+                      value={editingSubject.imageUrl || ''}
+                      onChange={(e) => setEditingSubject({ ...editingSubject, imageUrl: e.target.value })}
+                      className="flex-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono"
+                    />
+                    <label className="cursor-pointer px-3 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 shrink-0 border border-emerald-200 dark:border-emerald-800 transition-colors">
+                      <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{lang === 'kn' ? 'ಚಿತ್ರ ಅಪ್ಲೋಡ್' : 'Upload File'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleImageFileUpload(e, (dataUrl) => setEditingSubject({ ...editingSubject, imageUrl: dataUrl }))}
+                      />
+                    </label>
+                  </div>
 
                   {/* Preset Covers Selector */}
                   <div>

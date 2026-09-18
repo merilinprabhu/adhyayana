@@ -6,7 +6,8 @@ import {
   INITIAL_SUBJECTS,
   INITIAL_DAILY_QUIZ,
   INITIAL_COMBOS,
-  INITIAL_LEADERBOARD
+  INITIAL_LEADERBOARD,
+  INITIAL_COMMUNITY_MATERIALS
 } from '../data/initialData';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
@@ -81,6 +82,17 @@ export const DEFAULT_HOME_SECTIONS = [
     titleEn: '🗂️ Interactive Revision Flashcards Hub',
     subtitleKn: 'ಸಂವಿಧಾನದ ವಿಧಿಗಳು, ಕರ್ನಾಟಕ ಇತಿಹಾಸದ ಇಸವಿಗಳು ಮತ್ತು ಸೂತ್ರಗಳನ್ನು ನೆನಪಿಟ್ಟುಕೊಳ್ಳಲು ಅತ್ಯಾಧುನಿಕ ಕಾರ್ಡ್‌ಗಳು.',
     subtitleEn: 'Boost active recall with 3D flipcards covering Articles, Dynasties, Formulas & Awards.'
+  },
+  {
+    id: 'collaborate_showcase',
+    type: 'collaborate_showcase',
+    isVisible: true,
+    badgeKn: 'ಮುಕ್ತ ಸಮುದಾಯ ಭಂಡಾರ',
+    badgeEn: 'Open Community Hub',
+    titleKn: '🤝 ವಿದ್ಯಾರ್ಥಿ ಸಹಯೋಗ & ಹಂಚಿಕೆ ಭಂಡಾರ (PYQ & Notes)',
+    titleEn: '🤝 Student & Educator Collaborate Hub (PYQ & Notes)',
+    subtitleKn: 'ಟಾಪರ್‌ಗಳು ಮತ್ತು ಶಿಕ್ಷಕರು ಹಂಚಿಕೊಂಡ ಹಿಂದಿನ ವರ್ಷಗಳ ಪ್ರಶ್ನೆಪತ್ರಿಕೆಗಳು (PYQ), ಕೈಬರಹದ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ರೆಫರೆನ್ಸ್ ಪುಸ್ತಕಗಳು.',
+    subtitleEn: 'Access peer-shared previous year solved papers, handwritten revision notes, and book summaries.'
   },
   {
     id: 'core_pillars',
@@ -949,7 +961,8 @@ const STORAGE_KEYS = {
   USER_HIGHLIGHTS: 'adhyayana_highlights_v1',
   LIVE_MOCK_TEST: 'adhyayana_live_mock_v1',
   FEEDBACKS: 'adhyayana_feedbacks_v2',
-  STUDY_REQUESTS: 'adhyayana_study_requests_v2'
+  STUDY_REQUESTS: 'adhyayana_study_requests_v2',
+  COMMUNITY_MATERIALS: 'adhyayana_community_materials_v1'
 };
 
 export const DataProvider = ({ children }) => {
@@ -1343,6 +1356,17 @@ export const DataProvider = ({ children }) => {
     }
   });
 
+  // Community Collaborative Study Materials & PYQs Repository
+  const [communityMaterials, setCommunityMaterials] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.COMMUNITY_MATERIALS);
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_COMMUNITY_MATERIALS;
+    } catch {
+      return INITIAL_COMMUNITY_MATERIALS;
+    }
+  });
+
   // 1. Initial Supabase Cloud Fetch
   const syncFromSupabase = useCallback(async () => {
     setIsCloudSyncing(true);
@@ -1507,6 +1531,49 @@ export const DataProvider = ({ children }) => {
         }
       } catch (notErr) {
         console.warn('Supabase notices fetch notice:', notErr);
+      }
+
+      // 5C. Fetch Community Materials (PYQs & Notes)
+      try {
+        const { data: dbComm, error: commErr } = await supabase.from('community_materials').select('*').order('created_at', { ascending: false });
+        if (!commErr && dbComm && dbComm.length > 0) {
+          const formattedComm = dbComm.map(c => ({
+            id: c.id,
+            title: c.title,
+            titleKn: c.title_kn || c.title,
+            category: c.category || 'pyq',
+            examId: c.exam_id,
+            examName: c.exam_name,
+            examNameKn: c.exam_name_kn || c.exam_name,
+            subject: c.subject,
+            subjectKn: c.subject_kn || c.subject,
+            year: c.year || '2024',
+            description: c.description,
+            descriptionKn: c.description_kn || c.description,
+            contributorName: c.contributor_name,
+            contributorDistrict: c.contributor_district,
+            contributorBadge: c.contributor_badge || 'Community Aspirant',
+            fileUrl: c.file_url,
+            fileType: c.file_type || 'pdf',
+            fileSize: c.file_size || '3.5 MB',
+            textContent: c.text_content || '',
+            hasSolution: c.has_solution !== undefined ? c.has_solution : true,
+            upvotes: Number(c.upvotes) || 0,
+            downloads: Number(c.downloads) || 0,
+            tags: Array.isArray(c.tags) ? c.tags : [],
+            createdAt: c.created_at || c.createdAt
+          }));
+
+          setCommunityMaterials(prev => {
+            const map = new Map(formattedComm.map(item => [item.id, item]));
+            prev.forEach(localItem => {
+              if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+            });
+            return Array.from(map.values());
+          });
+        }
+      } catch (commErr) {
+        console.warn('Supabase community materials fetch note:', commErr);
       }
 
       // 6. Fetch App Settings (UPI ID, Phone, Name, Razorpay, Home Page Sections)
@@ -5851,6 +5918,99 @@ export const DataProvider = ({ children }) => {
     } catch (e) {}
   }, []);
 
+  // Add New Community Material (PYQ, Notes, Book Summary)
+  const addCommunityMaterial = useCallback(async (newMaterial) => {
+    const item = {
+      id: `comm_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString().split('T')[0],
+      upvotes: 0,
+      downloads: 0,
+      ...newMaterial
+    };
+
+    setCommunityMaterials(prev => {
+      const updated = [item, ...prev];
+      safeLocalStorageSet(STORAGE_KEYS.COMMUNITY_MATERIALS, updated);
+      try {
+        supabase.from('app_settings').upsert({ key: 'community_materials_data', value: updated });
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await supabase.from('community_materials').insert({
+        id: item.id,
+        title: item.title || '',
+        title_kn: item.titleKn || item.title || '',
+        category: item.category || 'pyq',
+        exam_id: item.examId || '',
+        exam_name: item.examName || '',
+        exam_name_kn: item.examNameKn || '',
+        subject: item.subject || '',
+        subject_kn: item.subjectKn || '',
+        year: item.year || '2024',
+        description: item.description || '',
+        description_kn: item.descriptionKn || '',
+        contributor_name: item.contributorName || '',
+        contributor_district: item.contributorDistrict || '',
+        contributor_badge: item.contributorBadge || 'Community Aspirant',
+        file_url: item.fileUrl || '',
+        file_type: item.fileType || 'pdf',
+        file_size: item.fileSize || '3.5 MB',
+        text_content: item.textContent || '',
+        has_solution: item.hasSolution !== undefined ? item.hasSolution : true,
+        upvotes: item.upvotes || 0,
+        downloads: item.downloads || 0,
+        tags: item.tags || []
+      });
+    } catch (dbErr) {
+      console.warn('Supabase direct insert fallback:', dbErr);
+    }
+
+    return item;
+  }, []);
+
+  // Upvote / Helpful Community Material
+  const upvoteCommunityMaterial = useCallback(async (materialId) => {
+    let targetMat = null;
+    setCommunityMaterials(prev => {
+      const updated = prev.map(m => {
+        if (m.id === materialId) {
+          targetMat = { ...m, upvotes: (m.upvotes || 0) + 1 };
+          return targetMat;
+        }
+        return m;
+      });
+      safeLocalStorageSet(STORAGE_KEYS.COMMUNITY_MATERIALS, updated);
+      try {
+        supabase.from('app_settings').upsert({ key: 'community_materials_data', value: updated });
+      } catch (e) {}
+      return updated;
+    });
+
+    if (targetMat) {
+      try {
+        await supabase.from('community_materials').update({ upvotes: targetMat.upvotes }).eq('id', materialId);
+      } catch (e) {}
+    }
+  }, []);
+
+  // Delete Community Material
+  const deleteCommunityMaterial = useCallback(async (materialId) => {
+    setCommunityMaterials(prev => {
+      const updated = prev.filter(m => m.id !== materialId);
+      safeLocalStorageSet(STORAGE_KEYS.COMMUNITY_MATERIALS, updated);
+      try {
+        supabase.from('app_settings').upsert({ key: 'community_materials_data', value: updated });
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await supabase.from('community_materials').delete().eq('id', materialId);
+    } catch (e) {}
+  }, []);
+
   return (
     <DataContext.Provider
       value={{
@@ -5973,7 +6133,11 @@ export const DataProvider = ({ children }) => {
         studyRequests,
         addStudyRequest,
         updateStudyRequestStatus,
-        deleteStudyRequest
+        deleteStudyRequest,
+        communityMaterials,
+        addCommunityMaterial,
+        upvoteCommunityMaterial,
+        deleteCommunityMaterial
       }}
     >
       {children}

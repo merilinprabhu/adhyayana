@@ -55,9 +55,14 @@ import {
   Timer,
   ChevronLeft,
   MessageSquarePlus,
-  Swords
+  Swords,
+  User,
+  ThumbsUp,
+  Save
 } from 'lucide-react';
 import { AskWhatYouWantModal } from '../components/AskWhatYouWantModal';
+import { CollaborateUploadModal } from '../components/CollaborateUploadModal';
+import { CollaborateViewerModal } from '../components/CollaborateViewerModal';
 
 // Lightweight Inline Editable Text component for direct in-place editing
 const InlineText = ({
@@ -139,10 +144,14 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
     updateLiveMockTest,
     generateAiDailyContent,
     fetchLiveGovtNewsFeeds,
-    feedbacks = []
+    feedbacks = [],
+    communityMaterials = [],
+    upvoteCommunityMaterial
   } = useData();
 
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
+  const [isCollabUploadOpen, setIsCollabUploadOpen] = useState(false);
+  const [selectedCollabForView, setSelectedCollabForView] = useState(null);
   const [homeSearchQuery, setHomeSearchQuery] = useState('');
   const [noticeFilter, setNoticeFilter] = useState('all'); // 'all' | 'pdf' | 'image' | 'circular'
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -492,10 +501,18 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
     switch (sec.type) {
       case 'hero':
         return (
-          <section key={sec.id} className="relative overflow-hidden py-6 sm:py-8 bg-gradient-to-b from-emerald-50/70 via-white to-slate-50 dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-950 border-b border-slate-200 dark:border-slate-800">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4 sm:space-y-5">
+          <section key={sec.id} className="relative overflow-hidden pt-8 pb-10 sm:pt-12 sm:pb-14 bg-gradient-to-b from-emerald-500/10 via-slate-50/50 to-white dark:from-emerald-950/20 dark:via-slate-900/60 dark:to-slate-950 border-b border-slate-200/80 dark:border-slate-800/80">
+            {/* Ambient Background Glow Orbs */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-72 bg-gradient-to-r from-emerald-500/10 via-teal-400/10 to-amber-400/10 blur-3xl pointer-events-none rounded-full -z-0" />
+            
+            <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
               
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-300 dark:border-emerald-800 shadow-sm animate-pulse">
+              {/* Floating Value Proposition Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200/80 dark:border-emerald-800/80 shadow-sm backdrop-blur-md">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <InlineText
                   value={lang === 'kn' ? (sec.badgeKn || 'ಜ್ಞಾನವೇ ಶಕ್ತಿ • ಕರ್ನಾಟಕದ ಶ್ರೇಷ್ಠ ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷಾ ವೇದಿಕೆ') : (sec.badgeEn || 'Knowledge is Power • Premier Karnataka Exam Portal')}
@@ -504,8 +521,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 />
               </div>
 
-              <div className="space-y-2 max-w-3xl mx-auto">
-                <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
+              {/* Main Headline & Subtitle */}
+              <div className="space-y-3 max-w-3xl mx-auto">
+                <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || 'ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆಗಳ ಯಶಸ್ಸಿಗೆ ಸಮರ್ಪಿತ ಅಧ್ಯಯನ (ADHYAYANA)') : (sec.titleEn || 'Empowering Aspirants Towards Government Service - ADHYAYANA')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
@@ -514,7 +532,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                   />
                 </h1>
 
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
                   <InlineText
                     value={lang === 'kn'
                       ? (sec.subtitleKn || 'ಕರ್ನಾಟಕದ ಪ್ರತಿಯೊಬ್ಬ ವಿದ್ಯಾರ್ಥಿಗೂ ಗುಣಮಟ್ಟದ, ಸಿಲಬಸ್-ಆಧಾರಿತ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ನೈಜ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳನ್ನು ತಲುಪಿಸುವ ಡಿಜಿಟಲ್ ಶೈಕ್ಷಣಿಕ ಅಭಿಯಾನ.')
@@ -526,22 +544,22 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 </p>
               </div>
 
-              {/* Quick Hub Navigation CTAs */}
-              <div className="flex flex-wrap items-center justify-center gap-3">
+              {/* Quick Action Navigation CTAs */}
+              <div className="flex flex-wrap items-center justify-center gap-3.5 pt-1">
                 <button
                   onClick={() => onNavigate('battle')}
-                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-slate-950 rounded-xl font-black text-xs sm:text-sm shadow-lg shadow-rose-600/30 flex items-center gap-2 hover:scale-[1.03] transition-all cursor-pointer ring-2 ring-amber-400/40"
+                  className="px-6 py-3 bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-slate-950 rounded-2xl font-black text-xs sm:text-sm shadow-lg shadow-rose-600/25 flex items-center gap-2 hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer ring-2 ring-amber-400/40"
                 >
                   <Swords className="w-4 h-4 text-slate-950" />
                   <span>{lang === 'kn' ? '⚔️ 1 vs 1 ಲೈವ್ ಕ್ವಿಜ್ ಬ್ಯಾಟಲ್' : '⚔️ 1 vs 1 Live Quiz Battle'}</span>
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-950 text-rose-200 animate-pulse">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-950 text-rose-200 animate-pulse">
                     LIVE
                   </span>
                 </button>
 
                 <button
                   onClick={() => onNavigate(sec.ctaPrimaryTarget || 'notes')}
-                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 flex items-center gap-1.5 hover:scale-[1.02] transition-all"
+                  className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <BookOpen className="w-4 h-4" />
                   <InlineText
@@ -549,12 +567,12 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'ctaPrimaryKn' : 'ctaPrimaryEn', val)}
                     isEditMode={isEditMode}
                   />
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
 
                 <button
                   onClick={() => onNavigate(sec.ctaSecondaryTarget || 'exams')}
-                  className="px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 hover:border-emerald-500 rounded-xl font-bold text-xs sm:text-sm shadow-sm flex items-center gap-1.5 hover:scale-[1.02] transition-all"
+                  className="px-6 py-3 bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 hover:border-emerald-500 hover:bg-white dark:hover:bg-slate-800 rounded-2xl font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all backdrop-blur-sm cursor-pointer"
                 >
                   <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <InlineText
@@ -565,13 +583,13 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 </button>
               </div>
 
-              {/* Smart Quick Search & Topic Quick-Pills */}
-              <div className="max-w-xl mx-auto space-y-2">
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+              {/* Clean Integrated Search Bar & Smart Pills */}
+              <div className="max-w-xl mx-auto space-y-3 pt-2">
+                <div className="relative group">
+                  <Search className="w-4 h-4 absolute left-4 top-3.5 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                   <input
                     type="text"
-                    placeholder={lang === 'kn' ? 'ಪರೀಕ್ಷೆ, ವಿಷಯ ಅಥವಾ ಟೆಸ್ಟ್ ಹುಡುಕಿ (KAS, PSI, ಸಂವಿಧಾನ, FDA)...' : 'Search exam, syllabus, or mock test (e.g. KAS, PSI, Polity)...'}
+                    placeholder={lang === 'kn' ? 'ಪರೀಕ್ಷೆ, ವಿಷಯ ಅಥವಾ ಮಾಕ್ ಟೆಸ್ಟ್ ಹುಡುಕಿ (KAS, PSI, ಸಂವಿಧಾನ, FDA)...' : 'Search exam, syllabus, or mock test (e.g. KAS, PSI, Polity)...'}
                     value={homeSearchQuery}
                     onChange={(e) => setHomeSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -579,11 +597,11 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                         onNavigate('notes');
                       }
                     }}
-                    className="w-full pl-10 pr-24 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 shadow-sm text-xs outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    className="w-full pl-11 pr-24 py-3 rounded-2xl border border-slate-300/80 dark:border-slate-700/80 bg-white/95 dark:bg-slate-900/95 shadow-sm hover:shadow-md text-xs sm:text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all backdrop-blur-md"
                   />
                   <button
                     onClick={() => onNavigate('notes')}
-                    className="absolute right-1.5 top-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow transition-all"
+                    className="absolute right-1.5 top-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
                   >
                     {lang === 'kn' ? 'ಹುಡುಕಿ' : 'Search'}
                   </button>
@@ -591,12 +609,15 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
                 {/* Popular Keywords Quick Pills */}
                 <div className="flex items-center justify-center gap-1.5 flex-wrap text-xs">
-                  <span className="text-[10px] font-bold text-slate-400">{lang === 'kn' ? 'ಜನಪ್ರಿಯ:' : 'Trending:'}</span>
+                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3 text-emerald-500" />
+                    <span>{lang === 'kn' ? 'ಜನಪ್ರಿಯ:' : 'Trending:'}</span>
+                  </span>
                   {['🏛️ KPSC KAS', '👮 ಪೊಲೀಸ್ PSI', '📜 ಭಾರತದ ಸಂವಿಧಾನ', '🏛️ ಕರ್ನಾಟಕ ಇತಿಹಾಸ', '⚡ ಪ್ರಚಲಿತ ಘಟನೆಗಳು', '📚 FDA / SDA'].map((pill, pIdx) => (
                     <button
                       key={pIdx}
                       onClick={() => onNavigate('notes')}
-                      className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-all"
+                      className="px-2.5 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-medium hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 dark:hover:bg-slate-700 transition-all shadow-2xs"
                     >
                       {pill}
                     </button>
@@ -604,22 +625,22 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 </div>
               </div>
 
-              {/* Trust Highlights - Compact 4 Column Grid */}
-              <div className="pt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400 max-w-3xl mx-auto">
-                <div className="flex items-center justify-center gap-1.5 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span className="truncate">KPSC Syllabus</span>
+              {/* Trust Highlights - Sleek 4 Column Clean Grid */}
+              <div className="pt-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
+                <div className="flex items-center justify-center gap-2 p-2.5 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xs backdrop-blur-sm">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="truncate">100% KPSC Syllabus</span>
                 </div>
-                <div className="flex items-center justify-center gap-1.5 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <div className="flex items-center justify-center gap-2 p-2.5 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xs backdrop-blur-sm">
+                  <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
                   <span className="truncate">Watermarked PDF</span>
                 </div>
-                <div className="flex items-center justify-center gap-1.5 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <CreditCard className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <div className="flex items-center justify-center gap-2 p-2.5 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xs backdrop-blur-sm">
+                  <CreditCard className="w-4 h-4 text-purple-600 shrink-0" />
                   <span className="truncate">UPI 0% Fee</span>
                 </div>
-                <div className="flex items-center justify-center gap-1.5 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <Globe2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <div className="flex items-center justify-center gap-2 p-2.5 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xs backdrop-blur-sm">
+                  <Globe2 className="w-4 h-4 text-amber-500 shrink-0" />
                   <span className="truncate">Kannada & English</span>
                 </div>
               </div>
@@ -640,9 +661,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
         return (
           <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 text-xs font-bold uppercase tracking-wider">
+                <div className="inline-flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-bold uppercase tracking-wider">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
@@ -654,7 +675,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     isEditMode={isEditMode}
                   />
                 </div>
-                <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-0.5 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-2 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || '🔥 ಹೊಸದಾಗಿ ಸೇರಿಸಲಾದ ನೋಟ್ಸ್‌ಗಳು & ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು') : (sec.titleEn || '🔥 Newly Added Notes & Mock Tests')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
@@ -664,45 +685,48 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
               </div>
               <button
                 onClick={() => onNavigate('notes')}
-                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 shrink-0"
+                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 shrink-0 transition-colors cursor-pointer group"
               >
-                <span>{lang === 'kn' ? 'ಎಲ್ಲಾ ನೋಟ್ಸ್ & ಟೆಸ್ಟ್ ನೋಡಿ →' : 'View All Hub →'}</span>
+                <span>{lang === 'kn' ? 'ಎಲ್ಲಾ ನೋಟ್ಸ್ & ಟೆಸ್ಟ್ ನೋಡಿ' : 'View All Hub'}</span>
+                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
 
             {hasRecentItems ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Recent Tests Stream */}
                 {recentTests.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
-                      <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                        <Award className="w-3.5 h-3.5" />
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 px-1">
+                      <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-extrabold">
+                        <Award className="w-4 h-4" />
                         {lang === 'kn' ? 'ಇತ್ತೀಚಿನ ಮಾಕ್ ಟೆಸ್ಟ್‌ಗಳು' : 'Recent Mock Tests'}
                       </span>
-                      <span>{recentTests.length} {lang === 'kn' ? 'ಟೆಸ್ಟ್‌ಗಳು' : 'Tests'}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+                        {recentTests.length} {lang === 'kn' ? 'ಟೆಸ್ಟ್‌ಗಳು' : 'Tests'}
+                      </span>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {recentTests.map((t) => {
                         const s = subjMap[t.subjectId];
                         return (
                           <div
                             key={t.id}
                             onClick={() => onSelectTest ? onSelectTest(t) : onNavigate('notes')}
-                            className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-2.5 group relative overflow-hidden"
+                            className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-500/80 dark:hover:border-blue-500/80 shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-3 group relative overflow-hidden"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform">
-                                <Award className="w-4 h-4" />
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                <Award className="w-5 h-5" />
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 space-y-0.5">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-500 text-white shadow-2xs">
                                     NEW
                                   </span>
                                   {s && (
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[110px]">
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[130px]">
                                       {lang === 'kn' ? (s.nameKn || s.name) : s.name}
                                     </span>
                                   )}
@@ -723,10 +747,10 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                                 if (onSelectTest) onSelectTest(t);
                                 else onNavigate('notes');
                               }}
-                              className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs flex items-center gap-1 shrink-0 group-hover:scale-105 transition-all"
+                              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs flex items-center gap-1 shrink-0 group-hover:scale-105 transition-all cursor-pointer"
                             >
                               <span>{lang === 'kn' ? 'ಬರೆಯಿರಿ' : 'Start'}</span>
-                              <ChevronRight className="w-3 h-3" />
+                              <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         );
@@ -737,35 +761,37 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
                 {/* Recent Notes Stream */}
                 {recentNotes.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
-                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                        <BookOpen className="w-3.5 h-3.5" />
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 px-1">
+                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-extrabold">
+                        <BookOpen className="w-4 h-4" />
                         {lang === 'kn' ? 'ಇತ್ತೀಚಿನ ಡಿಜಿಟಲ್ ನೋಟ್ಸ್‌ಗಳು' : 'Recent Digital Notes'}
                       </span>
-                      <span>{recentNotes.length} {lang === 'kn' ? 'ನೋಟ್ಸ್‌ಗಳು' : 'Notes'}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                        {recentNotes.length} {lang === 'kn' ? 'ನೋಟ್ಸ್‌ಗಳು' : 'Notes'}
+                      </span>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {recentNotes.map((n) => {
                         const s = subjMap[n.subjectId];
                         return (
                           <div
                             key={n.id}
                             onClick={() => onNavigate('notes')}
-                            className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-2.5 group relative overflow-hidden"
+                            className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/80 dark:hover:border-emerald-500/80 shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-3 group relative overflow-hidden"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform">
-                                <BookOpen className="w-4 h-4" />
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                <BookOpen className="w-5 h-5" />
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 space-y-0.5">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-500 text-white shadow-2xs">
                                     NEW
                                   </span>
                                   {s && (
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[110px]">
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[130px]">
                                       {lang === 'kn' ? (s.nameKn || s.name) : s.name}
                                     </span>
                                   )}
@@ -785,10 +811,10 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                                 e.stopPropagation();
                                 onNavigate('notes');
                               }}
-                              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs flex items-center gap-1 shrink-0 group-hover:scale-105 transition-all"
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs flex items-center gap-1 shrink-0 group-hover:scale-105 transition-all cursor-pointer"
                             >
                               <span>{lang === 'kn' ? 'ಓದಿ' : 'Read'}</span>
-                              <ChevronRight className="w-3 h-3" />
+                              <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         );
@@ -798,7 +824,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 )}
               </div>
             ) : (
-              <div className="p-4 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-500 text-xs">
+              <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-500 text-xs">
                 <p>{lang === 'kn' ? 'ಸದ್ಯಕ್ಕೆ ಯಾವುದೇ ಹೊಸ ಅಪ್‌ಡೇಟ್‌ಗಳಿಲ್ಲ.' : 'No recent updates available.'}</p>
               </div>
             )}
@@ -819,10 +845,10 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
         });
 
         return (
-          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3.5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
+                <div className="inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -834,7 +860,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     isEditMode={isEditMode}
                   />
                 </div>
-                <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-0.5 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-2 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || '📢 ಅಧಿಕೃತ ಪ್ರಕಟಣಾ ಫಲಕ (Official Notice Board)') : (sec.titleEn || '📢 Official Notice Board & Syllabus Circulars')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
@@ -848,7 +874,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 {isDeveloper && (
                   <button
                     onClick={handleOpenAddNotice}
-                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-xs flex items-center gap-1 transition-all hover:scale-105"
+                    className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-xs flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>+ ಹೊಸ ಪ್ರಕಟಣೆ (Add)</span>
@@ -858,7 +884,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
             </div>
 
             {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
               {[
                 { id: 'all', labelKn: '🌟 ಎಲ್ಲಾ', labelEn: '🌟 All', count: (notices || []).length },
                 { id: 'pdf', labelKn: '📄 ಸಿಲಬಸ್ PDF', labelEn: '📄 Syllabus', count: (notices || []).filter(n => n.type === 'pdf').length },
@@ -868,15 +894,15 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 <button
                   key={f.id}
                   onClick={() => setNoticeFilter(f.id)}
-                  className={`px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap flex items-center gap-1.5 text-xs ${
+                  className={`px-3.5 py-1.5 rounded-xl font-bold transition-all whitespace-nowrap flex items-center gap-2 text-xs cursor-pointer ${
                     noticeFilter === f.id
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-400/40'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/80'
                   }`}
                 >
                   <span>{lang === 'kn' ? f.labelKn : f.labelEn}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                    noticeFilter === f.id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                  <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${
+                    noticeFilter === f.id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                   }`}>
                     {f.count}
                   </span>
@@ -886,7 +912,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
             {/* Notices Cards 3-Column Grid */}
             {filteredNotices.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {filteredNotices.map((notice) => {
                   const isUnread = notice.isNew && !readNoticeIds.includes(notice.id);
                   const isPdf = notice.type === 'pdf';
@@ -897,29 +923,29 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     <div
                       key={notice.id}
                       onClick={() => handleNoticeClick(notice)}
-                      className={`group relative rounded-xl p-3.5 border transition-all duration-200 flex flex-col justify-between cursor-pointer bg-white dark:bg-slate-900 shadow-xs hover:shadow-md ${
+                      className={`group relative rounded-2xl p-4 border transition-all duration-200 flex flex-col justify-between cursor-pointer bg-white dark:bg-slate-900 shadow-2xs hover:shadow-md ${
                         notice.isPinned
-                          ? 'border-amber-400/80 dark:border-amber-500/50 ring-1 ring-amber-400/30'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500'
+                          ? 'border-amber-400/80 dark:border-amber-500/60 ring-1 ring-amber-400/30'
+                          : 'border-slate-200/90 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500'
                       }`}
                     >
                       <div>
-                        <div className="flex items-center justify-between gap-1.5 mb-2">
-                          <div className="flex items-center gap-1 flex-wrap">
+                        <div className="flex items-center justify-between gap-1.5 mb-2.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             {notice.isPinned && (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                                 <Pin className="w-2.5 h-2.5 rotate-45" />
                                 <span>ಮುಖ್ಯ</span>
                               </span>
                             )}
                             
                             {isUnread && (
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-500 text-white animate-pulse">
+                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white animate-pulse">
                                 NEW
                               </span>
                             )}
 
-                            <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                               {lang === 'kn' ? (notice.categoryKn || 'ಪ್ರಕಟಣೆ') : (notice.categoryEn || 'Notice')}
                             </span>
                           </div>
@@ -930,8 +956,8 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                         </div>
 
                         {/* Title & Media Preview */}
-                        <div className="flex items-start gap-2.5">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform ${
+                        <div className="flex items-start gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform ${
                             isPdf 
                               ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900' 
                               : isImg 
@@ -950,7 +976,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                             <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors leading-snug line-clamp-1">
                               {lang === 'kn' ? (notice.titleKn || notice.titleEn) : (notice.titleEn || notice.titleKn)}
                             </h3>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 leading-relaxed">
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 leading-relaxed">
                               {lang === 'kn' ? (notice.descriptionKn || notice.descriptionEn) : (notice.descriptionEn || notice.descriptionKn)}
                             </p>
                           </div>
@@ -958,10 +984,10 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                       </div>
 
                       {/* Card Bottom Actions */}
-                      <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                         <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 group-hover:underline flex items-center gap-1">
-                          {isPdf && <span>📄 PDF ನೋಡಿ →</span>}
-                          {isImg && <span>🖼️ ಚಿತ್ರ ನೋಡಿ →</span>}
+                          {isPdf && <span>📄 PDF ವೀಕ್ಷಿಸಿ →</span>}
+                          {isImg && <span>🖼️ ಚಿತ್ರ ವೀಕ್ಷಿಸಿ →</span>}
                           {isLnk && <span>🔗 ಲಿಂಕ್ ತೆರೆಯಿರಿ →</span>}
                           {!isPdf && !isImg && !isLnk && <span>📝 ವಿವರ ಓದಿ →</span>}
                         </span>
@@ -970,9 +996,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={(e) => handleTogglePinNotice(notice, e)}
-                              className={`p-1 rounded text-[10px] ${
+                              className={`p-1.5 rounded-lg text-[10px] cursor-pointer ${
                                 notice.isPinned 
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' 
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' 
                                   : 'text-slate-400 hover:text-slate-600'
                               }`}
                             >
@@ -980,13 +1006,13 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                             </button>
                             <button
                               onClick={(e) => handleOpenEditNotice(notice, e)}
-                              className="p-1 text-slate-400 hover:text-amber-500 text-[10px]"
+                              className="p-1.5 text-slate-400 hover:text-amber-500 text-[10px] cursor-pointer"
                             >
                               <Edit3 className="w-3 h-3" />
                             </button>
                             <button
                               onClick={(e) => handleDeleteNotice(notice.id, e)}
-                              className="p-1 text-slate-400 hover:text-rose-500 text-[10px]"
+                              className="p-1.5 text-slate-400 hover:text-rose-500 text-[10px] cursor-pointer"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -1061,11 +1087,11 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
         const answeredCount = Object.keys(rapidQuizSelectedOptions).length;
 
         return (
-          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3.5">
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             {/* Header with Gemini AI Refresh */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
+                <div className="inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
                   <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
                   <InlineText
                     value={lang === 'kn' ? (sec.badgeKn || 'ದೈನಂದಿನ ಉಚಿತ 50 ರಾಪಿಡ್ ಅಭ್ಯಾಸ (Daily 50 Rapid Quiz)') : (sec.badgeEn || 'Daily Free 50 Rapid Practice Quiz')}
@@ -1073,7 +1099,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     isEditMode={isEditMode}
                   />
                 </div>
-                <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-0.5 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-2 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || '⚡ ದೈನಂದಿನ 50 ರಾಪಿಡ್ ಪ್ರಶ್ನೋತ್ತರಗಳು (Daily 50 MCQs)') : (sec.titleEn || '⚡ Daily 50 Rapid MCQs Quiz')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
@@ -1082,48 +1108,48 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 </h2>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <button
                   onClick={() => handleGeminiAiDailyRefresh(activeSubjectFilter)}
                   disabled={isAiGenerating}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50 cursor-pointer"
                   title="Gemini AI ಆಟೋ-ರಿಫ್ರೆಶ್"
                 >
                   <Sparkles className={`w-3.5 h-3.5 ${isAiGenerating ? 'animate-spin' : ''}`} />
-                  <span>{isAiGenerating ? (lang === 'kn' ? 'AI ರಿಫ್ರೆಶ್...' : 'AI Refreshing...') : (lang === 'kn' ? '✨ Gemini AI 50-Item Refresh' : '✨ Gemini AI 50-Item Refresh')}</span>
+                  <span>{isAiGenerating ? (lang === 'kn' ? 'AI ರಿಫ್ರೆಶ್...' : 'AI Refreshing...') : (lang === 'kn' ? '✨ Gemini AI Refresh' : '✨ Gemini AI Refresh')}</span>
                 </button>
 
                 <button
                   onClick={handleStartDailyQuiz}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs flex items-center gap-1 transition-all shrink-0"
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
                 >
                   <PlayCircle className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{lang === 'kn' ? 'ಪೂರ್ಣ ಪರೀಕ್ಷಾ ಮೋಡ್' : 'Full Exam'}</span>
+                  <span>{lang === 'kn' ? 'ಪೂರ್ಣ ಪರೀಕ್ಷಾ ಮೋಡ್' : 'Full Exam Mode'}</span>
                 </button>
               </div>
             </div>
 
             {/* AI Success Toast Message */}
             {aiSuccessToast && (
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center justify-between gap-2 shadow-xs">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span>{aiSuccessToast}</span>
                 </div>
-                <button onClick={() => setAiSuccessToast(null)} className="text-emerald-500 hover:text-emerald-700">
-                  <X className="w-3.5 h-3.5" />
+                <button onClick={() => setAiSuccessToast(null)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             )}
 
             {/* 9 Subject Filter Pills Bar */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
               {[
                 { id: 'all', nameKn: '✨ ಎಲ್ಲಾ 50', nameEn: '✨ All 50' },
                 { id: 'polity', nameKn: '🏛️ ಸಂವಿಧಾನ (10)', nameEn: '🏛️ Polity (10)' },
                 { id: 'history', nameKn: '📜 ಇತಿಹಾಸ (10)', nameEn: '📜 History (10)' },
                 { id: 'economy', nameKn: '💰 ಆರ್ಥಿಕತೆ (5)', nameEn: '💰 Economy (5)' },
-                { id: 'kannada', nameKn: '✍️ ಕನ್ನಡ ವ್ಯಾಕರಣ (5)', nameEn: '✍️ Kannada (5)' },
+                { id: 'kannada', nameKn: '✍️ ಕನ್ನಡ (5)', nameEn: '✍️ Kannada (5)' },
                 { id: 'geography', nameKn: '🌍 ಭೂಗೋಳ (5)', nameEn: '🌍 Geography (5)' },
                 { id: 'science', nameKn: '🔬 ವಿಜ್ಞಾನ (5)', nameEn: '🔬 Science (5)' },
                 { id: 'sports', nameKn: '🏆 ಕ್ರೀಡೆ (4)', nameEn: '🏆 Sports (4)' },
@@ -1136,9 +1162,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     setActiveSubjectFilter(sub.id);
                     setRapidQuizIdx(0);
                   }}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeSubjectFilter === sub.id
-                      ? 'bg-amber-500 text-slate-950 font-black shadow-xs ring-1 ring-amber-400'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm ring-2 ring-amber-400/50'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                 >
@@ -1149,51 +1175,52 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
             {/* Active Subject Helper Info Banner */}
             {activeSubjectFilter !== 'all' && (
-              <div className="flex flex-wrap items-center justify-between gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-900 dark:text-amber-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-900 dark:text-amber-200">
                 <span className="font-semibold text-[11px]">
                   {lang === 'kn'
-                    ? `📌 "${activeSubjectFilter}" ವಿಷಯದ ಪ್ರಶ್ನೆಗಳು (${currentActiveQuestions.length}). ಎಲ್ಲಾ 50 ಕ್ಕೆ "ಎಲ್ಲಾ 50" ಕ್ಲಿಕ್ ಮಾಡಿ.`
-                    : `📌 Showing ${currentActiveQuestions.length} questions. Click "All 50" to view all.`}
+                    ? `📌 "${activeSubjectFilter}" ವಿಷಯದ ಪ್ರಶ್ನೆಗಳು (${currentActiveQuestions.length}). ಎಲ್ಲಾ 50 ಪ್ರಶ್ನೆಗಳಿಗೆ "ಎಲ್ಲಾ 50" ಕ್ಲಿಕ್ ಮಾಡಿ.`
+                    : `📌 Showing ${currentActiveQuestions.length} questions. Click "All 50" to view full set.`}
                 </span>
                 <button
                   onClick={() => {
                     setActiveSubjectFilter('all');
                     setRapidQuizIdx(0);
                   }}
-                  className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded text-[10px]"
+                  className="px-2.5 py-0.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-lg text-[10px] cursor-pointer"
                 >
                   {lang === 'kn' ? 'ಎಲ್ಲಾ 50 ಪ್ರಶ್ನೆಗಳು' : 'Show All 50'}
                 </button>
               </div>
             )}
 
-            {/* Interactive Question Card - Space Efficient */}
-            <div className="bg-gradient-to-br from-white via-amber-50/20 to-orange-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-amber-200/80 dark:border-amber-900/30 shadow-md p-4 sm:p-5 space-y-3.5">
+            {/* Interactive Question Card - Clean, Spacious & Focused */}
+            <div className="bg-gradient-to-br from-white via-amber-50/20 to-orange-50/20 dark:from-slate-900 dark:via-slate-900/90 dark:to-slate-800/80 rounded-3xl border border-amber-200/80 dark:border-amber-900/40 shadow-sm p-5 sm:p-6 space-y-4">
               
               {/* Question Meta Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 dark:border-slate-800 pb-2.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300/40">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300/50">
                     {lang === 'kn' ? `ಪ್ರಶ್ನೆ ${(rapidQuizIdx % currentActiveQuestions.length) + 1} / ${currentActiveQuestions.length}` : `Q ${(rapidQuizIdx % currentActiveQuestions.length) + 1}/${currentActiveQuestions.length}`}
                   </span>
                   {currentQuizQ.subject && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                       {currentQuizQ.subject}
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 text-xs font-bold">
-                  <span className="text-emerald-700 dark:text-emerald-400 text-xs font-black">
-                    🎯 {lang === 'kn' ? `ಅಂಕ: ${rapidQuizScore}/${answeredCount}` : `Score: ${rapidQuizScore}/${answeredCount}`}
+                <div className="flex items-center gap-3 text-xs font-bold">
+                  <span className="text-emerald-700 dark:text-emerald-400 text-xs font-black flex items-center gap-1">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                    <span>{lang === 'kn' ? `ಅಂಕ: ${rapidQuizScore}/${answeredCount}` : `Score: ${rapidQuizScore}/${answeredCount}`}</span>
                   </span>
                   {answeredCount > 0 && (
                     <button
                       onClick={handleResetRapidQuiz}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-0.5 text-[11px]"
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1 text-[11px] cursor-pointer"
                       title="ಮರುಪ್ರಾರಂಭಿಸಿ"
                     >
-                      <RotateCcw className="w-3 h-3" />
+                      <RotateCcw className="w-3.5 h-3.5" />
                       <span>{lang === 'kn' ? 'ರೀಸೆಟ್' : 'Reset'}</span>
                     </button>
                   )}
@@ -1201,30 +1228,30 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
               </div>
 
               {/* Question Text */}
-              <div className="space-y-1">
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+              <div className="space-y-1.5 pt-1">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 leading-snug">
                   {lang === 'kn' && currentQuizQ.questionKn ? currentQuizQ.questionKn : currentQuizQ.question}
                 </h3>
                 {lang === 'kn' && currentQuizQ.question && currentQuizQ.questionKn && (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic">
                     {currentQuizQ.question}
                   </p>
                 )}
               </div>
 
               {/* 4 Interactive Option Buttons - 2 Column Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 {currentQuizQ.options.map((opt, oIdx) => {
                   const isSelected = selectedOptionIdx === oIdx;
                   const isCorrectAnswer = oIdx === currentQuizQ.correctAnswer;
 
-                  let btnStyle = "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-slate-700";
+                  let btnStyle = "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-slate-700/80 shadow-2xs";
 
                   if (hasAnsweredCurrent) {
                     if (isCorrectAnswer) {
-                      btnStyle = "bg-emerald-600 text-white border-emerald-500 shadow-xs ring-1 ring-emerald-400 font-bold";
+                      btnStyle = "bg-emerald-600 text-white border-emerald-500 shadow-sm ring-2 ring-emerald-400 font-bold";
                     } else if (isSelected && !isCorrectAnswer) {
-                      btnStyle = "bg-rose-600 text-white border-rose-500 shadow-xs font-bold";
+                      btnStyle = "bg-rose-600 text-white border-rose-500 shadow-sm font-bold";
                     } else {
                       btnStyle = "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-400 opacity-60";
                     }
@@ -1235,14 +1262,14 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                       key={oIdx}
                       onClick={() => handleOptionClick(oIdx)}
                       disabled={hasAnsweredCurrent}
-                      className={`p-2.5 sm:p-3 rounded-xl border text-left font-semibold text-xs transition-all flex items-center justify-between gap-2 ${btnStyle}`}
+                      className={`p-3 sm:p-3.5 rounded-2xl border text-left font-semibold text-xs sm:text-sm transition-all flex items-center justify-between gap-2.5 cursor-pointer ${btnStyle}`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`w-5 h-5 rounded-md flex items-center justify-center font-black text-[10px] shrink-0 ${
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
                           hasAnsweredCurrent && isCorrectAnswer
-                            ? 'bg-white text-emerald-700'
+                            ? 'bg-white text-emerald-700 shadow-2xs'
                             : hasAnsweredCurrent && isSelected
-                            ? 'bg-white text-rose-700'
+                            ? 'bg-white text-rose-700 shadow-2xs'
                             : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                         }`}>
                           {String.fromCharCode(65 + oIdx)}
@@ -1251,10 +1278,10 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                       </div>
 
                       {hasAnsweredCurrent && isCorrectAnswer && (
-                        <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+                        <CheckCircle2 className="w-5 h-5 text-white shrink-0" />
                       )}
                       {hasAnsweredCurrent && isSelected && !isCorrectAnswer && (
-                        <X className="w-4 h-4 text-white shrink-0" />
+                        <X className="w-5 h-5 text-white shrink-0" />
                       )}
                     </button>
                   );
@@ -1263,34 +1290,34 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
               {/* Instant Explanation Box upon answering */}
               {hasAnsweredCurrent && (
-                <div className="p-3 rounded-xl bg-amber-100/70 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 space-y-1 animate-fadeIn">
-                  <div className="flex items-center gap-1 text-[11px] font-black text-amber-900 dark:text-amber-300 uppercase tracking-wider">
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                <div className="p-4 rounded-2xl bg-amber-100/70 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 space-y-1.5 animate-fadeIn">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-300 uppercase tracking-wider">
+                    <Lightbulb className="w-4 h-4 text-amber-600" />
                     <span>{lang === 'kn' ? '💡 ವಿವರಣೆ & ಸೂತ್ರ' : '💡 Detailed Explanation'}</span>
                   </div>
-                  <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
                     {lang === 'kn' && currentQuizQ.explanationKn ? currentQuizQ.explanationKn : currentQuizQ.explanation}
                   </p>
                 </div>
               )}
 
               {/* Navigation Footer */}
-              <div className="flex items-center justify-between gap-2 pt-1 border-t border-amber-100/60 dark:border-slate-800">
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-amber-100/60 dark:border-slate-800">
                 <button
                   onClick={handlePrevRapidQuestion}
                   disabled={rapidQuizIdx === 0}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold disabled:opacity-30 shadow-xs flex items-center gap-1"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold disabled:opacity-30 shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>{lang === 'kn' ? 'ಹಿಂದಿನದು' : 'Prev'}</span>
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>{lang === 'kn' ? 'ಹಿಂದಿನ ಪ್ರಶ್ನೆ' : 'Previous'}</span>
                 </button>
 
                 <button
                   onClick={handleNextRapidQuestion}
-                  className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-xs flex items-center gap-1 transition-all hover:scale-105"
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-xs flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer"
                 >
                   <span>{lang === 'kn' ? 'ಮುಂದಿನ ಪ್ರಶ್ನೆ' : 'Next Question'}</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
 
@@ -1298,28 +1325,170 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
           </section>
         );
 
+      case 'collaborate_showcase':
+        const displayCollabItems = (communityMaterials || []).slice(0, 4);
+        return (
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 text-left">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
+              <div>
+                <div className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                  <Users className="w-4 h-4" />
+                  <InlineText
+                    value={lang === 'kn' ? (sec.badgeKn || 'ಮುಕ್ತ ಸಮುದಾಯ ಭಂಡಾರ') : (sec.badgeEn || 'Open Community Hub')}
+                    onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'badgeKn' : 'badgeEn', val)}
+                    isEditMode={isEditMode}
+                  />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 tracking-tight flex items-center gap-2">
+                  <InlineText
+                    value={lang === 'kn' ? (sec.titleKn || '🤝 ವಿದ್ಯಾರ್ಥಿ ಸಹಯೋಗ & ಹಂಚಿಕೆ ಭಂಡಾರ (PYQ & Notes)') : (sec.titleEn || '🤝 Student & Educator Collaborate Hub (PYQ & Notes)')}
+                    onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
+                    isEditMode={isEditMode}
+                  />
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
+                  <InlineText
+                    value={lang === 'kn' ? (sec.subtitleKn || 'ಟಾಪರ್‌ಗಳು ಮತ್ತು ಶಿಕ್ಷಕರು ಹಂಚಿಕೊಂಡ ಹಿಂದಿನ ವರ್ಷಗಳ ಪ್ರಶ್ನೆಪತ್ರಿಕೆಗಳು (PYQ), ಕೈಬರಹದ ನೋಟ್ಸ್‌ಗಳು ಮತ್ತು ರೆಫರೆನ್ಸ್ ಪುಸ್ತಕಗಳು.') : (sec.subtitleEn || 'Access peer-shared previous year solved papers, handwritten revision notes, and book summaries.')}
+                    onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'subtitleKn' : 'subtitleEn', val)}
+                    isEditMode={isEditMode}
+                    multiline
+                  />
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    if (!user) {
+                      onOpenAuth ? onOpenAuth() : onNavigate('collaborate');
+                    } else {
+                      setIsCollabUploadOpen(true);
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{lang === 'kn' ? 'ಅಪ್‌ಲೋಡ್ ಮಾಡಿ' : 'Upload'}</span>
+                </button>
+
+                <button
+                  onClick={() => onNavigate('collaborate')}
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{lang === 'kn' ? 'ಎಲ್ಲಾ ನೋಡಿ' : 'Explore All'}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Showcase 4-Column / 2-Column Responsive Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {displayCollabItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/70 dark:hover:border-emerald-500/70 rounded-3xl p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden text-left"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border ${
+                        item.category === 'pyq' ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300' :
+                        item.category === 'notes' ? 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                        'bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300'
+                      }`}>
+                        {item.category === 'pyq' ? '📚 PYQ Paper' : item.category === 'notes' ? '📝 Notes' : '📖 Book Summary'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                        {item.examNameKn || item.examName}
+                      </span>
+                    </div>
+
+                    <h3
+                      onClick={() => setSelectedCollabForView(item)}
+                      className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors cursor-pointer line-clamp-2 leading-snug"
+                    >
+                      {lang === 'kn' ? (item.titleKn || item.title) : item.title}
+                    </h3>
+
+                    {item.descriptionKn && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                        {lang === 'kn' ? item.descriptionKn : (item.description || item.descriptionKn)}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
+                        <User className="w-3 h-3 text-emerald-600" />
+                        {item.contributorName}
+                      </span>
+                      {item.contributorDistrict && (
+                        <>
+                          <span>•</span>
+                          <span>{item.contributorDistrict}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => upvoteCommunityMaterial && upvoteCommunityMaterial(item.id)}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{item.upvotes || 0}</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setSelectedCollabForView(item)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{lang === 'kn' ? 'ಓದಿ' : 'Read'}</span>
+                      </button>
+
+                      {item.fileUrl && (
+                        <a
+                          href={item.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          download
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>PDF</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+
       case 'combos_showcase':
         if (!combos || combos.length === 0) return null;
         return (
-          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3 sm:space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">
-                  <PackageCheck className="w-3.5 h-3.5" />
+                <div className="inline-flex items-center gap-2 text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">
+                  <PackageCheck className="w-4 h-4" />
                   <InlineText
                     value={lang === 'kn' ? (sec.badgeKn || 'ಮೆಗಾ ಕಾಂಬೊ ಆಫರ್ಸ್') : (sec.badgeEn || 'Special Combo Passes')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'badgeKn' : 'badgeEn', val)}
                     isEditMode={isEditMode}
                   />
                 </div>
-                <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 mt-0.5">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || '🏆 ಅಧ್ಯಯನ ಆಲ್-ಇನ್-ಒನ್ ಕೋರ್ಸ್ ಬಂಡಲ್‌ಗಳು') : (sec.titleEn || '🏆 ADHYAYANA Mega Super Bundles')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
                     isEditMode={isEditMode}
                   />
                 </h2>
-                <p className="text-[11px] sm:text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-0.5">
                   <InlineText
                     value={lang === 'kn' ? (sec.subtitleKn || 'ಸಂಪೂರ್ಣ ಪರೀಕ್ಷಾ ತಯಾರಿಗೆ ಸಕಲ ಸೌಲಭ್ಯವುಳ್ಳ ರಿಯಾಯಿತಿ ಪ್ಯಾಕೇಜ್‌ಗಳು.') : (sec.subtitleEn || 'All-inclusive preparation bundles at student-friendly scholarship prices.')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'subtitleKn' : 'subtitleEn', val)}
@@ -1328,42 +1497,42 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                   />
                 </p>
               </div>
-              <span className="text-[10px] sm:text-xs font-bold px-2.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 rounded-full border border-purple-300 dark:border-purple-800">
-                Up to 90% Discount
+              <span className="text-xs font-bold px-3 py-1 bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 rounded-full border border-purple-300 dark:border-purple-800">
+                Up to 90% Scholarship Discount
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {combos.map((combo) => (
                 <div
                   key={combo.id}
-                  className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-purple-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-purple-950/20 border border-purple-200 dark:border-purple-900/60 shadow-sm relative overflow-hidden flex flex-col justify-between gap-4"
+                  className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-white via-slate-50 to-purple-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-purple-950/20 border border-purple-200/90 dark:border-purple-900/60 shadow-sm relative overflow-hidden flex flex-col justify-between gap-5 hover:shadow-md transition-all"
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-3.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-xs">
+                      <span className="text-[11px] font-black px-3 py-1 rounded-full bg-purple-600 text-white shadow-2xs">
                         {combo.badge}
                       </span>
                       <div className="text-right">
                         <span className="text-xs text-slate-400 line-through mr-1.5 font-bold">₹{combo.originalPrice}</span>
-                        <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">₹{combo.price}</span>
+                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">₹{combo.price}</span>
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                         {lang === 'kn' ? combo.titleKn || combo.title : combo.title}
                       </h3>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
                         {lang === 'kn' ? combo.descriptionKn || combo.description : combo.description}
                       </p>
                     </div>
 
                     {/* Feature Bullets */}
-                    <div className="space-y-1.5 pt-2 border-t border-purple-100 dark:border-purple-900/40 text-xs text-slate-700 dark:text-slate-300">
+                    <div className="space-y-2 pt-3 border-t border-purple-100 dark:border-purple-900/40 text-xs text-slate-700 dark:text-slate-300">
                       {combo.features.map((feat, fIdx) => (
-                        <div key={fIdx} className="flex items-center gap-1.5 font-medium text-[11px] sm:text-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <div key={fIdx} className="flex items-center gap-2 font-medium text-xs">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                           <span>{feat}</span>
                         </div>
                       ))}
@@ -1372,9 +1541,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
                   <button
                     onClick={() => onOpenCheckout ? onOpenCheckout(combo) : onNavigate('notes')}
-                    className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs rounded-xl shadow-md shadow-purple-600/20 flex items-center justify-center gap-1.5 hover:scale-[1.01] transition-all"
+                    className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md shadow-purple-600/20 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
                   >
-                    <CreditCard className="w-3.5 h-3.5" />
+                    <CreditCard className="w-4 h-4" />
                     <span>{lang === 'kn' ? `₹${combo.price} - ಮೆಗಾ ಪಾಸ್ ಪಡೆಯಿರಿ` : `Unlock Mega Pass for ₹${combo.price}`}</span>
                   </button>
                 </div>
@@ -1385,25 +1554,25 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
       case 'subjects_showcase':
         return (
-          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3 sm:space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
-                  <Layers className="w-3.5 h-3.5" />
+                <div className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                  <Layers className="w-4 h-4" />
                   <InlineText
                     value={lang === 'kn' ? (sec.badgeKn || 'ವಿಷಯವಾರು ಕೇಂದ್ರ') : (sec.badgeEn || 'Direct Subject Modules')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'badgeKn' : 'badgeEn', val)}
                     isEditMode={isEditMode}
                   />
                 </div>
-                <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 mt-0.5">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || 'ವಿಷಯವಾರು ನೇರ ಅಧ್ಯಯನ ಕೇಂದ್ರ') : (sec.titleEn || 'Subject-Wise Study Hub')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
                     isEditMode={isEditMode}
                   />
                 </h2>
-                <p className="text-[11px] sm:text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-0.5">
                   <InlineText
                     value={lang === 'kn' ? (sec.subtitleKn || 'ನಿಮ್ಮ ಅಗತ್ಯಕ್ಕೆ ತಕ್ಕ ವಿಷಯವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ ಮತ್ತು ಆ ವಿಷಯದ ನೋಟ್ಸ್ ಹಾಗೂ ಟೆಸ್ಟ್‌ಗಳನ್ನು ಒಟ್ಟಿಗೆ ಪಡೆಯಿರಿ.') : (sec.subtitleEn || 'Select any subject module to access curated digital notes and practice tests together.')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'subtitleKn' : 'subtitleEn', val)}
@@ -1414,9 +1583,10 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
               </div>
               <button
                 onClick={() => onNavigate('notes')}
-                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 shrink-0"
+                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 shrink-0 transition-colors cursor-pointer group"
               >
-                <span>{lang === 'kn' ? 'ಎಲ್ಲಾ ವಿಷಯಗಳು →' : 'View All Subjects →'}</span>
+                <span>{lang === 'kn' ? 'ಎಲ್ಲಾ ವಿಷಯಗಳು' : 'View All Subjects'}</span>
+                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
 
@@ -1435,27 +1605,27 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                   >
                     {/* Header Image with Badges */}
                     <div className="relative h-32 w-full overflow-hidden bg-slate-900">
-                      {hasImage ? (
+                      <div className={`absolute inset-0 w-full h-full bg-gradient-to-br ${gradient}`} />
+                      {hasImage && (
                         <img 
                           src={subj.imageUrl || subj.image_url} 
                           alt={subj.name} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-95 group-hover:brightness-100"
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-95 group-hover:brightness-100"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
-                      ) : (
-                        <div className={`w-full h-full bg-gradient-to-br ${gradient}`} />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
 
-                      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/95 dark:bg-slate-900/90 text-slate-900 dark:text-white shadow backdrop-blur-md">
                           {subj.badge || (lang === 'kn' ? 'ವಿಷಯ ಕೋರ್ಸ್' : 'Core Subject')}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/80 text-emerald-400 border border-emerald-500/40">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/80 text-emerald-400 border border-emerald-500/40 backdrop-blur-sm">
                           {subjNotes.length + subjTests.length} {lang === 'kn' ? 'ಸಾಮಗ್ರಿಗಳು' : 'Items'}
                         </span>
                       </div>
 
-                      <div className="absolute bottom-2.5 left-3 right-3 flex items-center gap-2">
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2">
                         <div className="p-1.5 rounded-xl bg-white/95 dark:bg-slate-900/95 shadow text-emerald-600 dark:text-emerald-400">
                           <BookOpen className="w-4 h-4" />
                         </div>
@@ -1466,25 +1636,25 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     </div>
 
                     {/* Content */}
-                    <div className="p-3.5 space-y-2.5 flex-1 flex flex-col justify-between">
+                    <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
                       <div>
-                        <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 transition-colors line-clamp-1">
+                        <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 transition-colors line-clamp-1">
                           {lang === 'kn' ? (subj.nameKn || subj.name) : subj.name}
                         </h3>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
                           {subj.description}
                         </p>
 
                         {/* Topics */}
                         {subj.topics && subj.topics.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
+                          <div className="flex flex-wrap gap-1.5 mt-2.5">
                             {subj.topics.slice(0, 2).map((t, idx) => (
-                              <span key={idx} className="text-[9px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                              <span key={idx} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                                 #{t}
                               </span>
                             ))}
                             {subj.topics.length > 2 && (
-                              <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 self-center">
+                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 self-center">
                                 +{subj.topics.length - 2}
                               </span>
                             )}
@@ -1492,8 +1662,8 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                         )}
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] font-bold">
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                      <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold">
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                           <span>📖 {subjNotes.length} Notes</span>
                           <span>•</span>
                           <span>📝 {subjTests.length} Tests</span>
@@ -1514,25 +1684,25 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
       case 'leaderboard':
         if (!leaderboard || leaderboard.length === 0) return null;
         return (
-          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3 sm:space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 text-amber-500 text-xs font-bold uppercase tracking-wider">
-                  <Trophy className="w-3.5 h-3.5" />
+                <div className="inline-flex items-center gap-2 text-amber-500 text-xs font-bold uppercase tracking-wider">
+                  <Trophy className="w-4 h-4" />
                   <InlineText
                     value={lang === 'kn' ? (sec.badgeKn || 'ರಾಜ್ಯ ಮಟ್ಟದ ಶ್ರೇಯಾಂಕ') : (sec.badgeEn || 'State-Level Rankings')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'badgeKn' : 'badgeEn', val)}
                     isEditMode={isEditMode}
                   />
                 </div>
-                <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 mt-0.5">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || '🥇 ಕರ್ನಾಟಕ ಮಾಕ್ ಟೆಸ್ಟ್ ಲೀಡರ್‌ಬೋರ್ಡ್') : (sec.titleEn || '🥇 Karnataka Aspirants Leaderboard')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
                     isEditMode={isEditMode}
                   />
                 </h2>
-                <p className="text-[11px] sm:text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-0.5">
                   <InlineText
                     value={lang === 'kn' ? (sec.subtitleKn || 'ಕರ್ನಾಟಕದಾದ್ಯಂತ ಅಣಕು ಪರೀಕ್ಷೆ ಬರೆದ ನೈಜ ಅಭ್ಯರ್ಥಿಗಳ ಲೈವ್ ರ್ಯಾಂಕಿಂಗ್ ಮತ್ತು ಅಂಕಗಳ ವಿವರ.') : (sec.subtitleEn || 'Real candidate submissions, top scores, and state rankings.')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'subtitleKn' : 'subtitleEn', val)}
@@ -1541,13 +1711,13 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                   />
                 </p>
               </div>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
                 Live Verified Benchmark
               </span>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 shadow-xs overflow-x-auto no-scrollbar">
-              <div className="min-w-[480px] space-y-1.5">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-2xs overflow-x-auto no-scrollbar">
+              <div className="min-w-[480px] space-y-2">
                 <div className="grid grid-cols-12 text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 py-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="col-span-2">Rank</span>
                   <span className="col-span-5">Candidate & District</span>
@@ -1558,7 +1728,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 {leaderboard.slice(0, 5).map((cand, candIdx) => (
                   <div
                     key={candIdx}
-                    className={`grid grid-cols-12 items-center p-2 sm:p-2.5 rounded-xl border transition-all text-xs font-semibold ${
+                    className={`grid grid-cols-12 items-center p-3 rounded-2xl border transition-all text-xs font-semibold ${
                       candIdx === 0
                         ? 'bg-amber-500/10 border-amber-500/40 text-amber-950 dark:text-amber-200'
                         : candIdx === 1
@@ -1569,9 +1739,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     }`}
                   >
                     <div className="col-span-2 flex items-center gap-1.5">
-                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-[11px] ${
+                      <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs ${
                         candIdx === 0
-                          ? 'bg-amber-500 text-slate-950 shadow-xs'
+                          ? 'bg-amber-500 text-slate-950 shadow-2xs'
                           : candIdx === 1
                           ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
                           : candIdx === 2
@@ -1582,15 +1752,15 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                       </span>
                     </div>
 
-                    <div className="col-span-5 flex items-center gap-2">
+                    <div className="col-span-5 flex items-center gap-2.5">
                       <img
                         src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cand.avatarSeed || cand.name)}`}
                         alt={cand.name}
-                        className="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-700 shrink-0"
+                        className="w-7 h-7 rounded-full border border-slate-300 dark:border-slate-700 shrink-0"
                       />
                       <div className="truncate">
                         <p className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs">{cand.name}</p>
-                        <p className="text-[9px] text-slate-500 dark:text-slate-400 truncate">{cand.district}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{cand.district}</p>
                       </div>
                     </div>
 
@@ -1599,8 +1769,8 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     </div>
 
                     <div className="col-span-3 text-right">
-                      <span className="font-mono text-[11px] text-slate-800 dark:text-slate-200 font-bold">{cand.accuracy}%</span>
-                      <span className="text-[9px] text-slate-400 block">{cand.timeMins} mins</span>
+                      <span className="font-mono text-xs text-slate-800 dark:text-slate-200 font-bold">{cand.accuracy}%</span>
+                      <span className="text-[10px] text-slate-400 block">{cand.timeMins} mins</span>
                     </div>
                   </div>
                 ))}
@@ -1612,7 +1782,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
       case 'core_pillars':
         const pItems = (sec.items && sec.items.length > 0) ? sec.items : corePillars;
         return (
-          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3 sm:space-y-4">
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             <div className="text-center max-w-2xl mx-auto space-y-1">
               <div className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
                 <Award className="w-3.5 h-3.5" />
@@ -1622,14 +1792,14 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                   isEditMode={isEditMode}
                 />
               </div>
-              <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                 <InlineText
                   value={lang === 'kn' ? (sec.titleKn || 'ಅಧ್ಯಯನ ವೇದಿಕೆಯ ಪ್ರಮುಖ ಆಧಾರಸ್ತಂಭಗಳು') : (sec.titleEn || 'Built for Rigor, Trust & Student Success')}
                   onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
                   isEditMode={isEditMode}
                 />
               </h2>
-              <p className="text-[11px] sm:text-xs text-slate-500">
+              <p className="text-xs text-slate-500">
                 <InlineText
                   value={lang === 'kn' ? (sec.subtitleKn || 'ವಿದ್ಯಾರ್ಥಿ-ಕೇಂದ್ರಿತ, ತಂತ್ರಜ್ಞಾನ-ಚಾಲಿತ, ಪಾರದರ್ಶಕ ಮತ್ತು ಕೈಗೆಟುಕುವ ಡಿಜಿಟಲ್ ತಯಾರಿ ವ್ಯವಸ್ಥೆ.') : (sec.subtitleEn || 'Student-first, technology-driven, affordable exam preparation ecosystem.')}
                   onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'subtitleKn' : 'subtitleEn', val)}
@@ -1639,17 +1809,17 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {pItems.map((pillar, pIdx) => (
                 <div
                   key={pillar.id || pIdx}
-                  className="p-3.5 sm:p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 shadow-xs transition-all space-y-2 relative group/item"
+                  className="p-4 sm:p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/80 shadow-2xs hover:shadow-md transition-all space-y-2.5 relative group/item"
                 >
                   {isEditMode && (
                     <button
                       type="button"
                       onClick={() => handleDeleteSecItem(sec.id, pIdx)}
-                      className="absolute top-2.5 right-2.5 p-1 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 hover:bg-red-100 border border-red-200 dark:border-red-900 text-xs shadow-xs transition-all z-10 flex items-center gap-0.5 font-bold"
+                      className="absolute top-3 right-3 p-1 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 hover:bg-red-100 border border-red-200 dark:border-red-900 text-xs shadow-xs transition-all z-10 flex items-center gap-0.5 font-bold cursor-pointer"
                       title="ಈ ವೈಶಿಷ್ಟ್ಯ ಅಳಿಸಿ"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -1657,17 +1827,17 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     </button>
                   )}
 
-                  <div className="p-2 w-fit rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400">
-                    <Target className="w-4 h-4" />
+                  <div className="p-2.5 w-fit rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400">
+                    <Target className="w-5 h-5" />
                   </div>
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     <InlineText
                       value={lang === 'kn' ? (pillar.titleKn || pillar.titleEn) : (pillar.titleEn || pillar.titleKn)}
                       onSave={(val) => handleUpdateSecItem(sec.id, pIdx, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
                       isEditMode={isEditMode}
                     />
                   </h3>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                     <InlineText
                       value={lang === 'kn' ? (pillar.descKn || pillar.descEn) : (pillar.descEn || pillar.descKn)}
                       onSave={(val) => handleUpdateSecItem(sec.id, pIdx, lang === 'kn' ? 'descKn' : 'descEn', val)}
@@ -1681,7 +1851,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
               {isEditMode && (
                 <div
                   onClick={() => handleAddSecItem(sec.id)}
-                  className="p-4 rounded-2xl border-2 border-dashed border-emerald-500/50 hover:border-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all flex flex-col items-center justify-center text-center cursor-pointer text-emerald-600 dark:text-emerald-400 gap-1 min-h-[120px]"
+                  className="p-4 rounded-3xl border-2 border-dashed border-emerald-500/50 hover:border-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all flex flex-col items-center justify-center text-center cursor-pointer text-emerald-600 dark:text-emerald-400 gap-1.5 min-h-[120px]"
                 >
                   <Plus className="w-5 h-5" />
                   <span className="text-xs font-bold">{lang === 'kn' ? '+ ಸೇರಿಸಿ' : '+ Add'}</span>
@@ -1695,9 +1865,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
         const mItems = (sec.items && sec.items.length > 0) ? sec.items : methodologySteps;
         return (
           <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-6 border border-slate-800 shadow-xl space-y-4 relative">
+            <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-7 border border-slate-800 shadow-xl space-y-5 relative">
               <div className="text-center max-w-xl mx-auto space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center gap-1.5">
                   <Lightbulb className="w-3.5 h-3.5" />
                   <InlineText
                     value={lang === 'kn' ? (sec.badgeKn || 'ಕಲಿಕಾ ವಿಧಾನ') : (sec.badgeEn || 'Our 4-Step Learning Methodology')}
@@ -1705,14 +1875,14 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     isEditMode={isEditMode}
                   />
                 </span>
-                <h3 className="text-base sm:text-xl font-extrabold text-slate-100">
+                <h3 className="text-lg sm:text-2xl font-black text-slate-100 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || 'ನಾಲ್ಕು ಹಂತಗಳ ಯಶಸ್ಸಿನ ಸೂತ್ರ') : (sec.titleEn || 'The Structured Road to Exam Mastery')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
                     isEditMode={isEditMode}
                   />
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-400">
                   <InlineText
                     value={lang === 'kn' ? (sec.subtitleKn || 'ಸಿಲಬಸ್ ಆಯ್ಕೆಯಿಂದ ಹಿಡಿದು ಅಂತಿಮ ಶ್ರೇಯಾಂಕದವರೆಗೆ ವ್ಯವಸ್ಥಿತ ಮಾರ್ಗದರ್ಶನ.') : (sec.subtitleEn || 'A structured blueprint from concept clarity to state-level ranks.')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'subtitleKn' : 'subtitleEn', val)}
@@ -1722,17 +1892,17 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 {mItems.map((step, sIdx) => (
                   <div
                     key={step.id || sIdx}
-                    className="bg-slate-800/80 p-3.5 sm:p-4 rounded-xl border border-slate-700 space-y-1.5 relative overflow-hidden group/item"
+                    className="bg-slate-800/80 p-4 sm:p-5 rounded-2xl border border-slate-700 space-y-2 relative overflow-hidden group/item"
                   >
                     {isEditMode && (
                       <button
                         type="button"
                         onClick={() => handleDeleteSecItem(sec.id, sIdx)}
-                        className="absolute top-2 right-2 p-1 rounded-lg bg-red-500/80 hover:bg-red-600 text-white text-[10px] shadow-xs transition-all z-10 flex items-center gap-0.5 font-bold"
+                        className="absolute top-2.5 right-2.5 p-1 rounded-lg bg-red-500/80 hover:bg-red-600 text-white text-[10px] shadow-xs transition-all z-10 flex items-center gap-0.5 font-bold cursor-pointer"
                         title="ಈ ಹಂತ ಅಳಿಸಿ"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -1740,7 +1910,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                       </button>
                     )}
 
-                    <div className="text-xl sm:text-2xl font-black text-emerald-400/40">
+                    <div className="text-2xl font-black text-emerald-400/50">
                       <InlineText
                         value={step.step || `0${sIdx + 1}`}
                         onSave={(val) => handleUpdateSecItem(sec.id, sIdx, 'step', val)}
@@ -1768,7 +1938,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 {isEditMode && (
                   <div
                     onClick={() => handleAddSecItem(sec.id)}
-                    className="p-4 rounded-xl border-2 border-dashed border-emerald-500/50 hover:border-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all flex flex-col items-center justify-center text-center cursor-pointer text-emerald-400 gap-1 min-h-[100px]"
+                    className="p-4 rounded-2xl border-2 border-dashed border-emerald-500/50 hover:border-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all flex flex-col items-center justify-center text-center cursor-pointer text-emerald-400 gap-1 min-h-[100px]"
                   >
                     <Plus className="w-5 h-5" />
                     <span className="text-xs font-bold">{lang === 'kn' ? '+ ಸೇರಿಸಿ' : '+ Add'}</span>
@@ -2036,13 +2206,13 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
         const displayAffairs = filteredAffairsItems.length > 0 ? filteredAffairsItems : normalizedCapsuleItems;
 
         return (
-          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <div>
                 <div className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
-                  <span className="relative flex h-2.5 w-2.5">
+                  <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                   <Zap className="w-4 h-4" />
                   <InlineText
@@ -2051,7 +2221,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     isEditMode={isEditMode}
                   />
                 </div>
-                <h2 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-2 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || '⚡ ಇಂದಿನ ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳ ಕ್ಯಾಪ್ಸುಲ್ (Current Affairs)') : (sec.titleEn || '⚡ Today’s 2-Minute Current Affairs Capsule')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
@@ -2068,28 +2238,28 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 <button
                   onClick={() => handleFetchLiveGovtNews()}
                   disabled={isAiGenerating}
-                  className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs shadow-lg shadow-teal-600/20 flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50 cursor-pointer"
                   title="ಭಾರತ ಸರ್ಕಾರದ PIB & DD News ಲೈವ್ ಪ್ರಕಟಣೆಗಳನ್ನು ತಕ್ಷಣ ಪಡೆದುಕೊಳ್ಳಿ"
                 >
-                  <Zap className={`w-4 h-4 fill-current ${isAiGenerating ? 'animate-pulse' : ''}`} />
-                  <span>{isAiGenerating ? (lang === 'kn' ? 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...' : 'Fetching...') : (lang === 'kn' ? '📡 PIB ಲೈವ್ ಸರ್ಕಾರಿ ಸುದ್ದಿ' : '📡 Live PIB Feed')}</span>
+                  <Zap className={`w-3.5 h-3.5 fill-current ${isAiGenerating ? 'animate-pulse' : ''}`} />
+                  <span>{isAiGenerating ? (lang === 'kn' ? 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...' : 'Fetching...') : (lang === 'kn' ? '📡 PIB ಲೈವ್ ಸುದ್ದಿ' : '📡 Live PIB Feed')}</span>
                 </button>
 
                 {/* Gemini AI Refresh Button */}
                 <button
                   onClick={() => handleGeminiAiDailyRefresh(activeSubjectFilter)}
                   disabled={isAiGenerating}
-                  className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50 cursor-pointer"
-                  title="Gemini AI ಸಿಲಬಸ್ ರೊಟೇಷನ್ ಮೂಲಕ 50 ಹೊಸ ವಿಷಯಗಳನ್ನು ಆಟೋ-ರಿಫ್ರೆಶ್ ಮಾಡಿ"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50 cursor-pointer"
+                  title="Gemini AI ಸಿಲಬಸ್ ರೊಟೇಷನ್ ಮೂಲಕ ಹೊಸ ವಿಷಯಗಳನ್ನು ಆಟೋ-ರಿಫ್ರೆಶ್ ಮಾಡಿ"
                 >
-                  <Sparkles className={`w-4 h-4 ${isAiGenerating ? 'animate-spin' : ''}`} />
+                  <Sparkles className={`w-3.5 h-3.5 ${isAiGenerating ? 'animate-spin' : ''}`} />
                   <span>{isAiGenerating ? (lang === 'kn' ? 'AI ರಿಫ್ರೆಶ್...' : 'Refreshing...') : (lang === 'kn' ? '✨ AI ಸಿಲಬಸ್ ಸೆಟ್' : '✨ AI Study Set')}</span>
                 </button>
 
                 {/* Voice Reader Button */}
                 <button
                   onClick={() => handleToggleCurrentAffairsAudio(latestAffairs)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                     isPlayingAudio
                       ? 'bg-rose-600 text-white animate-pulse'
                       : 'bg-slate-900 dark:bg-slate-800 text-slate-100 hover:bg-slate-800'
@@ -2103,7 +2273,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
             </div>
 
             {/* 9 Subject Filter Pills Bar */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
               {[
                 { id: 'all', nameKn: '✨ ಎಲ್ಲಾ', nameEn: '✨ All' },
                 { id: 'polity', nameKn: '🏛️ ಸಂವಿಧಾನ', nameEn: '🏛️ Polity' },
@@ -2119,9 +2289,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 <button
                   key={sub.id}
                   onClick={() => setActiveSubjectFilter(sub.id)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
                     activeSubjectFilter === sub.id
-                      ? 'bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-400'
+                      ? 'bg-emerald-600 text-white font-black shadow-sm ring-2 ring-emerald-400/50'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                 >
@@ -2131,7 +2301,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
             </div>
 
             {/* News Cards 3-Column Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {displayAffairs.map((pt, pIdx) => {
                 const categoryColors = {
                   'Karnataka State Affairs': 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
@@ -2145,11 +2315,11 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 return (
                   <div
                     key={pt.id || pIdx}
-                    className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500/80 shadow-xs hover:shadow-sm transition-all space-y-2 flex flex-col justify-between"
+                    className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/80 shadow-2xs hover:shadow-md transition-all space-y-2.5 flex flex-col justify-between"
                   >
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className={`px-2 py-0.2 rounded text-[9px] font-bold border ${catColor}`}>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${catColor}`}>
                           {lang === 'kn' && pt.categoryKn ? pt.categoryKn : pt.category}
                         </span>
                         <span className="text-[10px] font-mono font-bold text-slate-400">#0{pIdx + 1}</span>
@@ -2159,13 +2329,13 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                         {lang === 'kn' && pt.titleKn ? pt.titleKn : pt.title}
                       </h4>
 
-                      <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
                         {lang === 'kn' && pt.contentKn ? pt.contentKn : pt.content}
                       </p>
                     </div>
 
                     {pt.examTakeaway && (
-                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-start gap-1">
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-start gap-1.5">
                         <span className="shrink-0">🎯</span>
                         <span className="line-clamp-1">{lang === 'kn' && pt.examTakeawayKn ? pt.examTakeawayKn : pt.examTakeaway}</span>
                       </div>
@@ -2212,18 +2382,18 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
         const currentShowcaseCard = deckCards[homeCardIndex % deckCards.length] || deckCards[0];
 
         return (
-          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3.5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+          <section key={sec.id} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 text-teal-600 dark:text-teal-400 text-xs font-bold uppercase tracking-wider">
-                  <Layers className="w-3.5 h-3.5" />
+                <div className="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-xs font-bold uppercase tracking-wider">
+                  <Layers className="w-4 h-4" />
                   <InlineText
                     value={lang === 'kn' ? (sec.badgeKn || 'ಸ್ಮಾರ್ಟ್ ನೆನಪಿನ ಶಕ್ತಿ ಸಾಧನ (3D Flashcards)') : (sec.badgeEn || 'Active Recall Spaced Repetition')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'badgeKn' : 'badgeEn', val)}
                     isEditMode={isEditMode}
                   />
                 </div>
-                <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-0.5 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-2 tracking-tight">
                   <InlineText
                     value={lang === 'kn' ? (sec.titleKn || '🗂️ 3D ಇಂಟರ್ಯಾಕ್ಟಿವ್ ಮೆಮೊರಿ ಫ್ಲ್ಯಾಶ್‌ಕಾರ್ಡ್ಸ್‌') : (sec.titleEn || '🗂️ 3D Interactive Memory Flashcards')}
                     onSave={(val) => handleUpdateSecField(sec.id, lang === 'kn' ? 'titleKn' : 'titleEn', val)}
@@ -2237,7 +2407,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 <button
                   onClick={() => handleGeminiAiDailyRefresh(activeSubjectFilter)}
                   disabled={isAiGenerating}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 shrink-0 disabled:opacity-50 cursor-pointer"
                   title="Gemini AI ಮೂಲಕ ಫ್ಲ್ಯಾಶ್‌ಕಾರ್ಡ್‌ ರಿಫ್ರೆಶ್"
                 >
                   <Sparkles className={`w-3.5 h-3.5 ${isAiGenerating ? 'animate-spin' : ''}`} />
@@ -2246,7 +2416,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
                 <button
                   onClick={() => onNavigate('dashboard')}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs shadow-xs hover:bg-slate-800 flex items-center gap-1 shrink-0"
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs shadow-xs hover:bg-slate-800 flex items-center gap-1 shrink-0 cursor-pointer"
                 >
                   <span>{lang === 'kn' ? 'ಎಲ್ಲಾ ಡೆಕ್‌ಗಳು (Dashboard) →' : 'Dashboard →'}</span>
                 </button>
@@ -2254,7 +2424,7 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
             </div>
 
             {/* 9 Subject Deck Selector Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
               {rawDecks.map(deck => (
                 <button
                   key={deck.id}
@@ -2263,9 +2433,9 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                     setHomeCardIndex(0);
                     setHomeCardFlipped(false);
                   }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
                     selectedDeckId === deck.id
-                      ? 'bg-teal-600 text-white font-black shadow-xs ring-1 ring-teal-400'
+                      ? 'bg-teal-600 text-white font-black shadow-sm ring-2 ring-teal-400/50'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                 >
@@ -2276,14 +2446,14 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
 
             {/* Interactive 3D Showcase Card - Compact & Space-Efficient */}
             {currentShowcaseCard && (
-              <div className="max-w-lg mx-auto space-y-3">
+              <div className="max-w-lg mx-auto space-y-3.5">
                 <div 
-                  className="relative w-full h-44 sm:h-52 cursor-pointer select-none"
+                  className="relative w-full h-48 sm:h-56 cursor-pointer select-none"
                   style={{ perspective: '1200px' }}
                   onClick={() => setHomeCardFlipped(!homeCardFlipped)}
                 >
                   <div 
-                    className="w-full h-full relative transition-transform duration-500 rounded-2xl shadow-md"
+                    className="w-full h-full relative transition-transform duration-500 rounded-3xl shadow-md"
                     style={{ 
                       transformStyle: 'preserve-3d', 
                       transform: homeCardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' 
@@ -2291,33 +2461,33 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                   >
                     {/* Front */}
                     <div 
-                      className="absolute inset-0 w-full h-full bg-gradient-to-br from-teal-800 via-emerald-900 to-slate-950 text-white p-5 rounded-2xl flex flex-col justify-between shadow-md border border-teal-400/30"
+                      className="absolute inset-0 w-full h-full bg-gradient-to-br from-teal-800 via-emerald-900 to-slate-950 text-white p-6 rounded-3xl flex flex-col justify-between shadow-md border border-teal-400/30"
                       style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
                     >
                       <div className="flex items-center justify-between text-xs">
-                        <span className="px-2 py-0.2 rounded bg-white/20 font-bold uppercase text-[9px]">
+                        <span className="px-2.5 py-0.5 rounded-full bg-white/20 font-bold uppercase text-[9px] backdrop-blur-sm">
                           {lang === 'kn' && activeDeck.deckNameKn ? activeDeck.deckNameKn.split('(')[0] : (activeDeck.deckNameEn || activeDeck.subject)}
                         </span>
-                        <span className="text-teal-200 text-[10px] flex items-center gap-1">
-                          <RotateCcw className="w-3 h-3" /> Tap to Flip
+                        <span className="text-teal-200 text-xs flex items-center gap-1 font-semibold">
+                          <RotateCcw className="w-3.5 h-3.5" /> Tap to Flip
                         </span>
                       </div>
 
-                      <div className="text-center space-y-1">
+                      <div className="text-center space-y-1.5">
                         <p className="text-[10px] text-teal-300 uppercase font-bold tracking-wider">Question / Key Term</p>
-                        <h3 className="text-sm sm:text-base font-black leading-snug">
+                        <h3 className="text-base sm:text-lg font-black leading-snug">
                           {lang === 'kn' && currentShowcaseCard.frontKn ? currentShowcaseCard.frontKn : (currentShowcaseCard.front || currentShowcaseCard.frontEn)}
                         </h3>
                       </div>
 
-                      <div className="text-center text-[9px] text-teal-200/70">
+                      <div className="text-center text-[10px] text-teal-200/70 font-medium">
                         Card {(homeCardIndex % deckCards.length) + 1} / {deckCards.length} • Click to reveal
                       </div>
                     </div>
 
                     {/* Back */}
                     <div 
-                      className="absolute inset-0 w-full h-full bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white p-5 rounded-2xl flex flex-col justify-between shadow-md border border-amber-500/30"
+                      className="absolute inset-0 w-full h-full bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white p-6 rounded-3xl flex flex-col justify-between shadow-md border border-amber-500/30"
                       style={{ 
                         backfaceVisibility: 'hidden', 
                         WebkitBackfaceVisibility: 'hidden',
@@ -2325,22 +2495,22 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                       }}
                     >
                       <div className="flex items-center justify-between text-xs">
-                        <span className="px-2 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold uppercase text-[9px]">
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold uppercase text-[9px] border border-amber-400/30">
                           💡 Correct Answer
                         </span>
-                        <span className="text-slate-400 text-[10px] flex items-center gap-1">
-                          <RotateCcw className="w-3 h-3" /> Flip Back
+                        <span className="text-slate-400 text-xs flex items-center gap-1 font-semibold">
+                          <RotateCcw className="w-3.5 h-3.5" /> Flip Back
                         </span>
                       </div>
 
-                      <div className="text-center space-y-1">
-                        <p className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">Answer / Fact</p>
+                      <div className="text-center space-y-1.5">
+                        <p className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">Answer / Key Concept</p>
                         <h3 className="text-xs sm:text-sm font-bold text-slate-100 leading-relaxed">
                           {lang === 'kn' && currentShowcaseCard.backKn ? currentShowcaseCard.backKn : (currentShowcaseCard.back || currentShowcaseCard.backEn)}
                         </h3>
                       </div>
 
-                      <div className="text-center text-[9px] text-slate-400">
+                      <div className="text-center text-[10px] text-slate-400">
                         Tap again to flip
                       </div>
                     </div>
@@ -2348,26 +2518,27 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
                 </div>
 
                 {/* Navigation Controls */}
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-3">
                   <button
                     onClick={() => {
                       setHomeCardIndex(Math.max(0, homeCardIndex - 1));
                       setHomeCardFlipped(false);
                     }}
                     disabled={homeCardIndex === 0}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold disabled:opacity-40 shadow-xs"
+                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold disabled:opacity-40 shadow-2xs cursor-pointer flex items-center gap-1"
                   >
-                    <ChevronLeft className="w-3 h-3 inline mr-0.5" /> {lang === 'kn' ? 'ಹಿಂದಿನದು' : 'Prev'}
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>{lang === 'kn' ? 'ಹಿಂದಿನದು' : 'Prev'}</span>
                   </button>
                   <button
                     onClick={() => {
                       setHomeCardIndex(homeCardIndex + 1);
                       setHomeCardFlipped(false);
                     }}
-                    className="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-xs shadow-teal-600/20 flex items-center gap-1"
+                    className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-all"
                   >
                     <span>{lang === 'kn' ? 'ಮುಂದಿನ ಕಾರ್ಡ್' : 'Next Card'}</span>
-                    <ChevronRight className="w-3 h-3" />
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -3618,6 +3789,19 @@ export const HomePage = ({ onNavigate, onSelectTest, onSelectExam, onSelectNote,
       <AskWhatYouWantModal
         isOpen={isAskModalOpen}
         onClose={() => setIsAskModalOpen(false)}
+      />
+
+      {/* Community Collaborate Upload Modal */}
+      <CollaborateUploadModal
+        isOpen={isCollabUploadOpen}
+        onClose={() => setIsCollabUploadOpen(false)}
+      />
+
+      {/* Community Collaborate Document Viewer Modal */}
+      <CollaborateViewerModal
+        material={selectedCollabForView}
+        isOpen={!!selectedCollabForView}
+        onClose={() => setSelectedCollabForView(null)}
       />
 
     </div>

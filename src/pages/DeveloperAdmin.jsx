@@ -29,39 +29,26 @@ import {
   Users,
   UserCheck,
   UserX,
-  ShieldOff,
   Search,
   BookMarked,
-  Landmark,
   ShieldCheck,
-  Compass,
-  Key, 
   CreditCard, 
   FolderKanban,
   QrCode,
   Phone,
-  Smartphone,
   CheckCircle2,
-  ShieldAlert,
-  Calendar,
   MessageSquare,
   Award,
-  ArrowUpRight,
-  ToggleLeft,
-  ToggleRight,
   XCircle,
   Activity,
-  Percent,
   Bell,
   Pin,
   Image as ImageIcon,
   ExternalLink,
   Mail,
   Send,
-  Share2,
   MessageCircle,
   Star,
-  MessageSquarePlus,
   MapPin,
   Trophy,
   PlayCircle,
@@ -496,7 +483,6 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
   const [devPhoneInput, setDevPhoneInput] = useState(developerPhone || '9480123456');
   const [devNameInput, setDevNameInput] = useState(developerName || 'Merilin Prabhu (ಅಧ್ಯಯನ)');
   const [devQrImageInput, setDevQrImageInput] = useState(developerUpiQrImage || '');
-  const [rzpKeyInput, setRzpKeyInput] = useState(razorpayKeyId || '');
 
   // Footer & Public Contact Information State
   const [footerForm, setFooterForm] = useState(footerConfig || {
@@ -1125,14 +1111,6 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
       setTestForm(prev => ({ ...prev, questions: res.questions }));
       showToast(`Successfully fetched & parsed ${res.count} live questions from Google Sheet URL!`);
     }
-  };
-
-  // Handle Save Razorpay Key
-  const handleSaveRazorpayKey = (e) => {
-    e.preventDefault();
-    if (!rzpKeyInput) return;
-    updateRazorpayKeyId(rzpKeyInput);
-    showToast(lang === 'kn' ? 'Razorpay Key ID ಉಳಿಸಲಾಗಿದೆ!' : 'Razorpay Key ID Updated & Saved!');
   };
 
   // Handle Test Edit Start
@@ -2282,21 +2260,49 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                     <ImageIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                     {lang === 'kn' ? 'ಮುಖಪುಟ ಕವರ್ ಚಿತ್ರ (Cover / Banner Image URL)' : 'Subject Cover / Banner Image URL'}
                   </span>
-                  <span className="text-[10px] font-normal text-purple-600 dark:text-purple-400">HD Image</span>
+                  <span className="text-[10px] font-normal text-purple-600 dark:text-purple-400">HD Image / File</span>
                 </label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/... or paste image URL"
-                  value={subjectForm.imageUrl || ''}
-                  onChange={(e) => setSubjectForm({ ...subjectForm, imageUrl: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-mono text-[11px]"
-                />
+
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/... or paste direct image URL"
+                    value={subjectForm.imageUrl || ''}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, imageUrl: e.target.value })}
+                    className="flex-1 p-2.5 rounded-xl border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-900 outline-none font-mono text-[11px]"
+                  />
+                  <label className="cursor-pointer px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-sm transition-colors">
+                    <UploadCloud className="w-4 h-4" />
+                    <span>{lang === 'kn' ? 'ಅಪ್ಲೋಡ್' : 'Upload'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert(lang === 'kn' ? 'ದಯವಿಟ್ಟು 2MB ಗಿಂತ ಕಡಿಮೆ ಗಾತ್ರದ ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ.' : 'Image size must be less than 2MB.');
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          if (ev.target?.result) {
+                            setSubjectForm(prev => ({ ...prev, imageUrl: ev.target.result }));
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                </div>
 
                 {/* Preset Cover Suggestions */}
                 <div className="space-y-1 pt-1">
                   <span className="text-[10px] font-bold text-slate-500">{lang === 'kn' ? 'ಸಿದ್ಧ ಕವರ್ ಚಿತ್ರಗಳು (Click to Select Preset Cover):' : 'Preset Cover Suggestions:'}</span>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-28 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto">
                     {[
+                      { label: '💻 ಕಂಪ್ಯೂಟರ್ & ಸಾಕ್ಷರತೆ', url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80' },
                       { label: '📖 ಕನ್ನಡ ಸಾಹಿತ್ಯ & ವ್ಯಾಕರಣ', url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&auto=format&fit=crop&q=80' },
                       { label: '🏛️ ಕರ್ನಾಟಕ ಇತಿಹಾಸ', url: 'https://images.unsplash.com/photo-1600100397608-f010f4439c27?w=800&auto=format&fit=crop&q=80' },
                       { label: '📜 ಭಾರತೀಯ ಸಂವಿಧಾನ', url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&auto=format&fit=crop&q=80' },
@@ -2304,7 +2310,8 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
                       { label: '🔬 ಸಾಮಾನ್ಯ ವಿಜ್ಞಾನ', url: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=800&auto=format&fit=crop&q=80' },
                       { label: '🌍 ಕರ್ನಾಟಕ ಭೂಗೋಳ', url: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&auto=format&fit=crop&q=80' },
                       { label: '✨ ಪ್ರಚಲಿತ ಘಟನೆಗಳು', url: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=80' },
-                      { label: '🎓 ಶಿಕ್ಷಣ & TET', url: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&auto=format&fit=crop&q=80' }
+                      { label: '🎓 ಶಿಕ್ಷಣ & TET', url: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&auto=format&fit=crop&q=80' },
+                      { label: '📚 ಸಾಮಾನ್ಯ ಅಧ್ಯಯನ', url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80' }
                     ].map((preset, pIdx) => (
                       <button
                         key={pIdx}
@@ -2324,14 +2331,22 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
 
                 {/* Live Image Preview */}
                 {subjectForm.imageUrl && (
-                  <div className="relative h-24 w-full rounded-xl overflow-hidden border border-purple-300 dark:border-purple-700 shadow-inner mt-2">
+                  <div className="relative h-28 w-full rounded-xl overflow-hidden border border-purple-300 dark:border-purple-700 shadow-inner mt-2 bg-slate-900">
                     <img 
                       src={subjectForm.imageUrl} 
                       alt="Cover Preview" 
                       className="w-full h-full object-cover" 
-                      onError={(e) => { e.target.style.display = 'none'; }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const errDiv = document.getElementById('subj-img-err-msg');
+                        if (errDiv) errDiv.style.display = 'flex';
+                      }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2">
+                    <div id="subj-img-err-msg" className="hidden absolute inset-0 bg-red-950/90 flex flex-col items-center justify-center p-2 text-center text-red-200">
+                      <span className="font-bold text-[11px]">⚠️ ಚಿತ್ರ ಲೋಡ್ ಆಗುತ್ತಿಲ್ಲ (Invalid Image)</span>
+                      <span className="text-[10px] opacity-80 mt-0.5">ಇದು ವೆಬ್‌ಪುಟದ ಲಿಂಕ್ ಆಗಿರಬಹುದು. ದಯವಿಟ್ಟು Preset ಚಿತ್ರ ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ 'ಅಪ್ಲೋಡ್' ಬಳಸಿ.</span>
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2 pointer-events-none">
                       <span className="text-[10px] font-bold text-white drop-shadow">✓ {lang === 'kn' ? 'ಕವರ್ ಚಿತ್ರ ಪ್ರಿವ್ಯೂ' : 'Cover Preview'}</span>
                     </div>
                   </div>
