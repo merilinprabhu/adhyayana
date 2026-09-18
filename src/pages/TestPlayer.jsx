@@ -172,6 +172,10 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
   const handleSelectOption = (optIdx, targetIdx = null) => {
     if (isSubmitted) return;
     const qIdx = targetIdx !== null ? targetIdx : currentIdx;
+    if (isQuestionLocked(qIdx)) {
+      handleUnlockTest();
+      return;
+    }
     setSelectedAnswers((prev) => {
       const updated = { ...prev };
       if (optIdx === undefined || optIdx === null) {
@@ -182,6 +186,10 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
       return updated;
     });
     setVisited((prev) => ({ ...prev, [qIdx]: true }));
+  };
+
+  const handleOmrSelectOption = (qIdx, optIdx) => {
+    handleSelectOption(optIdx, qIdx);
   };
 
   // Toggle Review
@@ -1095,12 +1103,14 @@ export const TestPlayer = ({ test, onExit, onOpenAuth, onOpenCheckout }) => {
                   selectedAnswers={selectedAnswers}
                   currentIdx={currentIdx}
                   onJumpToQuestion={handleSelectQuestion}
-                  onSelectOption={handleSelectOption}
+                  onSelectOption={handleOmrSelectOption}
                   markedForReview={markedForReview}
                   candidateName={user?.name || (user?.email ? user.email.split('@')[0] : 'ಸ್ಪರ್ಧಾತ್ಮಕ ಆಕಾಂಕ್ಷಿ')}
                   candidateRoll={candidateRollNo}
                   testTitle={test?.titleKn || test?.title || 'ಸ್ಪರ್ಧಾತ್ಮಕ ಪರೀಕ್ಷೆ'}
                   isSubmitted={false}
+                  isQuestionLocked={isQuestionLocked}
+                  onUnlockClick={handleUnlockTest}
                   lang={lang}
                 />
 

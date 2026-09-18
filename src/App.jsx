@@ -13,9 +13,9 @@ import { BattleInviteModal } from './components/BattleInviteModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { supabase } from './lib/supabase';
 
-// Core entry pages
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
+import { MaintenanceScreen } from './components/MaintenanceScreen';
 
 // Lazy Loaded Sub-pages for Lightning Fast Performance
 const ExamCatalog = lazy(() => import('./pages/ExamCatalog').then(m => ({ default: m.ExamCatalog })));
@@ -41,7 +41,7 @@ const PageLoadingFallback = () => (
 
 const MainApp = () => {
   const { user, isAuthenticated, isDeveloper, setIsAuthModalOpen, triggerGoogleOAuthLogin } = useAuth();
-  const { lang, exams, tests, notes } = useData();
+  const { lang, exams, tests, notes, maintenanceMode, maintenanceMessage, toggleMaintenanceMode } = useData();
 
   // Check for initial battle room in URL query parameters
   const [initialBattleRoom, setInitialBattleRoom] = useState(() => {
@@ -250,9 +250,39 @@ const MainApp = () => {
     // Keep user in current view or redirect to exam details
   };
 
+  // If Emergency Shutdown / Maintenance Mode is active and current user is NOT a developer:
+  if (maintenanceMode && !isDeveloper) {
+    return (
+      <ErrorBoundary>
+        <MaintenanceScreen
+          message={maintenanceMessage}
+          onRetry={() => window.location.reload()}
+          onOpenDevLogin={() => setIsAuthModalOpen(true)}
+        />
+        <GoogleAuthModal />
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors">
       
+      {/* Developer Emergency Maintenance Mode Indicator */}
+      {maintenanceMode && isDeveloper && (
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white px-4 py-2.5 text-xs font-black flex items-center justify-between shadow-xl sticky top-0 z-[100] animate-pulse">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping shrink-0" />
+            <span>🚨 SHUTDOWN / MAINTENANCE MODE IS ACTIVE: Students currently see 'Under Maintenance' screen!</span>
+          </div>
+          <button
+            onClick={() => toggleMaintenanceMode(false)}
+            className="px-3.5 py-1 bg-white text-red-700 hover:bg-slate-100 rounded-xl text-[11px] font-black shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+          >
+            🟢 Restore Live Site (Go Online)
+          </button>
+        </div>
+      )}
+
       {/* Global In-App Battle Invite Popup */}
       <BattleInviteModal
         invite={globalBattleInvite}

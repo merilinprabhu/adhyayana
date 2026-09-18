@@ -55,7 +55,8 @@ import {
   Target,
   ArrowLeft,
   GraduationCap,
-  Gift
+  Gift,
+  PowerOff
 } from 'lucide-react';
 
 const SUPABASE_SCHEMA_SQL = `-- ADHYAYANA (ಅಧ್ಯಯನ) Complete Production Database Schema for Supabase
@@ -419,7 +420,11 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
     updateLiveMockTest,
     currentAffairs = [],
     dailyQuiz,
-    flashcards = []
+    flashcards = [],
+    maintenanceMode,
+    maintenanceMessage,
+    toggleMaintenanceMode,
+    noteReadsLog = []
   } = useData();
 
   const [activeTab, setActiveTab] = useState('database'); // database | exams | subjects | tests | notes | live_mock | analytics | access | notices | broadcast | reviews | requests | daily_content
@@ -522,6 +527,7 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
   });
   const [studentSearch, setStudentSearch] = useState('');
   const [accessFilter, setAccessFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED'
+  const [userSectionTab, setUserSectionTab] = useState('passes'); // 'passes' | 'tests' | 'notes' | 'all' | 'pending'
 
   // New Exam Form State
   const [examForm, setExamForm] = useState({
@@ -1678,6 +1684,40 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
           >
             <Sparkles className="w-4 h-4 text-slate-950" />
             <span>{lang === 'kn' ? '✨ 1-ಕ್ಲಿಕ್ AI ದಿನಪತ್ರಿಕೆ ರಚಿಸಿ' : '✨ 1-Click AI Content'}</span>
+          </button>
+
+          {/* Emergency System Shutdown / Maintenance Mode Button */}
+          <button
+            onClick={async () => {
+              const nextMode = !maintenanceMode;
+              if (nextMode) {
+                const ok = window.confirm(
+                  lang === 'kn'
+                    ? '⚠️ ನೀವು ಸಿಸ್ಟಮ್ ಅನ್ನು "Under Maintenance (ನಿರ್ವಹಣಾ ಮೋಡ್)" ಗೆ ಸ್ಥಗಿತಗೊಳಿಸಲು ಬಯಸುವಿರಾ?\n\nವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ "Under maintenance wait for few minute" ಸಂದೇಶ ಕಾಣಿಸುತ್ತದೆ.'
+                    : '⚠️ Put system in Maintenance Mode (Shutdown)?\n\nStudents will see "Under maintenance wait for few minutes".'
+                );
+                if (!ok) return;
+              }
+              const res = await toggleMaintenanceMode(nextMode);
+              showToast(
+                res
+                  ? (lang === 'kn' ? '🚨 ಸಿಸ್ಟಮ್ ಶಟ್‌ಡೌನ್ ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ! (Maintenance Mode Active)' : '🚨 Maintenance Mode Activated (Shutdown Active)')
+                  : (lang === 'kn' ? '🟢 ಸಿಸ್ಟಮ್ ಪುನಃ ಲೈವ್ ಆಗಿದೆ! (Live Online)' : '🟢 System Restored to Live!')
+              );
+            }}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black shadow-lg flex items-center gap-2 transition-all hover:scale-105 cursor-pointer ${
+              maintenanceMode
+                ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-300 animate-pulse'
+                : 'bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-600/60'
+            }`}
+            title="Toggle system maintenance shutdown"
+          >
+            <PowerOff className="w-4 h-4" />
+            <span>
+              {maintenanceMode
+                ? (lang === 'kn' ? '🚨 SHUTDOWN ಸಕ್ರಿಯ (ಮರುಸ್ಥಾಪಿಸಿ)' : '🚨 SHUTDOWN ACTIVE (Restore)')
+                : (lang === 'kn' ? '🛑 ಸಿಸ್ಟಮ್ ಸ್ಥಗಿತ (Shutdown)' : '🛑 Shutdown for Maintenance')}
+            </span>
           </button>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-900/60 border border-purple-700 text-xs text-purple-200">
@@ -4808,307 +4848,646 @@ export const DeveloperAdmin = ({ onSelectTest, onSelectExam, onSelectNote }) => 
               </div>
             )}
 
-            {/* 3. REGISTERED STUDENTS DIRECTORY (Clean Table & Profile Inspector) */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-              
-              {/* Header with Search and Stats */}
-              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shadow-inner">
-                    <Users className="w-5 h-5" />
+            {/* 3. USER MANAGEMENT SUB-NAVIGATION TABS */}
+            <div className="flex overflow-x-auto no-scrollbar gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+              <button
+                type="button"
+                onClick={() => setUserSectionTab('passes')}
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+                  userSectionTab === 'passes'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/20 ring-2 ring-emerald-400/50'
+                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Gift className="w-4 h-4 text-emerald-300" />
+                <span>🎫 ಪಾಸ್ ಪಡೆದ ವಿದ್ಯಾರ್ಥಿಗಳು ({activeEntitlements.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserSectionTab('tests')}
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+                  userSectionTab === 'tests'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/20 ring-2 ring-blue-400/50'
+                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                <FileSpreadsheet className="w-4 h-4 text-blue-300" />
+                <span>📝 ಪರೀಕ್ಷೆ ಬರೆದ ವಿದ್ಯಾರ್ಥಿಗಳು ({allAttempts.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserSectionTab('notes')}
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+                  userSectionTab === 'notes'
+                    ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-600/20 ring-2 ring-purple-400/50'
+                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                <BookOpen className="w-4 h-4 text-purple-300" />
+                <span>📖 ನೋಟ್ಸ್ ಓದಿದ ವಿದ್ಯಾರ್ಥಿಗಳು ({(noteReadsLog || []).length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserSectionTab('all')}
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+                  userSectionTab === 'all'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
+                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>👥 ಎಲ್ಲಾ ವಿದ್ಯಾರ್ಥಿಗಳು ({uniqueUsers.length})</span>
+              </button>
+
+              {pendingApprovals.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setUserSectionTab('pending')}
+                  className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+                    userSectionTab === 'pending'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20 animate-pulse'
+                      : 'bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-300'
+                  }`}
+                >
+                  <Clock className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                  <span>🚨 ಬಾಕಿ ಪಾವತಿಗಳು ({pendingApprovals.length})</span>
+                </button>
+              )}
+            </div>
+
+            {/* SUB-VIEW 1: PASS GIVEN USERS (ACTIVE ENROLLED PASSES) */}
+            {userSectionTab === 'passes' && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-emerald-200 dark:border-emerald-900/40 shadow-sm overflow-hidden space-y-0">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-emerald-50/60 to-transparent dark:from-emerald-950/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
+                      <Gift className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <span>{lang === 'kn' ? '🎫 ಸಕ್ರಿಯ ಪಾಸ್ ಪಡೆದ ವಿದ್ಯಾರ್ಥಿಗಳು (Pass Given Users)' : '🎫 Pass Given Active Users & Validity'}</span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold font-mono">
+                          {activeEntitlements.length} Active Passes
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಯ ಹೆಸರು, ಪಡೆದ ಟೆಸ್ಟ್/ಕೋರ್ಸ್ ಪಾಸ್, ವ್ಯಾಲಿಡಿಟಿ ದಿನಗಳು, ಹಾಗೂ ಅವಧಿ ವಿಸ್ತರಣೆ ನಿಯಂತ್ರಣ' : 'List of students with active course/test passes, remaining validity days, and quick actions'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {lang === 'kn' ? 'ನೋಂದಾಯಿತ ವಿದ್ಯಾರ್ಥಿಗಳ ಪಟ್ಟಿ & ಖಾತೆ ನಿರ್ವಹಣೆ' : 'Registered Students Directory & Account Control'}
-                    </h3>
-                    <p className="text-[11px] text-slate-400">
-                      {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಯ ಮೇಲೆ ಕ್ಲಿಕ್ ಮಾಡಿ ಅವರ ನೋಟ್ಸ್, ಟೆಸ್ಟ್, ವ್ಯಾಲಿಡಿಟಿ & ಪ್ರವೇಶ ನಿಯಂತ್ರಿಸಿ' : 'Click on any student to view & control their opted tests, notes, and validity'}
-                    </p>
+
+                  <div className="relative w-full md:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder={lang === 'kn' ? 'ಇಮೇಲ್, ಕೋರ್ಸ್ ಅಥವಾ ಹೆಸರು ಹುಡುಕಿ...' : 'Search pass by email or module...'}
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner font-medium"
+                    />
                   </div>
                 </div>
 
-                {/* Search Box */}
-                <div className="relative w-full md:w-72">
-                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder={lang === 'kn' ? 'ಇಮೇಲ್ ಅಥವಾ ಹೆಸರು ಹುಡುಕಿ...' : 'Search student by email/name...'}
-                    value={studentSearch}
-                    onChange={(e) => setStudentSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-purple-500 shadow-inner font-medium"
-                  />
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  {activeEntitlements.filter(item => 
+                    !studentSearch || 
+                    (item.userEmail || '').toLowerCase().includes(studentSearch.toLowerCase()) || 
+                    (item.examTitle || '').toLowerCase().includes(studentSearch.toLowerCase())
+                  ).length === 0 ? (
+                    <div className="p-12 text-center text-slate-400 italic space-y-2">
+                      <Gift className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700" />
+                      <p>{lang === 'kn' ? 'ಯಾವುದೇ ಸಕ್ರಿಯ ಪಾಸ್ ಹೊಂದಿರುವ ವಿದ್ಯಾರ್ಥಿಗಳು ಕಂಡುಬಂದಿಲ್ಲ.' : 'No active pass records found matching search.'}</p>
+                    </div>
+                  ) : (
+                    activeEntitlements
+                      .filter(item => 
+                        !studentSearch || 
+                        (item.userEmail || '').toLowerCase().includes(studentSearch.toLowerCase()) || 
+                        (item.examTitle || '').toLowerCase().includes(studentSearch.toLowerCase())
+                      )
+                      .map((item) => {
+                        const passUserObj = uniqueUsers.find(u => u.email === (item.userEmail || '').toLowerCase().trim());
+                        const userDisplayName = passUserObj?.name || (item.userEmail || '').split('@')[0];
+                        const cleanPhone = (passUserObj?.phone || '').replace(/\D/g, '');
+                        const passWaUrl = `https://wa.me/91${cleanPhone || (developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
+                          `🎉 ನಮಸ್ಕಾರ ${userDisplayName},\nನಿಮ್ಮ ಅಧ್ಯಯನ (ADHYAYANA) ಖಾತೆಯಲ್ಲಿ "${item.examTitle || item.examId}" ಪಾಸ್ ಸಕ್ರಿಯವಾಗಿದೆ.\n\n⏳ ವ್ಯಾಲಿಡಿಟಿ: ${getPurchaseExpiryLabel(item.validUntil, 'kn')}\n🌐 ಲಾಗಿನ್ ಆಗಿ ಕಲಿಯಲು ಭೇಟಿ ನೀಡಿ: ${window.location.origin}`
+                        )}`;
+
+                        return (
+                          <div key={item.id} className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-emerald-50/20 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="flex items-start gap-3.5">
+                              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-black text-sm shadow-md shadow-emerald-600/20 shrink-0">
+                                {(item.userEmail || 'S').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                                    {userDisplayName}
+                                  </span>
+                                  <span className="text-xs text-slate-400 font-mono">({item.userEmail})</span>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                    🟢 ACTIVE PASS
+                                  </span>
+                                  {item.paymentMethod === 'ADMIN_GRANTED' || item.paymentId?.startsWith('ADMIN_') ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                                      🎁 Admin VIP Grant
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-mono">
+                                      📱 UPI Paid ₹{item.amountPaid || 0}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 flex-wrap">
+                                  <span>Module / Test:</span>
+                                  <strong className="text-purple-600 dark:text-purple-400 font-black">{item.examTitle || item.examId}</strong>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-500 dark:text-slate-400">
+                                  <span className="font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                                    {getPurchaseExpiryLabel(item.validUntil, lang)}
+                                  </span>
+                                  <span>• Enrolled: {item.purchasedAt ? new Date(item.purchasedAt).toLocaleDateString('kn-IN') : 'Recent'}</span>
+                                  {passUserObj?.district && (
+                                    <span>• 📍 {passUserObj.district}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions Strip */}
+                            <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
+                              <button
+                                onClick={() => handleExtendValidity(item.id, '30', item.userEmail, item.examTitle || item.examId)}
+                                className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 rounded-xl font-bold text-xs border border-purple-200 dark:border-purple-800 transition-all"
+                                title="Add +30 Days"
+                              >
+                                +30 ದಿನಗಳು
+                              </button>
+
+                              <button
+                                onClick={() => handleExtendValidity(item.id, '365', item.userEmail, item.examTitle || item.examId)}
+                                className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 rounded-xl font-bold text-xs border border-emerald-200 dark:border-emerald-800 transition-all"
+                                title="Add +365 Days (1 Year)"
+                              >
+                                +1 ವರ್ಷ
+                              </button>
+
+                              <a
+                                href={passWaUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800"
+                                title="Send Pass Info on WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </a>
+
+                              <button
+                                onClick={() => {
+                                  setSelectedUserEmail(item.userEmail);
+                                  setUserModalTab('purchases');
+                                }}
+                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-sm flex items-center gap-1"
+                              >
+                                <UserCheck className="w-3.5 h-3.5" />
+                                <span>{lang === 'kn' ? 'ನಿರ್ವಹಿಸಿ' : 'Control'}</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleRevokeStudentAccess(item.userEmail, item.id, item.examTitle || item.examId)}
+                                className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200"
+                                title="Revoke Pass"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
                 </div>
               </div>
+            )}
 
-              {/* Students List */}
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {uniqueUsers.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 italic">
-                    {lang === 'kn' ? 'ಯಾವುದೇ ವಿದ್ಯಾರ್ಥಿಗಳು ನೋಂದಣಿಯಾಗಿಲ್ಲ.' : 'No registered students found in Supabase.'}
+            {/* SUB-VIEW 2: USERS WHO ACCESSED NEW TESTS */}
+            {userSectionTab === 'tests' && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-blue-200 dark:border-blue-900/40 shadow-sm overflow-hidden space-y-0">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-blue-50/60 to-transparent dark:from-blue-950/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-600/20">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <span>{lang === 'kn' ? '📝 ಪರೀಕ್ಷೆಗಳನ್ನು ಬರೆದ ವಿದ್ಯಾರ್ಥಿಗಳು (Accessed Tests Users)' : '📝 Students Who Attempted & Accessed Tests'}</span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-bold font-mono">
+                          {allAttempts.length} Submissions
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗಳು ಹಾಜರಾದ ಟೆಸ್ಟ್‌ಗಳು, ಗಳಿಸಿದ ಅಂಕಗಳು, ನಿಖರತೆ (Accuracy) ಮತ್ತು ಪರೀಕ್ಷಾ ದಿನಾಂಕ' : 'Real-time log of mock test submissions with scores and accuracy'}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  uniqueUsers
-                    .filter(u => 
-                      !studentSearch || 
-                      u.email.toLowerCase().includes(studentSearch.toLowerCase()) || 
-                      u.name.toLowerCase().includes(studentSearch.toLowerCase())
-                    )
-                    .map((usr) => {
-                      const isSuspended = usr.status === 'SUSPENDED';
-                      const isDev = usr.role === 'developer';
-                      const cleanStudentPhone = (usr.phone || '').replace(/\D/g, '');
-                      const userWaUrl = cleanStudentPhone 
-                        ? `https://wa.me/91${cleanStudentPhone}?text=${encodeURIComponent(
-                            `ನಮಸ್ಕಾರ ${usr.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.`
-                          )}`
-                        : `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
-                            `ನಮಸ್ಕಾರ ${usr.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.`
-                          )}`;
 
-                      return (
-                        <div
-                          key={usr.email}
-                          className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-purple-50/30 dark:hover:bg-slate-800/50 transition-all border-b border-slate-100 dark:border-slate-800 last:border-0"
-                        >
-                          {/* Student Identity (Clickable to open student management modal) */}
-                          <div 
-                            onClick={() => {
-                              setSelectedUserEmail(usr.email);
-                              setUserModalTab('purchases');
-                            }}
-                            className="flex items-center gap-3.5 cursor-pointer group flex-grow"
+                  <div className="relative w-full md:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder={lang === 'kn' ? 'ಟೆಸ್ಟ್ ಹೆಸರು ಅಥವಾ ವಿದ್ಯಾರ್ಥಿ ಹುಡುಕಿ...' : 'Search test attempt by name/title...'}
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-blue-500 shadow-inner font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  {allAttempts.filter(att => 
+                    !studentSearch || 
+                    (att.userEmail || '').toLowerCase().includes(studentSearch.toLowerCase()) || 
+                    (att.userName || '').toLowerCase().includes(studentSearch.toLowerCase()) ||
+                    (att.testTitle || '').toLowerCase().includes(studentSearch.toLowerCase())
+                  ).length === 0 ? (
+                    <div className="p-12 text-center text-slate-400 italic space-y-2">
+                      <FileSpreadsheet className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700" />
+                      <p>{lang === 'kn' ? 'ಯಾವುದೇ ಪರೀಕ್ಷಾ ಸಲ್ಲಿಕೆ ದಾಖಲೆ ಕಂಡುಬಂದಿಲ್ಲ.' : 'No test attempt records found matching search.'}</p>
+                    </div>
+                  ) : (
+                    allAttempts
+                      .filter(att => 
+                        !studentSearch || 
+                        (att.userEmail || '').toLowerCase().includes(studentSearch.toLowerCase()) || 
+                        (att.userName || '').toLowerCase().includes(studentSearch.toLowerCase()) ||
+                        (att.testTitle || '').toLowerCase().includes(studentSearch.toLowerCase())
+                      )
+                      .slice(0, 50)
+                      .map((att, attIdx) => {
+                        const attUserObj = uniqueUsers.find(u => u.email === (att.userEmail || '').toLowerCase().trim());
+                        const studentName = att.userName || attUserObj?.name || (att.userEmail || '').split('@')[0];
+
+                        return (
+                          <div key={att.id || attIdx} className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-blue-50/20 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="flex items-start gap-3.5">
+                              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-600/20 shrink-0">
+                                {studentName.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                                    {studentName}
+                                  </span>
+                                  <span className="text-xs text-slate-400 font-mono">({att.userEmail || 'Guest'})</span>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-mono">
+                                    Score: {att.score}/{att.totalMarks || (att.totalQuestions ? att.totalQuestions : 50)} ({att.accuracy || Math.round(((att.score || 0) / (att.totalMarks || 50)) * 100)}%)
+                                  </span>
+                                </div>
+
+                                <h4 className="text-xs sm:text-sm font-bold text-purple-700 dark:text-purple-300">
+                                  📝 {att.testTitle || 'ಸ್ಪರ್ಧಾತ್ಮಕ ಮಾದರಿ ಪರೀಕ್ಷೆ'}
+                                </h4>
+
+                                <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-500 dark:text-slate-400">
+                                  <span>✅ ಸರಿ: <strong>{att.correctCount || att.correctAnswers || 0}</strong></span>
+                                  <span>❌ ತಪ್ಪು: <strong>{att.wrongCount || (att.wrongAnswers !== undefined ? att.wrongAnswers : 0)}</strong></span>
+                                  <span>• Submitted: <span className="font-mono text-slate-700 dark:text-slate-300">{att.timestamp ? new Date(att.timestamp).toLocaleString('kn-IN') : 'Recent'}</span></span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-start md:self-auto">
+                              {att.userEmail && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedUserEmail(att.userEmail);
+                                    setUserModalTab('attempts');
+                                  }}
+                                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 rounded-xl font-bold text-xs border border-blue-200 dark:border-blue-800 flex items-center gap-1"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>{lang === 'kn' ? 'ಫಲಿತಾಂಶ ವಿವರ' : 'View Performance'}</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-VIEW 3: USERS WHO ACCESSED NEW NOTES */}
+            {userSectionTab === 'notes' && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-purple-200 dark:border-purple-900/40 shadow-sm overflow-hidden space-y-0">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-purple-50/60 to-transparent dark:from-purple-950/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-600/20">
+                      <BookOpen className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <span>{lang === 'kn' ? '📖 ಡಿಜಿಟಲ್ ನೋಟ್ಸ್ ಓದಿದ ವಿದ್ಯಾರ್ಥಿಗಳು (Accessed Notes Users)' : '📖 Students Who Read Digital Notes'}</span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold font-mono">
+                          {(noteReadsLog || []).length} Reading Logs
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಗಳು ಓದಿದ ನೋಟ್ಸ್‌ಗಳು, ವಿಷಯವಾರು ವಿಭಾಗ ಮತ್ತು ಇತ್ತೀಚಿನ ಓದುವಿಕೆ ಸಮಯ' : 'Audit logs of students actively opening and studying digital notes'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative w-full md:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder={lang === 'kn' ? 'ನೋಟ್ಸ್ ಅಥವಾ ವಿದ್ಯಾರ್ಥಿ ಹುಡುಕಿ...' : 'Search note read log...'}
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-purple-500 shadow-inner font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  {(noteReadsLog || []).filter(nr => 
+                    !studentSearch || 
+                    (nr.userEmail || '').toLowerCase().includes(studentSearch.toLowerCase()) || 
+                    (nr.userName || '').toLowerCase().includes(studentSearch.toLowerCase()) ||
+                    (nr.noteTitle || '').toLowerCase().includes(studentSearch.toLowerCase())
+                  ).length === 0 ? (
+                    <div className="p-12 text-center text-slate-400 italic space-y-2">
+                      <BookOpen className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700" />
+                      <p>{lang === 'kn' ? 'ಯಾವುದೇ ನೋಟ್ಸ್ ಓದುವಿಕೆ ದಾಖಲೆ ಕಂಡುಬಂದಿಲ್ಲ.' : 'No note reading activity logged yet.'}</p>
+                    </div>
+                  ) : (
+                    (noteReadsLog || [])
+                      .filter(nr => 
+                        !studentSearch || 
+                        (nr.userEmail || '').toLowerCase().includes(studentSearch.toLowerCase()) || 
+                        (nr.userName || '').toLowerCase().includes(studentSearch.toLowerCase()) ||
+                        (nr.noteTitle || '').toLowerCase().includes(studentSearch.toLowerCase())
+                      )
+                      .slice(0, 50)
+                      .map((nr, nrIdx) => {
+                        const targetNote = notes.find(n => n.id === nr.noteId);
+                        return (
+                          <div key={nr.id || nrIdx} className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-purple-50/20 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="flex items-start gap-3.5">
+                              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white flex items-center justify-center font-black text-sm shadow-md shadow-purple-600/20 shrink-0">
+                                {(nr.userName || nr.userEmail || 'S').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                                    {nr.userName || (nr.userEmail || '').split('@')[0]}
+                                  </span>
+                                  <span className="text-xs text-slate-400 font-mono">({nr.userEmail || 'Aspirant'})</span>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                                    📖 {nr.category || 'Digital Note'}
+                                  </span>
+                                </div>
+
+                                <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
+                                  {nr.noteTitle || targetNote?.titleKn || targetNote?.title || 'ಸ್ಪರ್ಧಾತ್ಮಕ ನೋಟ್ಸ್'}
+                                </h4>
+
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                                  Opened At: {nr.readAt ? new Date(nr.readAt).toLocaleString('kn-IN') : 'Recent'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-start md:self-auto">
+                              {targetNote && (
+                                <button
+                                  onClick={() => onSelectNote && onSelectNote(targetNote)}
+                                  className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 rounded-xl font-bold text-xs border border-purple-200 dark:border-purple-800 flex items-center gap-1"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>{lang === 'kn' ? 'ನೋಟ್ಸ್ ವೀಕ್ಷಿಸಿ' : 'View Note'}</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-VIEW 4: ALL REGISTERED STUDENTS DIRECTORY */}
+            {userSectionTab === 'all' && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shadow-inner">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {lang === 'kn' ? 'ನೋಂದಾಯಿತ ವಿದ್ಯಾರ್ಥಿಗಳ ಪಟ್ಟಿ & ಖಾತೆ ನಿರ್ವಹಣೆ' : 'Registered Students Directory & Account Control'}
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        {lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿಯ ಮೇಲೆ ಕ್ಲಿಕ್ ಮಾಡಿ ಅವರ ನೋಟ್ಸ್, ಟೆಸ್ಟ್, ವ್ಯಾಲಿಡಿಟಿ & ಪ್ರವೇಶ ನಿಯಂತ್ರಿಸಿ' : 'Click on any student to view & control their opted tests, notes, and validity'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative w-full md:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder={lang === 'kn' ? 'ಇಮೇಲ್ ಅಥವಾ ಹೆಸರು ಹುಡುಕಿ...' : 'Search student by email/name...'}
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-purple-500 shadow-inner font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  {uniqueUsers.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 italic">
+                      {lang === 'kn' ? 'ಯಾವುದೇ ವಿದ್ಯಾರ್ಥಿಗಳು ನೋಂದಣಿಯಾಗಿಲ್ಲ.' : 'No registered students found in Supabase.'}
+                    </div>
+                  ) : (
+                    uniqueUsers
+                      .filter(u => 
+                        !studentSearch || 
+                        u.email.toLowerCase().includes(studentSearch.toLowerCase()) || 
+                        u.name.toLowerCase().includes(studentSearch.toLowerCase())
+                      )
+                      .map((usr) => {
+                        const isSuspended = usr.status === 'SUSPENDED';
+                        const isDev = usr.role === 'developer';
+                        const cleanStudentPhone = (usr.phone || '').replace(/\D/g, '');
+                        const userWaUrl = cleanStudentPhone 
+                          ? `https://wa.me/91${cleanStudentPhone}?text=${encodeURIComponent(
+                              `ನಮಸ್ಕಾರ ${usr.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.`
+                            )}`
+                          : `https://wa.me/91${(developerPhone || '6360433316').replace(/\D/g, '')}?text=${encodeURIComponent(
+                              `ನಮಸ್ಕಾರ ${usr.name}, ಅಧ್ಯಯನ (ADHYAYANA) ಪೋರ್ಟಲ್‌ನಿಂದ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.`
+                            )}`;
+
+                        return (
+                          <div
+                            key={usr.email}
+                            className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-purple-50/30 dark:hover:bg-slate-800/50 transition-all border-b border-slate-100 dark:border-slate-800 last:border-0"
                           >
-                            <div className={`w-11 h-11 rounded-2xl text-white flex items-center justify-center font-black text-base shadow-md transition-transform group-hover:scale-105 ${
-                              isDev 
-                                ? 'bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/20' 
-                                : isSuspended
-                                  ? 'bg-slate-600'
-                                  : 'bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-500 shadow-purple-600/20'
-                            }`}>
-                              {usr.email.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-slate-900 dark:text-slate-100 text-sm group-hover:text-purple-600 transition-colors">
-                                  {usr.name || usr.email.split('@')[0]}
-                                </span>
-                                <span className="text-xs text-slate-400 font-mono">({usr.email})</span>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  isDev
-                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
-                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                                }`}>
-                                  {isDev ? '👑 Developer' : '🎓 Aspirant'}
-                                </span>
-                                {isSuspended ? (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-300">
-                                    ⛔ SUSPENDED
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                    🟢 ACTIVE
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                {usr.phone && (
-                                  <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold flex items-center gap-1">
-                                    📞 {usr.phone}
-                                  </span>
-                                )}
-                                {usr.district && (
-                                  <span className="px-2 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                                    📍 {usr.district.split('(')[0].trim()}
-                                  </span>
-                                )}
-                                <span>
-                                  Target: <strong className="text-purple-600 dark:text-purple-400">{usr.targetExam || 'KPSC KAS'}</strong>
-                                </span>
-                                <span className="text-slate-400">
-                                  • Last Active: <span className="font-mono text-slate-700 dark:text-slate-300">{usr.lastActive ? new Date(usr.lastActive).toLocaleDateString() : 'Recent'}</span>
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Quick Stats Pill */}
-                          <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
-                            <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-200 dark:border-slate-700">
-                              📝 <strong>{usr.attemptsCount}</strong> Tests ({usr.avgAccuracy}% Acc)
-                            </span>
-                            <span className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-semibold text-xs border border-purple-200 dark:border-purple-800">
-                              📚 <strong>{usr.purchases.length}</strong> Modules Opted
-                            </span>
-                            {usr.pendingPurchasesCount > 0 && (
-                              <span className="px-2.5 py-1 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs border border-amber-300 animate-pulse">
-                                ⏳ {usr.pendingPurchasesCount} Pending
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Main Control Button */}
-                          <div className="flex items-center gap-2 self-start lg:self-auto">
-                            <button
+                            <div 
                               onClick={() => {
                                 setSelectedUserEmail(usr.email);
                                 setUserModalTab('purchases');
                               }}
-                              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all"
+                              className="flex items-center gap-3.5 cursor-pointer group flex-grow"
                             >
-                              <UserCheck className="w-3.5 h-3.5" />
-                              <span>{lang === 'kn' ? '👤 ನಿರ್ವಹಿಸಿ (Manage Student)' : '👤 Manage & Control'}</span>
-                            </button>
+                              <div className={`w-11 h-11 rounded-2xl text-white flex items-center justify-center font-black text-base shadow-md transition-transform group-hover:scale-105 ${
+                                isDev 
+                                  ? 'bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/20' 
+                                  : isSuspended
+                                    ? 'bg-slate-600'
+                                    : 'bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-500 shadow-purple-600/20'
+                              }`}>
+                                {usr.email.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-slate-100 text-sm group-hover:text-purple-600 transition-colors">
+                                    {usr.name || usr.email.split('@')[0]}
+                                  </span>
+                                  <span className="text-xs text-slate-400 font-mono">({usr.email})</span>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    isDev
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
+                                      : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                                  }`}>
+                                    {isDev ? '👑 Developer' : '🎓 Aspirant'}
+                                  </span>
+                                  {isSuspended ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-300">
+                                      ⛔ SUSPENDED
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                      🟢 ACTIVE
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                  {usr.phone && (
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold flex items-center gap-1">
+                                      📞 {usr.phone}
+                                    </span>
+                                  )}
+                                  {usr.district && (
+                                    <span className="px-2 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                                      📍 {usr.district.split('(')[0].trim()}
+                                    </span>
+                                  )}
+                                  <span>
+                                    Target: <strong className="text-purple-600 dark:text-purple-400">{usr.targetExam || 'KPSC KAS'}</strong>
+                                  </span>
+                                  <span className="text-slate-400">
+                                    • Last Active: <span className="font-mono text-slate-700 dark:text-slate-300">{usr.lastActive ? new Date(usr.lastActive).toLocaleDateString() : 'Recent'}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
 
-                            <a
-                              href={userWaUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-all"
-                              title="Chat on WhatsApp"
-                            >
-                              <Phone className="w-4 h-4" />
-                            </a>
+                            <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
+                              <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-200 dark:border-slate-700">
+                                📝 <strong>{usr.attemptsCount}</strong> Tests ({usr.avgAccuracy}% Acc)
+                              </span>
+                              <span className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-semibold text-xs border border-purple-200 dark:border-purple-800">
+                                📚 <strong>{usr.purchases.length}</strong> Modules Opted
+                              </span>
+                              {usr.pendingPurchasesCount > 0 && (
+                                <span className="px-2.5 py-1 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs border border-amber-300 animate-pulse">
+                                  ⏳ {usr.pendingPurchasesCount} Pending
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 self-start lg:self-auto">
+                              <button
+                                onClick={() => {
+                                  setSelectedUserEmail(usr.email);
+                                  setUserModalTab('purchases');
+                                }}
+                                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all"
+                              >
+                                <UserCheck className="w-3.5 h-3.5" />
+                                <span>{lang === 'kn' ? '👤 ನಿರ್ವಹಿಸಿ' : '👤 Manage'}</span>
+                              </button>
+
+                              <a
+                                href={userWaUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-all"
+                                title="Chat on WhatsApp"
+                              >
+                                <Phone className="w-4 h-4" />
+                              </a>
+                            </div>
+
                           </div>
-
-                        </div>
-                      );
-                    })
-                )}
-              </div>
-            </div>
-
-            {/* 5. ALL ENTITLEMENTS & VALIDITY OVERVIEW TABLE */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-0">
-              
-              {/* Header with Filters */}
-              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>{lang === 'kn' ? 'ಸಕ್ರಿಯ ಕೋರ್ಸ್ & ವ್ಯಾಲಿಡಿಟಿ ಪಟ್ಟಿ' : 'All Enrolled Modules & Validity Overview'}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
-                      {filteredPurchases.length}
-                    </span>
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {lang === 'kn' ? 'ಎಲ್ಲಾ ವಿದ್ಯಾರ್ಥಿಗಳ ಪಾವತಿಗಳು ಮತ್ತು ವ್ಯಾಲಿಡಿಟಿ ಅವಧಿಗಳು' : 'Overview of all granted or purchased courses across all students'}
-                  </p>
-                </div>
-
-                {/* Filter Pills */}
-                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl self-start sm:self-auto overflow-x-auto max-w-full">
-                  {['ALL', 'ACTIVE', 'PENDING', 'SUSPENDED', 'REJECTED'].map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setAccessFilter(f)}
-                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
-                        accessFilter === f 
-                          ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      {f}
-                    </button>
-                  ))}
+                        );
+                      })
+                  )}
                 </div>
               </div>
+            )}
 
-              {/* Subscriptions List */}
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {filteredPurchases.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 italic">
-                    {lang === 'kn' ? 'ಯಾವುದೇ ಪ್ರವೇಶ ದಾಖಲೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ.' : 'No entitlement records found.'}
-                  </div>
+            {/* SUB-VIEW 5: PENDING APPROVALS LIST */}
+            {userSectionTab === 'pending' && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-amber-300 dark:border-amber-800 shadow-sm overflow-hidden p-6 space-y-4">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-black text-sm">
+                  <Clock className="w-5 h-5" />
+                  <span>ಬಾಕಿ ಇರುವ ಪಾವತಿ ಪರಿಶೀಲನೆ (Pending Payment Approvals - {pendingApprovals.length})</span>
+                </div>
+                {pendingApprovals.length === 0 ? (
+                  <p className="text-slate-400 italic text-center py-6">ಯಾವುದೇ ಬಾಕಿ ಪಾವತಿಗಳಿಲ್ಲ (All Approvals Clear).</p>
                 ) : (
-                  filteredPurchases.map((item) => {
-                    const isPending = item.status === 'PENDING_APPROVAL';
-                    const isDeactivated = item.status === 'DEACTIVATED' || item.status === 'SUSPENDED';
-                    const isRejected = item.status === 'REJECTED';
-                    const isActive = item.status === 'ACTIVE' || (!item.status && item.paymentId);
-
-                    return (
-                      <div key={item.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-slate-900 dark:text-slate-100 text-sm font-mono">
-                              {item.userEmail}
-                            </span>
-                            
-                            {/* Status Pill */}
-                            {isActive && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                🟢 ACTIVE
-                              </span>
-                            )}
-                            {isPending && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 animate-pulse">
-                                🟡 PENDING APPROVAL
-                              </span>
-                            )}
-                            {isDeactivated && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
-                                ⛔ SUSPENDED / DENIED
-                              </span>
-                            )}
-                            {isRejected && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
-                                ❌ REJECTED
-                              </span>
-                            )}
-
-                            {/* Payment Method Badge */}
-                            {item.paymentMethod === 'ADMIN_GRANTED' || item.paymentId?.startsWith('ADMIN_') ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
-                                🎁 Admin Grant
-                              </span>
-                            ) : item.paymentMethod === 'UPI_QR' || item.paymentId?.startsWith('UPI_') ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-mono">
-                                📱 Direct UPI (₹{item.amountPaid})
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                                💳 Online Paid (₹{item.amountPaid})
-                              </span>
-                            )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {pendingApprovals.map((pur) => (
+                      <div key={pur.id} className="p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100">{pur.examTitle}</h4>
+                            <p className="text-xs text-purple-600 font-mono">{pur.userEmail}</p>
+                            <p className="text-xs text-slate-500 font-mono mt-1">UTR: <strong className="text-slate-900 dark:text-slate-100">{pur.utrNumber || 'N/A'}</strong></p>
                           </div>
-
-                          <p className="text-slate-700 dark:text-slate-300 text-xs font-semibold">
-                            Module: <strong className="text-slate-900 dark:text-slate-100">{item.examTitle || item.examId}</strong>
-                          </p>
-                          
-                          <p className="text-[10px] text-slate-400 font-mono">
-                            Enrolled: {item.purchasedAt ? new Date(item.purchasedAt).toLocaleString() : 'Recent'} • Ref/UTR: <strong className="text-purple-600 font-mono">{item.utrNumber || item.paymentId || item.id}</strong>
-                          </p>
+                          <span className="text-base font-black text-emerald-600">₹{pur.amountPaid}</span>
                         </div>
-
-                        {/* Interactive Controls */}
-                        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+                        <div className="flex gap-2 pt-2">
                           <button
-                            onClick={() => {
-                              setSelectedUserEmail(item.userEmail);
-                              setUserModalTab('purchases');
-                            }}
-                            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 rounded-xl font-bold text-xs flex items-center gap-1 border border-purple-200 dark:border-purple-800"
+                            onClick={() => handleApprovePurchase(pur.id, pur.userEmail, pur.examTitle, '365')}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs"
                           >
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span>{lang === 'kn' ? 'ವಿದ್ಯಾರ್ಥಿ ವಿವರ' : 'Manage'}</span>
+                            ✓ 1 ವರ್ಷ ಅನ್‌ಲಾಕ್
                           </button>
-
-                          {/* Terminate Access Button */}
                           <button
-                            onClick={() => handleRevokeStudentAccess(item.userEmail, item.id, item.examTitle || item.examId)}
-                            className="p-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 rounded-xl font-bold text-xs border border-red-200 dark:border-red-900/50"
-                            title="Revoke Access"
+                            onClick={() => handleRejectPurchase(pur.id, pur.userEmail)}
+                            className="py-2 px-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            ✕
                           </button>
                         </div>
                       </div>
-                    );
-                  })
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
+            )}
 
           </div>
         );

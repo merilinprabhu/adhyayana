@@ -962,7 +962,9 @@ const STORAGE_KEYS = {
   LIVE_MOCK_TEST: 'adhyayana_live_mock_v1',
   FEEDBACKS: 'adhyayana_feedbacks_v2',
   STUDY_REQUESTS: 'adhyayana_study_requests_v2',
-  COMMUNITY_MATERIALS: 'adhyayana_community_materials_v1'
+  COMMUNITY_MATERIALS: 'adhyayana_community_materials_v1',
+  MAINTENANCE_SETTINGS: 'adhyayana_maintenance_settings_v1',
+  NOTE_READS_LOG: 'adhyayana_note_reads_log_v1'
 };
 
 export const DataProvider = ({ children }) => {
@@ -1367,6 +1369,34 @@ export const DataProvider = ({ children }) => {
     }
   });
 
+  // Emergency Shutdown & Maintenance Mode
+  const [maintenanceMode, setMaintenanceMode] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.MAINTENANCE_SETTINGS) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [maintenanceMessage, setMaintenanceMessage] = useState(() => {
+    try {
+      return localStorage.getItem('adhyayana_maintenance_msg') || 'Under maintenance. Please wait for a few minutes. / ಸಿಸ್ಟಮ್ ನಿರ್ವಹಣೆಯಲ್ಲಿದೆ, ದಯವಿಟ್ಟು ಕೆಲವು ನಿಮಿಷ ಕಾಯಿರಿ.';
+    } catch {
+      return 'Under maintenance. Please wait for a few minutes. / ಸಿಸ್ಟಮ್ ನಿರ್ವಹಣೆಯಲ್ಲಿದೆ, ದಯವಿಟ್ಟು ಕೆಲವು ನಿಮಿಷ ಕಾಯಿರಿ.';
+    }
+  });
+
+  // User Notes Reads & Access Log
+  const [noteReadsLog, setNoteReadsLog] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.NOTE_READS_LOG);
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
   // 1. Initial Supabase Cloud Fetch
   const syncFromSupabase = useCallback(async () => {
     setIsCloudSyncing(true);
@@ -1659,6 +1689,23 @@ export const DataProvider = ({ children }) => {
             } else if (s.key === 'daily_quiz_settings' && s.value && typeof s.value === 'object') {
               setDailyQuiz(s.value);
               safeLocalStorageSet(STORAGE_KEYS.DAILY_QUIZ, s.value);
+            } else if (s.key === 'maintenance_settings' && s.value) {
+              if (s.value.isActive !== undefined) {
+                setMaintenanceMode(Boolean(s.value.isActive));
+                safeLocalStorageSet(STORAGE_KEYS.MAINTENANCE_SETTINGS, String(s.value.isActive));
+              }
+              if (s.value.message) {
+                setMaintenanceMessage(s.value.message);
+                safeLocalStorageSet('adhyayana_maintenance_msg', s.value.message);
+              }
+            } else if (s.key === 'note_reads_log' && Array.isArray(s.value) && s.value.length > 0) {
+              setNoteReadsLog(prev => {
+                const map = new Map(s.value.map(item => [item.id, item]));
+                prev.forEach(localItem => {
+                  if (!map.has(localItem.id)) map.set(localItem.id, localItem);
+                });
+                return Array.from(map.values());
+              });
             }
           });
         }
@@ -3553,8 +3600,35 @@ export const DataProvider = ({ children }) => {
 
   const isBookmarked = (id) => bookmarks.some(b => b.id === id);
 
-  // Mark Note As Read
-  const markNoteAsRead = (noteId) => {
+  // Toggle Emergency System Maintenance / Shutdown Mode
+  const toggleMaintenanceMode = async (status, customMessage) => {
+    const newStatus = status !== undefined ? Boolean(status) : !maintenanceMode;
+    const msg = customMessage !== undefined ? customMessage : maintenanceMessage;
+    setMaintenanceMode(newStatus);
+    safeLocalStorageSet(STORAGE_KEYS.MAINTENANCE_SETTINGS, String(newStatus));
+    if (customMessage) {
+      setMaintenanceMessage(customMessage);
+      safeLocalStorageSet('adhyayana_maintenance_msg', customMessage);
+    }
+
+    try {
+      await supabase.from('app_settings').upsert({
+        key: 'maintenance_settings',
+        value: {
+          isActive: newStatus,
+          message: msg,
+          updatedAt: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn('Maintenance sync notice:', err);
+    }
+    return newStatus;
+  };
+
+  // Mark Note As Read & Audit Log
+  const markNoteAsRead = async (noteId, noteTitle = '') => {
     if (!noteId) return;
     setReadNoteIds(prev => {
       const filtered = prev.filter(item => (typeof item === 'string' ? item : item.id) !== noteId);
@@ -3562,6 +3636,37 @@ export const DataProvider = ({ children }) => {
       safeLocalStorageSet(STORAGE_KEYS.READ_NOTES, updated);
       return updated;
     });
+
+    // Record in noteReadsLog for Developer inspection
+    const targetNote = notes.find(n => n.id === noteId);
+    const resolvedTitle = noteTitle || targetNote?.titleKn || targetNote?.title || noteId;
+    const userEmail = (user?.email || 'guest@adhyayana.com').trim().toLowerCase();
+    const userName = (user?.name || userEmail.split('@')[0]);
+
+    const newLogItem = {
+      id: `nr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      noteId,
+      noteTitle: resolvedTitle,
+      category: targetNote?.category || 'General',
+      userEmail,
+      userName,
+      readAt: new Date().toISOString()
+    };
+
+    setNoteReadsLog(prev => {
+      const filtered = prev.filter(item => !(item.noteId === noteId && item.userEmail === userEmail));
+      const updated = [newLogItem, ...filtered].slice(0, 300);
+      safeLocalStorageSet(STORAGE_KEYS.NOTE_READS_LOG, updated);
+      return updated;
+    });
+
+    try {
+      supabase.from('app_settings').upsert({
+        key: 'note_reads_log',
+        value: [newLogItem, ...noteReadsLog].slice(0, 150),
+        updated_at: new Date().toISOString()
+      }).then();
+    } catch (e) {}
   };
 
   // Official Notice Board Handlers
@@ -6048,6 +6153,10 @@ export const DataProvider = ({ children }) => {
         developerName,
         developerUpiQrImage,
         updateDeveloperPaymentSettings,
+        maintenanceMode,
+        maintenanceMessage,
+        toggleMaintenanceMode,
+        noteReadsLog,
         isCloudSyncing,
         cloudStatus,
         syncFromSupabase,

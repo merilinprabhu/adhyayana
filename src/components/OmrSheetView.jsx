@@ -8,7 +8,8 @@ import {
   ShieldCheck, 
   Sparkles, 
   Award, 
-  AlertCircle 
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 
 export const OmrSheetView = ({ 
@@ -23,7 +24,9 @@ export const OmrSheetView = ({
   testTitle = 'Competitive Mock Examination', 
   isSubmitted = false, 
   questionResults = [], 
-  lang = 'kn' 
+  lang = 'kn',
+  isQuestionLocked = null,
+  onUnlockClick = null
 }) => {
   const [inkColor, setInkColor] = useState('blue'); // 'blue' | 'black'
   const totalCount = questions.length || 0;
@@ -139,14 +142,23 @@ export const OmrSheetView = ({
             const isAnswered = userChoice !== undefined && userChoice !== null;
             const isReview = markedForReview[idx];
             const qResult = isSubmitted && questionResults[idx] ? questionResults[idx] : null;
+            const isLocked = !isSubmitted && Boolean(isQuestionLocked && isQuestionLocked(idx));
 
             return (
               <div
                 key={idx}
-                onClick={() => onJumpToQuestion(idx)}
+                onClick={() => {
+                  if (isLocked && onUnlockClick) {
+                    onJumpToQuestion(idx);
+                  } else {
+                    onJumpToQuestion(idx);
+                  }
+                }}
                 className={`py-2 px-3 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
                   isCurrent
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-400 dark:border-emerald-600 shadow-sm ring-1 ring-emerald-400'
+                    : isLocked
+                    ? 'bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 border border-amber-200/60 dark:border-amber-900/40'
                     : 'hover:bg-white dark:hover:bg-slate-800/60 border border-transparent'
                 }`}
               >
@@ -155,65 +167,77 @@ export const OmrSheetView = ({
                   <span className={`w-6 h-6 rounded-lg text-[11px] font-black font-mono flex items-center justify-center transition-all ${
                     isCurrent
                       ? 'bg-emerald-600 text-white shadow-sm'
+                      : isLocked
+                      ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-400'
                       : (isAnswered ? 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200' : 'text-slate-400')
                   }`}>
                     {String(idx + 1).padStart(2, '0')}
                   </span>
                   
-                  {isReview && !isSubmitted && (
+                  {isReview && !isSubmitted && !isLocked && (
                     <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" title="Marked for Review"></span>
+                  )}
+                  {isLocked && (
+                    <Lock className="w-3 h-3 text-amber-500 shrink-0" />
                   )}
                 </div>
 
-                {/* 4 OMR Bubbles: (A) (B) (C) (D) */}
-                <div className="flex items-center gap-2 sm:gap-3">
-                  {OPTIONS.map((optLabel, optIdx) => {
-                    const isSelected = userChoice === optIdx;
-                    const isCorrectChoice = qResult && qResult.correctAnswer === optIdx;
-                    const isWrongSelected = qResult && isSelected && !qResult.isCorrect;
+                {/* 4 OMR Bubbles: (A) (B) (C) (D) OR Locked Badge */}
+                {isLocked ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-lg border border-amber-400/30">
+                    <Lock className="w-3 h-3" />
+                    <span className="text-[11px]">{lang === 'kn' ? 'ಲಾಕ್ ಆಗಿದೆ' : 'Locked'}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {OPTIONS.map((optLabel, optIdx) => {
+                      const isSelected = userChoice === optIdx;
+                      const isCorrectChoice = qResult && qResult.correctAnswer === optIdx;
+                      const isWrongSelected = qResult && isSelected && !qResult.isCorrect;
 
-                    // Compute bubble style
-                    let bubbleStyle = 'border-slate-400 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:border-slate-800 dark:hover:border-slate-300';
-                    
-                    if (isSubmitted) {
-                      if (isCorrectChoice) {
-                        bubbleStyle = 'bg-emerald-600 border-emerald-600 text-white font-black ring-2 ring-emerald-400 shadow-md animate-pulse';
-                      } else if (isWrongSelected) {
-                        bubbleStyle = 'bg-red-600 border-red-600 text-white font-black ring-2 ring-red-400';
+                      // Compute bubble style
+                      let bubbleStyle = 'border-slate-400 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:border-slate-800 dark:hover:border-slate-300';
+                      
+                      if (isSubmitted) {
+                        if (isCorrectChoice) {
+                          bubbleStyle = 'bg-emerald-600 border-emerald-600 text-white font-black ring-2 ring-emerald-400 shadow-md animate-pulse';
+                        } else if (isWrongSelected) {
+                          bubbleStyle = 'bg-red-600 border-red-600 text-white font-black ring-2 ring-red-400';
+                        }
+                      } else if (isSelected) {
+                        bubbleStyle = inkColor === 'blue'
+                          ? 'bg-blue-700 border-blue-800 text-white font-black shadow-inner ring-1 ring-blue-500 scale-95'
+                          : 'bg-slate-900 border-black text-white font-black shadow-inner ring-1 ring-slate-600 scale-95';
                       }
-                    } else if (isSelected) {
-                      bubbleStyle = inkColor === 'blue'
-                        ? 'bg-blue-700 border-blue-800 text-white font-black shadow-inner ring-1 ring-blue-500 scale-95'
-                        : 'bg-slate-900 border-black text-white font-black shadow-inner ring-1 ring-slate-600 scale-95';
-                    }
 
-                    return (
-                      <button
-                        key={optIdx}
-                        type="button"
-                        disabled={isSubmitted}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!isSubmitted) {
-                            onSelectOption(idx, optIdx);
-                          }
-                        }}
-                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all cursor-pointer ${bubbleStyle}`}
-                        title={`Question ${idx + 1} - Option ${optLabel}`}
-                      >
-                        {isSubmitted ? (
-                          isCorrectChoice ? <Check className="w-3.5 h-3.5 text-white" /> : (isWrongSelected ? <X className="w-3.5 h-3.5 text-white" /> : optLabel)
-                        ) : (
-                          isSelected ? (
-                            <span className="w-4 h-4 rounded-full bg-white/30 flex items-center justify-center text-[10px]">
-                              {optLabel}
-                            </span>
-                          ) : optLabel
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                      return (
+                        <button
+                          key={optIdx}
+                          type="button"
+                          disabled={isSubmitted}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isSubmitted) {
+                              onSelectOption(idx, optIdx);
+                            }
+                          }}
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all cursor-pointer ${bubbleStyle}`}
+                          title={`Question ${idx + 1} - Option ${optLabel}`}
+                        >
+                          {isSubmitted ? (
+                            isCorrectChoice ? <Check className="w-3.5 h-3.5 text-white" /> : (isWrongSelected ? <X className="w-3.5 h-3.5 text-white" /> : optLabel)
+                          ) : (
+                            isSelected ? (
+                              <span className="w-4 h-4 rounded-full bg-white/30 flex items-center justify-center text-[10px]">
+                                {optLabel}
+                              </span>
+                            ) : optLabel
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Quick Clear option button */}
                 {!isSubmitted && isAnswered && (
