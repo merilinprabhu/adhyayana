@@ -1164,7 +1164,7 @@ export const DataProvider = ({ children }) => {
         
         const merged = parsed.map(sec => {
           const defaultSec = DEFAULT_HOME_SECTIONS.find(d => d.id === sec.id || d.type === sec.type);
-          const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
+          const isCoreStudySec = ['collaborate_showcase', 'flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
           return {
             ...sec,
             isVisible: isCoreStudySec ? true : (sec.isVisible !== undefined ? sec.isVisible : (sec.type === 'live_mock_test' ? false : true)),
@@ -1607,7 +1607,7 @@ export const DataProvider = ({ children }) => {
               const missingDefaults = DEFAULT_HOME_SECTIONS.filter(d => !existingIds.has(d.id) && !existingIds.has(d.type));
               const merged = s.value.map(sec => {
                 const defaultSec = DEFAULT_HOME_SECTIONS.find(d => d.id === sec.id || d.type === sec.type);
-                const isCoreStudySec = ['flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
+                const isCoreStudySec = ['collaborate_showcase', 'flashcards_showcase', 'current_affairs_capsule', 'rapid_quiz', 'notice_board', 'recent_updates', 'student_reviews'].includes(sec.type || sec.id);
                 return {
                   ...sec,
                   isVisible: isCoreStudySec ? true : (sec.isVisible !== undefined ? sec.isVisible : (sec.type === 'live_mock_test' ? false : true)),

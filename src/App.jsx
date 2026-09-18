@@ -41,9 +41,27 @@ const MainApp = () => {
   const { user, isAuthenticated, isDeveloper, setIsAuthModalOpen, triggerGoogleOAuthLogin } = useAuth();
   const { lang, exams, tests, notes } = useData();
 
+  // Check for initial battle room in URL query parameters
+  const [initialBattleRoom, setInitialBattleRoom] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('battleRoom') || params.get('room') || null;
+    } catch {
+      return null;
+    }
+  });
+
   // Navigation View Router
   // 'home' | 'exams' | 'notes' | 'dashboard' | 'developer' | 'exam_detail' | 'test_player' | 'notes_viewer' | 'battle'
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('battleRoom') || params.get('room') || params.get('view') === 'battle') {
+        return 'battle';
+      }
+    } catch {}
+    return 'home';
+  });
 
   // Selected entities for deep view
   const [selectedExam, setSelectedExam] = useState(null);
@@ -136,7 +154,11 @@ const MainApp = () => {
 
           {currentView === 'battle' && (
             <QuizBattlePage
-              onExit={() => setCurrentView('home')}
+              initialRoomCode={initialBattleRoom}
+              onExit={() => {
+                setInitialBattleRoom(null);
+                setCurrentView('home');
+              }}
               onOpenAuth={handleOpenAuth}
             />
           )}

@@ -114,13 +114,39 @@ export const pruneOldStorageCache = () => {
 };
 
 /**
+ * Strips excessively large base64 file payloads from community materials before writing to localStorage
+ */
+export const sanitizeCommunityMaterialsForLocalStorage = (materialsList, maxEntries = 40) => {
+  if (!Array.isArray(materialsList)) return [];
+  return materialsList.slice(0, maxEntries).map(mat => {
+    let safeFileUrl = mat.fileUrl || '';
+    // If fileUrl is a large base64 payload (> 150KB), strip it in localStorage cache so quota is never exceeded
+    if (safeFileUrl.startsWith('data:') && safeFileUrl.length > 150000) {
+      safeFileUrl = '';
+    }
+    return {
+      ...mat,
+      fileUrl: safeFileUrl
+    };
+  });
+};
+
+/**
  * Safe wrapper around localStorage.setItem that catches QuotaExceededError,
  * auto-prunes obsolete caches, and retries.
  */
 export const safeLocalStorageSet = (key, value) => {
   try {
-    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-    
+    // If saving community materials, sanitize large base64 first
+    if (key === 'adhyayana_community_materials_v1') {
+      try {
+        const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+        const sanitized = sanitizeCommunityMaterialsForLocalStorage(parsed, 40);
+        localStorage.setItem(key, JSON.stringify(sanitized));
+        return true;
+      } catch (_) {}
+    }
+
     // If saving attempts, sanitize first before writing to localStorage
     if (key === 'adhyayana_attempts_v2') {
       try {
@@ -131,6 +157,7 @@ export const safeLocalStorageSet = (key, value) => {
       } catch (_) {}
     }
 
+    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
     localStorage.setItem(key, stringValue);
     return true;
   } catch (err) {
@@ -140,6 +167,13 @@ export const safeLocalStorageSet = (key, value) => {
     pruneOldStorageCache();
 
     try {
+      if (key === 'adhyayana_community_materials_v1') {
+        const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+        const minimal = sanitizeCommunityMaterialsForLocalStorage(parsed, 20);
+        localStorage.setItem(key, JSON.stringify(minimal));
+        return true;
+      }
+
       // If it's attempts or mistakes, aggressively shrink
       if (key === 'adhyayana_attempts_v2') {
         const parsed = typeof value === 'string' ? JSON.parse(value) : value;
@@ -210,7 +244,66 @@ export const resetApplicationCache = (preserveSession = true) => {
   }
 };
 
+// ==============================================================================
+// INDEXEDDB LARGE FILE STORAGE (Handles up to 500MB+ for PDFs, Notes & Books)
+// ==============================================================================
+const IDB_NAME = 'AdhyayanaLargeFilesDB';
+const IDB_STORE = 'study_files';
+
+const openLargeFilesDB = () => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.indexedDB) {
+      resolve(null);
+      return;
+    }
+    const req = window.indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+};
+
+export const saveLargeFileToIndexedDB = async (fileId, fileBlob, fileName) => {
+  try {
+    const db = await openLargeFilesDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      store.put({ id: fileId, data: fileBlob, name: fileName, createdAt: Date.now() });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch (err) {
+    console.warn('IndexedDB save warning:', err);
+    return null;
+  }
+};
+
+export const getLargeFileFromIndexedDB = async (fileId) => {
+  try {
+    const db = await openLargeFilesDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.get(fileId);
+      req.onsuccess = () => resolve(req.result?.data || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch (err) {
+    console.warn('IndexedDB get warning:', err);
+    return null;
+  }
+};
+
 // Auto-run startup cleanup immediately
 try {
   pruneOldStorageCache();
 } catch (_) {}
+

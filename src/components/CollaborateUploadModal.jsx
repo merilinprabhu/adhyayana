@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { saveLargeFileToIndexedDB } from '../utils/storage';
+import { supabase } from '../lib/supabase';
 import { 
   X, 
   Upload, 
@@ -39,6 +41,8 @@ export const CollaborateUploadModal = ({ isOpen, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [selectedRawFile, setSelectedRawFile] = useState(null);
+  const [uploadProgressText, setUploadProgressText] = useState('');
 
   if (!isOpen) return null;
 
@@ -53,17 +57,21 @@ export const CollaborateUploadModal = ({ isOpen, onClose }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      setErrorMsg(lang === 'kn' ? 'ಫೈಲ್ ಗಾತ್ರ 10 MB ಗಿಂತ ಕಡಿಮೆ ಇರಬೇಕು.' : 'File size must be under 10MB.');
+    // Support up to 100MB files (PDFs, Scanned Books, High-Res Notes)
+    if (file.size > 100 * 1024 * 1024) {
+      setErrorMsg(lang === 'kn' ? 'ಫೈಲ್ ಗಾತ್ರ 100 MB ಗಿಂತ ಕಡಿಮೆ ಇರಬೇಕು. ಇನ್ನೂ ದೊಡ್ಡ ಫೈಲ್‌ಗಳಿಗೆ ಗೂಗಲ್ ಡ್ರೈವ್ ಲಿಂಕ್ ಬಳಸಿ.' : 'File size must be under 100MB. Use Google Drive link for larger files.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      setFileUrl(uploadEvent.target.result);
-      setErrorMsg('');
-    };
-    reader.readAsDataURL(file);
+    setSelectedRawFile(file);
+    const readableSize = file.size > 1024 * 1024 
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+      : `${(file.size / 1024).toFixed(0)} KB`;
+    
+    // Create instant local blob preview URL
+    const blobUrl = URL.createObjectURL(file);
+    setFileUrl(blobUrl);
+    setErrorMsg('');
   };
 
   const handleSubmit = async (e) => {
@@ -80,7 +88,7 @@ export const CollaborateUploadModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    if (uploadMode === 'file' && !fileUrl) {
+    if (uploadMode === 'file' && !selectedRawFile && !fileUrl) {
       setErrorMsg(lang === 'kn' ? 'ದಯವಿಟ್ಟು PDF ಅಥವಾ ಇಮೇಜ್ ಫೈಲ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.' : 'Please choose a file to upload.');
       return;
     }
@@ -91,10 +99,52 @@ export const CollaborateUploadModal = ({ isOpen, onClose }) => {
     }
 
     setIsSubmitting(true);
+    setUploadProgressText(lang === 'kn' ? 'ಫೈಲ್ ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲಾಗುತ್ತಿದೆ...' : 'Processing file...');
 
     const selectedExamObj = exams.find(ex => ex.id === selectedExamId);
+    const materialId = `comm_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    let finalFileUrl = fileUrl;
+
+    // Handle large file upload (50MB+) to Supabase Cloud Storage or IndexedDB
+    if (uploadMode === 'file' && selectedRawFile) {
+      const sanitizedFileName = `${materialId}_${selectedRawFile.name.replace(/[^a-zA-Z0-9._-]/g, '')}`;
+      
+      // 1. Save directly to browser IndexedDB (handles 50MB - 500MB without quota drops)
+      try {
+        await saveLargeFileToIndexedDB(materialId, selectedRawFile, selectedRawFile.name);
+      } catch (idbErr) {
+        console.warn('IndexedDB save warning:', idbErr);
+      }
+
+      // 2. Stream to Supabase Storage Bucket if available
+      try {
+        setUploadProgressText(lang === 'kn' ? 'ಕ್ಲೌಡ್ ಸ್ಟೋರೇಜ್‌ಗೆ ಅಪ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ...' : 'Uploading to cloud storage...');
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('study_materials')
+          .upload(`public/${sanitizedFileName}`, selectedRawFile, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (!uploadErr && uploadData?.path) {
+          const { data: publicUrlData } = supabase.storage
+            .from('study_materials')
+            .getPublicUrl(`public/${sanitizedFileName}`);
+          if (publicUrlData?.publicUrl) {
+            finalFileUrl = publicUrlData.publicUrl;
+          }
+        }
+      } catch (storageErr) {
+        console.warn('Supabase storage bucket upload fallback:', storageErr);
+      }
+    }
+
+    const readableSize = selectedRawFile 
+      ? (selectedRawFile.size > 1024 * 1024 ? `${(selectedRawFile.size / (1024 * 1024)).toFixed(1)} MB` : `${(selectedRawFile.size / 1024).toFixed(0)} KB`)
+      : (uploadMode === 'text' ? 'Text Doc' : '3.5 MB');
 
     const newMaterial = {
+      id: materialId,
       title: titleEn || titleKn,
       titleKn: titleKn,
       category: category,
@@ -109,9 +159,9 @@ export const CollaborateUploadModal = ({ isOpen, onClose }) => {
       contributorName: contributorName || (user?.name || 'Anonymous Student'),
       contributorDistrict: contributorDistrict || 'Karnataka',
       contributorBadge: user?.role === 'developer' ? 'Admin Verified' : 'Community Aspirant',
-      fileUrl: uploadMode === 'text' ? '' : fileUrl,
-      fileType: uploadMode === 'text' ? 'text' : (fileUrl.startsWith('data:image') ? 'image' : 'pdf'),
-      fileSize: uploadMode === 'text' ? 'Text Doc' : '3.5 MB',
+      fileUrl: uploadMode === 'text' ? '' : finalFileUrl,
+      fileType: uploadMode === 'text' ? 'text' : (selectedRawFile?.type?.includes('image') || fileUrl.startsWith('data:image') ? 'image' : 'pdf'),
+      fileSize: readableSize,
       textContent: uploadMode === 'text' ? textContent : '',
       hasSolution: hasSolution,
       tags: [category.toUpperCase(), selectedExamObj?.shortName || 'KPSC', year]
@@ -129,11 +179,13 @@ export const CollaborateUploadModal = ({ isOpen, onClose }) => {
       setTimeout(() => {
         setIsSuccess(false);
         setIsSubmitting(false);
+        setUploadProgressText('');
         onClose();
       }, 1800);
     } catch (err) {
       setErrorMsg(lang === 'kn' ? 'ಅಪ್‌ಲೋಡ್ ಮಾಡುವಲ್ಲಿ ದೋಷವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮರುಪ್ರಯತ್ನಿಸಿ.' : 'Failed to upload. Please try again.');
       setIsSubmitting(false);
+      setUploadProgressText('');
     }
   };
 
