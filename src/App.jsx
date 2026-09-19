@@ -349,7 +349,7 @@ const MainApp = () => {
           )}
 
           {currentView === 'roster' && (
-            <div className="w-full min-h-[calc(100vh-140px)] flex flex-col bg-slate-950">
+            <div className="w-full min-h-[calc(100vh-140px)] pb-16 md:pb-0 flex flex-col bg-slate-950">
               <div className="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
                 <button
                   onClick={() => setCurrentView('home')}
@@ -362,7 +362,7 @@ const MainApp = () => {
                     📊 {lang === 'kn' ? 'KARTET / GPT ರೋಸ್ಟರ್ ವಿಶ್ಲೇಷಣೆ 2026-27' : 'Roster Vacancy Analyzer'}
                   </span>
                   <a
-                    href="/roster.html"
+                    href="./roster.html"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[11px] font-bold text-cyan-400 hover:underline bg-cyan-950/60 border border-cyan-800 px-2.5 py-1 rounded-lg flex items-center gap-1"
@@ -372,9 +372,9 @@ const MainApp = () => {
                 </div>
               </div>
               <iframe
-                src="/roster.html"
+                src="./roster.html"
                 title="KARTET / GPT Roster Vacancy Analyzer"
-                className="w-full flex-grow border-0 min-h-[85vh]"
+                className="w-full flex-grow border-0 min-h-[85vh] h-[calc(100vh-180px)]"
               />
             </div>
           )}
