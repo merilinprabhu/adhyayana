@@ -147,7 +147,7 @@ export const DEFAULT_HOME_SECTIONS = [
   {
     id: 'combos_showcase',
     type: 'combos_showcase',
-    isVisible: true,
+    isVisible: false,
     titleKn: 'ವಿಶೇಷ ಕೋರ್ಸ್ ಕಾಂಬೊ ಮತ್ತು ಮೆಗಾ ಪ್ಯಾಕ್‌ಗಳು',
     titleEn: 'Featured Course Combos & Mega Packs',
     subtitleKn: 'ಸಂಪೂರ್ಣ ಪರೀಕ್ಷಾ ತಯಾರಿಗೆ ಸಕಲ ಸೌಲಭ್ಯವುಳ್ಳ ರಿಯಾಯಿತಿ ಪ್ಯಾಕೇಜ್‌ಗಳು.',

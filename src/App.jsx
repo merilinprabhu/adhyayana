@@ -10,6 +10,7 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { PwaFloatingBanner } from './components/PwaFloatingBanner';
 import { BattleInviteModal } from './components/BattleInviteModal';
+import { BottomNavBar } from './components/BottomNavBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { supabase } from './lib/supabase';
 
@@ -347,6 +348,37 @@ const MainApp = () => {
             />
           )}
 
+          {currentView === 'roster' && (
+            <div className="w-full min-h-[calc(100vh-140px)] flex flex-col bg-slate-950">
+              <div className="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
+                <button
+                  onClick={() => setCurrentView('home')}
+                  className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                >
+                  ← {lang === 'kn' ? 'ಮುಖಪುಟಕ್ಕೆ ಹಿಂತಿರುಗಿ' : 'Back to Home'}
+                </button>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-amber-400">
+                    📊 {lang === 'kn' ? 'KARTET / GPT ರೋಸ್ಟರ್ ವಿಶ್ಲೇಷಣೆ 2026-27' : 'Roster Vacancy Analyzer'}
+                  </span>
+                  <a
+                    href="/roster.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-bold text-cyan-400 hover:underline bg-cyan-950/60 border border-cyan-800 px-2.5 py-1 rounded-lg flex items-center gap-1"
+                  >
+                    <span>{lang === 'kn' ? 'ಹೊಸ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ' : 'Open Fullscreen'}</span> ↗
+                  </a>
+                </div>
+              </div>
+              <iframe
+                src="/roster.html"
+                title="KARTET / GPT Roster Vacancy Analyzer"
+                className="w-full flex-grow border-0 min-h-[85vh]"
+              />
+            </div>
+          )}
+
           {currentView === 'exams' && (
             <NotesCatalog
               initialTab="exams"
@@ -446,6 +478,9 @@ const MainApp = () => {
       {currentView !== 'test_player' && currentView !== 'notes_viewer' && (
         <Footer onNavigate={(v) => setCurrentView(v)} />
       )}
+
+      {/* Mobile Floating Bottom Navigation */}
+      <BottomNavBar currentView={currentView} setCurrentView={setCurrentView} />
 
     </div>
   );

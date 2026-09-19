@@ -36,7 +36,7 @@ export const BattleInviteModal = ({ invite, onAccept, onDecline }) => {
             📝 {invite.testTitle || 'ಕರ್ನಾಟಕ ಸಾಮಾನ್ಯ ಜ್ಞಾನ (Mixed GK)'}
           </p>
           <p className="text-[11px] text-slate-400 pt-1">
-            ನಿಮ್ಮೊಂದಿಗೆ 5 ಪ್ರಶ್ನೆಗಳ ನೇರ ಮುಖಾಮುಖಿ ರಿಯಲ್-ಟೈಮ್ ರಸಪ್ರಶ್ನೆ ಕಾಳಗಕ್ಕೆ ಆಹ್ವಾನಿಸಿದ್ದಾರೆ!
+            ನಿಮ್ಮೊಂದಿಗೆ ನೇರ ಮುಖಾಮುಖಿ ರಿಯಲ್-ಟೈಮ್ ರಸಪ್ರಶ್ನೆ ಕಾಳಗಕ್ಕೆ ಆಹ್ವಾನಿಸಿದ್ದಾರೆ!
           </p>
         </div>
 

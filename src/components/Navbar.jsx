@@ -40,7 +40,6 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuth }) => {
 
   const navLinks = [
     { id: 'home', label: lang === 'kn' ? 'ಮುಖಪುಟ' : 'Home', icon: Home },
-    { id: 'battle', label: lang === 'kn' ? '⚔️ ಲೈವ್ ಕ್ವಿಜ್ ಬ್ಯಾಟಲ್' : '⚔️ Quiz Battle', icon: Swords, isHighlight: true },
     { id: 'notes', label: lang === 'kn' ? 'ವಿಷಯಗಳು & ನೋಟ್ಸ್' : 'Notes & Tests', icon: FileText },
     { id: 'collaborate', label: lang === 'kn' ? '🤝 ಸಹಯೋಗ (PYQ & Notes)' : '🤝 Collaborate', icon: Users },
     { id: 'dashboard', label: lang === 'kn' ? 'ನನ್ನ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್' : 'Dashboard', icon: LayoutDashboard, requiresAuth: true },

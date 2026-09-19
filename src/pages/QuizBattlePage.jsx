@@ -309,7 +309,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
     } catch (e) {}
   };
 
-  // Helper: Extract 5 Questions from selected test or fallback bank
+  // Helper: Extract All Questions from selected test or fallback bank
   const getQuestionsPoolForMatch = (testId) => {
     let pool = [];
     if (testId && testId !== 'all') {
@@ -325,13 +325,29 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
           explanation: q.explanation || ''
         }));
       }
+    } else if (testId === 'all') {
+      tests.forEach(t => {
+        if (Array.isArray(t.questions) && t.questions.length > 0) {
+          t.questions.forEach((q, idx) => {
+            pool.push({
+              id: q.id || `tq_${t.id}_${idx}`,
+              subjectName: t.titleKn || t.title || 'Mock Test',
+              question: q.question,
+              questionKn: q.questionKn || q.question,
+              options: q.options || ['A', 'B', 'C', 'D'],
+              correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0,
+              explanation: q.explanation || ''
+            });
+          });
+        }
+      });
     }
 
-    if (pool.length < 3) {
+    if (pool.length === 0) {
       pool = FALLBACK_QUESTIONS;
     }
 
-    return [...pool].sort(() => 0.5 - Math.random()).slice(0, 5);
+    return [...pool];
   };
 
   // 1. Fetch real registered platform members from Supabase database
@@ -1376,7 +1392,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                     <p className="text-[10px] text-slate-400 mt-0.5">ಇತಿಹಾಸ, ಸಂವಿಧಾನ, ಭೂಗೋಳ & ವಿಜ್ಞಾನ</p>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px]">
-                    <span className="text-slate-400">5 Questions • 15s</span>
+                    <span className="text-slate-400">ಎಲ್ಲಾ ಪ್ರಶ್ನೆಗಳು (All Qs) • 15s</span>
                     <span className="font-bold text-amber-400">ಆಯ್ಕೆಮಾಡಿ ✓</span>
                   </div>
                 </div>
@@ -1408,7 +1424,7 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                         <p className="text-[10px] text-slate-400 mt-0.5">{qCount} ಒಟ್ಟು ಪ್ರಶ್ನೆಗಳು</p>
                       </div>
                       <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px]">
-                        <span className="text-slate-400">5 Rapid Duel Qs</span>
+                        <span className="text-slate-400">{qCount} ಪ್ರಶ್ನೆಗಳು (All Qs)</span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1744,8 +1760,8 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
 
             {/* Match Rules Summary */}
             <div className="p-3 rounded-xl bg-slate-800/60 text-xs text-slate-300 flex items-center justify-around">
-              <span>📝 5 ಪ್ರಶ್ನೆಗಳು</span>
-              <span>⏱️ 15 ಸೆಕೆಂಡುಗಳು</span>
+              <span>📝 {matchQuestions.length} ಪ್ರಶ್ನೆಗಳು ({matchQuestions.length} Qs)</span>
+              <span>⏱️ 15 ಸೆಕೆಂಡುಗಳು/ಪ್ರಶ್ನೆ</span>
               <span>⚡ ವೇಗದ ಬೋನಸ್</span>
             </div>
 
@@ -1848,6 +1864,37 @@ export const QuizBattlePage = ({ onExit, onOpenAuth, initialRoomCode = null }) =
                 </div>
 
               </div>
+
+              {/* Dynamic Live Duel Score Race Bar */}
+              {(() => {
+                const totalPossible = Math.max(1, (playerScore + opponentScore) || 100);
+                const playerPercent = playerScore === 0 && opponentScore === 0 
+                  ? 50 
+                  : Math.min(85, Math.max(15, Math.round((playerScore / totalPossible) * 100)));
+                const oppPercent = 100 - playerPercent;
+                return (
+                  <div className="mt-3 pt-2">
+                    <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1">
+                      <span className="text-emerald-400">ನೀವು: {playerScore} pts</span>
+                      <span className="text-amber-400 uppercase tracking-widest text-[9px] flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                        DUEL PROGRESS
+                      </span>
+                      <span className="text-rose-400">ಎದುರಾಳಿ: {opponentScore} pts</span>
+                    </div>
+                    <div className="h-2.5 w-full rounded-full bg-slate-950 overflow-hidden flex border border-slate-800 shadow-inner">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700 ease-out"
+                        style={{ width: `${playerPercent}%` }}
+                      />
+                      <div
+                        className="h-full bg-gradient-to-l from-rose-500 to-amber-500 transition-all duration-700 ease-out"
+                        style={{ width: `${oppPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Real-time Status Indicator Strip */}
               <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-800 text-[11px] font-mono">
