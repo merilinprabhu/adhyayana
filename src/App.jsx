@@ -28,6 +28,7 @@ const UserDashboard = lazy(() => import('./pages/UserDashboard').then(m => ({ de
 const DeveloperAdmin = lazy(() => import('./pages/DeveloperAdmin').then(m => ({ default: m.DeveloperAdmin })));
 const QuizBattlePage = lazy(() => import('./pages/QuizBattlePage').then(m => ({ default: m.QuizBattlePage })));
 const CollaborateHub = lazy(() => import('./pages/CollaborateHub').then(m => ({ default: m.CollaborateHub })));
+const RosterPage = lazy(() => import('./pages/RosterPage').then(m => ({ default: m.RosterPage })));
 
 const PageLoadingFallback = () => (
   <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4 p-8">
@@ -349,34 +350,10 @@ const MainApp = () => {
           )}
 
           {currentView === 'roster' && (
-            <div className="w-full min-h-[calc(100vh-140px)] pb-16 md:pb-0 flex flex-col bg-slate-950">
-              <div className="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
-                <button
-                  onClick={() => setCurrentView('home')}
-                  className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
-                >
-                  ← {lang === 'kn' ? 'ಮುಖಪುಟಕ್ಕೆ ಹಿಂತಿರುಗಿ' : 'Back to Home'}
-                </button>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-amber-400">
-                    📊 {lang === 'kn' ? 'KARTET / GPT ರೋಸ್ಟರ್ ವಿಶ್ಲೇಷಣೆ 2026-27' : 'Roster Vacancy Analyzer'}
-                  </span>
-                  <a
-                    href="./roster.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-bold text-cyan-400 hover:underline bg-cyan-950/60 border border-cyan-800 px-2.5 py-1 rounded-lg flex items-center gap-1"
-                  >
-                    <span>{lang === 'kn' ? 'ಹೊಸ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ' : 'Open Fullscreen'}</span> ↗
-                  </a>
-                </div>
-              </div>
-              <iframe
-                src="./roster.html"
-                title="KARTET / GPT Roster Vacancy Analyzer"
-                className="w-full flex-grow border-0 min-h-[85vh] h-[calc(100vh-180px)]"
-              />
-            </div>
+            <RosterPage
+              lang={lang}
+              onNavigate={(v) => setCurrentView(v)}
+            />
           )}
 
           {currentView === 'exams' && (
