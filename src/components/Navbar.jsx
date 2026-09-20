@@ -41,8 +41,9 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuth }) => {
   const navLinks = [
     { id: 'home', label: lang === 'kn' ? 'ಮುಖಪುಟ' : 'Home', icon: Home },
     { id: 'notes', label: lang === 'kn' ? 'ವಿಷಯಗಳು & ನೋಟ್ಸ್' : 'Notes & Tests', icon: FileText },
-    { id: 'collaborate', label: lang === 'kn' ? '🤝 ಸಹಯೋಗ (PYQ & Notes)' : '🤝 Collaborate', icon: Users },
-    { id: 'dashboard', label: lang === 'kn' ? 'ನನ್ನ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್' : 'Dashboard', icon: LayoutDashboard, requiresAuth: true },
+    { id: 'roster', label: lang === 'kn' ? '📊 ರೋಸ್ಟರ್' : '📊 Roster', icon: Layers },
+    { id: 'collaborate', label: lang === 'kn' ? '🤝 ಸಹಯೋಗ' : '🤝 Collaborate', icon: Users },
+    { id: 'dashboard', label: lang === 'kn' ? 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್' : 'Dashboard', icon: LayoutDashboard, requiresAuth: true },
   ];
 
   const handleNavClick = (viewId, requiresAuth) => {
@@ -461,75 +462,10 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuth }) => {
         />
       </header>
 
-      {/* Spacer to prevent page content underlap behind fixed navbar */}
-      <div className="h-16 w-full shrink-0 pointer-events-none" aria-hidden="true" />
-
-      {/* Mobile Bottom Navigation Bar (Ultra-responsive 1-thumb touch navigation) */}
-      <nav 
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-2 py-1.5 flex items-center justify-around shadow-2xl transition-all"
-        aria-label="Mobile Bottom Navigation"
-      >
-        <button
-          onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-            currentView === 'home' && !mobileMenuOpen
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-          }`}
-        >
-          <Home className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">{lang === 'kn' ? 'ಮುಖಪುಟ' : 'Home'}</span>
-        </button>
-
-        <button
-          onClick={() => { setCurrentView('notes'); setMobileMenuOpen(false); }}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-            currentView === 'notes' && !mobileMenuOpen
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-          }`}
-        >
-          <FileText className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">{lang === 'kn' ? 'ನೋಟ್ಸ್ & ಟೆಸ್ಟ್' : 'Notes'}</span>
-        </button>
-
-        <button
-          onClick={() => { setIsAskModalOpen(true); setMobileMenuOpen(false); }}
-          className="flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer text-amber-600 dark:text-amber-400 font-bold"
-        >
-          <div className="w-7 h-7 -mt-3 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/40">
-            <MessageSquarePlus className="w-4 h-4 text-slate-950" />
-          </div>
-          <span className="text-[10px] mt-0.5">{lang === 'kn' ? 'ಕೇಳಿ (Ask)' : 'Ask'}</span>
-        </button>
-
-        <button
-          onClick={() => { handleNavClick('dashboard', true); }}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-            currentView === 'dashboard' && !mobileMenuOpen
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-          }`}
-        >
-          <LayoutDashboard className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">{lang === 'kn' ? 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್' : 'Dashboard'}</span>
-        </button>
-
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-            mobileMenuOpen
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-          }`}
-        >
-          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          <span className="text-[10px] mt-0.5">{lang === 'kn' ? 'ಮೆನು' : 'Menu'}</span>
-        </button>
-      </nav>
     </>
   );
 };
+
 
 
 
